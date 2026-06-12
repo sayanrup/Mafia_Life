@@ -15,16 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ---------------- Action Economy Wrapper ---------------- */
 
 function tryAction(fn) {
-  if (GAME.player.actionsRemaining <= 0) {
-    showMsg('No Actions Left', 'You\'ve used all your actions this turn. End your turn to continue.');
-    return;
-  }
   const res = fn();
   if (res && res.ok === false) {
     showMsg('Action Failed', res.reason);
     return;
   }
-  GAME.player.actionsRemaining--;
   checkGameOver();
   autosave(GAME);
   renderApp();
@@ -57,13 +52,8 @@ function actionHit() {
 }
 
 function actionStartGangWar() {
-  if (GAME.player.actionsRemaining <= 0) {
-    showMsg('No Actions Left', 'You\'ve used all your actions this turn. End your turn to continue.');
-    return;
-  }
   const select = document.getElementById('hit-target');
   if (!select || !select.value) { showMsg('Gang War', 'No target selected.'); return; }
-  GAME.player.actionsRemaining--;
   MODAL = { type: 'gangwar', war: startGangWar(GAME, GAME.player.currentDistrict, select.value) };
   renderApp();
 }
@@ -127,6 +117,42 @@ function actionHospital() {
   renderApp();
 }
 
+/* ---------------- Drug Empire (no action cost) ---------------- */
+
+function actionBuyLand(districtId, product) {
+  const res = buyLand(GAME, districtId, product);
+  if (!res.ok) { showMsg('Empire', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionHireDistributors(districtId) {
+  const input = document.getElementById(`empire-distributors-${districtId}`);
+  const count = Math.max(1, parseInt(input.value, 10) || 1);
+  const res = hireDistributors(GAME, districtId, count);
+  if (!res.ok) { showMsg('Empire', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionSetEmpirePrice(product) {
+  const input = document.getElementById(`empire-price-${product}`);
+  const price = parseFloat(input.value);
+  const res = setEmpirePrice(GAME, product, price);
+  if (!res.ok) { showMsg('Empire', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionBribeProtection(districtId) {
+  const input = document.getElementById(`empire-bribe-${districtId}`);
+  const amount = Math.max(0, parseInt(input.value, 10) || 0);
+  const res = bribeProtection(GAME, districtId, amount);
+  if (!res.ok) { showMsg('Empire', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
 function travelTo(districtId) {
   GAME.player.currentDistrict = districtId;
   narrate(GAME, 'district_travel');
@@ -140,6 +166,7 @@ function endTurn() {
   const state = GAME;
 
   tickOperations(state);
+  empireTurnTick(state);
   extortionTick(state);
   applyLieutenantBonuses(state);
   saturationTick(state);
@@ -164,7 +191,6 @@ function endTurn() {
 
   state.meta.day++;
   state.meta.turn++;
-  state.player.actionsRemaining = ACTIONS_PER_TURN;
 
   narrate(state, 'turn_tick');
 
@@ -237,7 +263,12 @@ function continueAsFamilyMember(memberId) {
     extortionRackets: [],
     affiliation: { type: 'solo', gangId: null },
     currentDistrict: 0,
-    actionsRemaining: ACTIONS_PER_TURN
+    empire: {
+      plots: {},
+      distributors: {},
+      prices: Object.fromEntries(Object.keys(PRODUCT_TYPES).map(p => [p, PRODUCT_TYPES[p].baseValue])),
+      protection: {}
+    }
   };
 
   state.meta.gameOver = false;
