@@ -68,7 +68,9 @@ function attemptBribe(state, npcId, offerAmount) {
   const heatTrack = npc.type === 'fed' ? 'feds' : 'pd';
 
   if (roll < chance) {
-    const reduction = clamp(Math.round(8 * ratio * rankOf(npc).heatMult), 4, 30);
+    const flatReduction = clamp(Math.round(8 * ratio * rankOf(npc).heatMult), 4, 30);
+    const pctReduction = Math.ceil(state.player.heat[heatTrack] * 0.25);
+    const reduction = Math.max(flatReduction, pctReduction);
     addHeat(state, heatTrack, -reduction);
     state.player.cash.dirty = Math.max(0, state.player.cash.dirty - offerAmount);
     npc.bribesAccepted++;

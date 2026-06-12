@@ -35,7 +35,7 @@ function renderApp() {
     app.innerHTML = renderGameOver();
     return;
   }
-  app.innerHTML = renderTopBar() + renderTabBar() + `<div class="content">${renderTabContent()}</div>`;
+  app.innerHTML = renderTopBar() + renderTabBar() + renderActionUpdate() + `<div class="content">${renderTabContent()}</div>`;
   const existingModal = document.getElementById('modal-root');
   if (existingModal) existingModal.remove();
   if (MODAL) {
@@ -111,6 +111,39 @@ function renderTabContent() {
   }
 }
 
+/* ---------------- Action Update Screen ---------------- */
+
+const ACTION_UPDATE_LABELS = {
+  activity: 'Criminal Activity',
+  gang: 'Gang Activity',
+  bribe: 'Bribery',
+  combat: 'Combat',
+  rank: 'Rank Change',
+  family: 'Family',
+  family_death: 'Family',
+  lawenforcement: 'Law Enforcement',
+  empire: 'Drug Empire',
+  finance_raid: 'Finance',
+  betrayal: 'Betrayal',
+  system: 'System',
+  health: 'Health',
+  injury: 'Injury',
+  district_travel: 'Travel'
+};
+
+function renderActionUpdate() {
+  if (!GAME.eventLog.length) return '';
+  const lastCategory = GAME.eventLog[GAME.eventLog.length - 1].category;
+  const relevant = GAME.eventLog.filter(e => e.category === lastCategory).slice(-5);
+  if (!relevant.length) return '';
+  return `
+    <div class="card action-update">
+      <h3>Latest: ${ACTION_UPDATE_LABELS[lastCategory] || 'Update'}</h3>
+      ${renderLog(relevant)}
+    </div>
+  `;
+}
+
 /* ---------------- Home Tab ---------------- */
 
 function renderHome() {
@@ -147,9 +180,10 @@ function renderHome() {
     <div class="card">
       <h2>Criminal Activities</h2>
       <div class="crime-menu">
-        ${crimeMenuItem('🔪', 'Street Crime', 'Quick muggings for fast, low-risk cash.', "openCrimeModal('street')")}
+        ${crimeMenuItem('🔪', 'Street Crime', 'Muggings and small-time hustles for fast, low-risk cash.', "openCrimeModal('street')")}
         ${crimeMenuItem('💰', 'Heists & Rackets', 'Bigger scores: heists, extortion, smuggling runs.', "openCrimeModal('heists')")}
         ${hasHitTargets ? crimeMenuItem('⚔️', 'Gang Operations', 'Send a message or start a gang war.', "openCrimeModal('gang')") : ''}
+        ${hasHitTargets ? crimeMenuItem('🤲', 'Help a Gang', 'Small jobs for local crews - paid in cash, no membership.', "openCrimeModal('help')") : ''}
         ${crimeMenuItem('💵', 'Deals', 'Sell product from your inventory.', 'openDealsModal()')}
         ${crimeMenuItem('🤝', 'Bribes & Corruption', 'Buy off cops, feds, or rival crews.', 'openBribesModal()')}
       </div>
@@ -204,6 +238,10 @@ function crimeListItem(icon, title, desc, payout, actionHtml) {
   `;
 }
 
+function cashHeatLabel(cashMin, cashMax, heatMin, heatMax) {
+  return `${fmtMoney(cashMin)} - ${fmtMoney(cashMax)} <span class="muted">| Heat +${heatMin}-${heatMax}</span>`;
+}
+
 function closeButtonRow() {
   return `<div class="row" style="justify-content:flex-end; margin-top:10px;"><button class="btn-primary" onclick="closeModal()">Close</button></div>`;
 }
@@ -227,11 +265,14 @@ function renderCrimeModal(category) {
   const district = GAME.districts[GAME.player.currentDistrict];
 
   if (category === 'street') {
+    const items = [
+      crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', cashHeatLabel(60, 160, 0, 6), '<button class="btn-primary" onclick="actionMug()">Do It</button>'),
+      ...STREET_CRIMES.map(c => crimeListItem(c.icon, c.label, c.desc, cashHeatLabel(c.cashMin, c.cashMax, c.heatMin, c.heatMax), `<button class="btn-primary" onclick="actionStreetCrime('${c.id}')">Do It</button>`))
+    ].join('');
     return `
       <h2>Street Crime</h2>
-      <div class="crime-list">
-        ${crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', '$20 - $200', '<button class="btn-primary" onclick="actionMug()">Do It</button>')}
-      </div>
+      <p class="muted small">Each crime can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <div class="crime-list">${items}</div>
       ${closeButtonRow()}
     `;
   }
@@ -241,10 +282,11 @@ function renderCrimeModal(category) {
     const racket = GAME.player.extortionRackets.find(r => r.districtId === district.id);
     return `
       <h2>Heists &amp; Rackets</h2>
+      <p class="muted small">Each action can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
       <div class="crime-list">
-        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', '$400 - $4,000+', '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
-        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/3).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/3` : 'Recurring income', '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
-        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move contraband through your established route.', routeTier === 0 ? 'Requires a route' : 'Arms &amp; Contraband', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
+        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
+        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/3).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/3 <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
+        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move contraband through your established route.', routeTier === 0 ? 'Requires a route' : 'Arms &amp; Contraband <span class="muted">| Heat +0-12 on bust</span>', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
       </div>
       ${closeButtonRow()}
     `;
@@ -261,10 +303,24 @@ function renderCrimeModal(category) {
           <select id="hit-target">${hitTargets}</select>
         </div>
         <div class="crime-list">
-          ${crimeListItem('🔫', 'Send a Message', 'Intimidate a rival gang and shift territory control.', 'Territory shift', '<button class="btn-primary" onclick="actionHit()">Do It</button>')}
-          ${crimeListItem('💣', 'Start Gang War', 'Open conflict for control of this district.', 'High risk', '<button class="btn-danger" onclick="actionStartGangWar()">Do It</button>')}
+          ${crimeListItem('🔫', 'Send a Message', 'Intimidate a rival gang and shift territory control.', 'Territory shift <span class="muted">| Gang Heat +4-10</span>', '<button class="btn-primary" onclick="actionHit()">Do It</button>')}
+          ${crimeListItem('💣', 'Start Gang War', 'Open conflict for control of this district.', 'High risk <span class="muted">| Heat &amp; injury vary</span>', '<button class="btn-danger" onclick="actionStartGangWar()">Do It</button>')}
         </div>
       ` : '<p class="muted">No rival gang presence to target here.</p>'}
+      ${closeButtonRow()}
+    `;
+  }
+
+  if (category === 'help') {
+    const gangsHere = Object.entries(district.control).map(([gid]) => GAME.gangs[gid]).filter(g => !g.isPlayerGang);
+    if (!gangsHere.length) {
+      return `<h2>Help a Gang</h2><p class="muted">No rival crews around here to work for.</p>${closeButtonRow()}`;
+    }
+    const items = GANG_GIGS.map(g => crimeListItem(g.icon, g.label, g.desc, cashHeatLabel(g.cashMin, g.cashMax, g.heatMin, g.heatMax), `<button class="btn-primary" onclick="actionGangGig('${g.id}')">Do It</button>`)).join('');
+    return `
+      <h2>Help a Gang</h2>
+      <p class="muted small">Small jobs for a local crew without joining them. Builds relations and gang reputation. Each job can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <div class="crime-list">${items}</div>
       ${closeButtonRow()}
     `;
   }

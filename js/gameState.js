@@ -26,7 +26,8 @@ function createNewGame(charData) {
       customEraText: charData.era === 'custom' ? charData.customEra : '',
       cityName: cityName,
       gameOver: false,
-      gameOverReason: null
+      gameOverReason: null,
+      familyRevealed: false
     },
     player: {
       name: charData.name.trim() || 'Unnamed',
@@ -55,6 +56,7 @@ function createNewGame(charData) {
       extortionRackets: [], // {districtId, level}
       affiliation: { type: 'solo', gangId: null }, // 'solo' | 'member' | 'founder'
       currentDistrict: 0,
+      actionCounts: {}, // actionKey -> uses this turn (reset on endTurn)
       empire: {
         plots: {}, // districtId -> {productType: count}
         distributors: {}, // districtId -> count
@@ -75,7 +77,6 @@ function createNewGame(charData) {
   };
 
   initWorld(state);
-  initFamily(state);
   initLawEnforcement(state);
 
   state.eventLog.push(logEntry(state, `You arrive in ${cityName}. The ${ERAS[state.meta.era] ? ERAS[state.meta.era].label : state.meta.customEraText} city hums with opportunity and danger alike.`, 'system'));

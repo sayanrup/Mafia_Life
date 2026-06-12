@@ -108,9 +108,9 @@ const OPERATION_DEFS = {
     label: 'Drug Lab',
     tiers: [
       { name: 'None', cost: 0, income: 0, heat: 0 },
-      { name: 'Street Cook', cost: 1500, income: 80, heat: 2 },
-      { name: 'Mid-Tier', cost: 6000, income: 220, heat: 4 },
-      { name: 'Superlab', cost: 18000, income: 600, heat: 8 }
+      { name: 'Street Cook', cost: 1500, income: 8000, heat: 2 },
+      { name: 'Mid-Tier', cost: 6000, income: 20000, heat: 4 },
+      { name: 'Superlab', cost: 18000, income: 50000, heat: 8 }
     ]
   },
   stash: {
@@ -158,6 +158,35 @@ const EMPIRE = {
   priceMinMult: 0.5,
   priceMaxMult: 2.0
 };
+
+/* ---------------- Action Economy ---------------- */
+
+const MAX_ACTION_REPEATS = 3; // each distinct action type can be repeated at most this many times per turn
+
+/* ---------------- Street Crimes (beyond the basic Mug a Mark) ---------------- */
+
+const STREET_CRIMES = [
+  { id: 'pickpocket',  label: 'Pickpocket',          icon: '🧤', desc: 'Lift a wallet in a crowded market.',          cashMin: 15,  cashMax: 90,   heatMin: 0, heatMax: 2, repGain: 1, difficulty: 5 },
+  { id: 'shoplift',    label: 'Shoplifting',         icon: '🛍️', desc: 'Walk out of a store with merchandise to fence.', cashMin: 30,  cashMax: 150,  heatMin: 1, heatMax: 3, repGain: 1, difficulty: 6 },
+  { id: 'cartheft',    label: 'Car Theft',           icon: '🚗', desc: 'Boost a parked car and sell it to a chop shop.', cashMin: 200, cashMax: 900,  heatMin: 3, heatMax: 8, repGain: 2, difficulty: 14 },
+  { id: 'vandalism',   label: 'Vandalism for Hire',  icon: '🔨', desc: "Trash a rival's storefront for a quick payday.", cashMin: 50,  cashMax: 250,  heatMin: 2, heatMax: 6, repGain: 1, difficulty: 8 },
+  { id: 'fence',       label: 'Fence Stolen Goods',  icon: '💎', desc: 'Move hot merchandise through a fence.',        cashMin: 100, cashMax: 500,  heatMin: 1, heatMax: 4, repGain: 1, difficulty: 7 },
+  { id: 'dicehustle',  label: 'Street Dice Hustle',  icon: '🎲', desc: 'Run a rigged dice game on the corner.',        cashMin: 30,  cashMax: 180,  heatMin: 0, heatMax: 3, repGain: 1, difficulty: 6 },
+  { id: 'skimming',    label: 'ATM Skimming',        icon: '💳', desc: 'Rig a card skimmer on a local ATM.',           cashMin: 150, cashMax: 700,  heatMin: 2, heatMax: 7, repGain: 1, difficulty: 12 },
+  { id: 'pilferage',   label: 'Cargo Pilferage',     icon: '📦', desc: 'Snatch goods off a delivery truck.',           cashMin: 100, cashMax: 600,  heatMin: 2, heatMax: 6, repGain: 2, difficulty: 11 },
+  { id: 'shakedown',   label: 'Corner Store Shakedown', icon: '✊', desc: 'Strong-arm a small business for quick cash.', cashMin: 80,  cashMax: 400,  heatMin: 2, heatMax: 5, repGain: 2, difficulty: 9 }
+];
+
+/* ---------------- Help a Gang (gig work, no membership required) ---------------- */
+
+const GANG_GIGS = [
+  { id: 'message',  label: 'Pass a Message',  icon: '✉️', desc: 'Deliver a coded message between crews.',          cashMin: 50,  cashMax: 200, heatMin: 0, heatMax: 2, relationGain: 3, gangRepGain: 1, difficulty: 4 },
+  { id: 'package',  label: 'Deliver a Package', icon: '📦', desc: "Move a sealed package without asking questions.", cashMin: 100, cashMax: 400, heatMin: 1, heatMax: 4, relationGain: 4, gangRepGain: 2, difficulty: 8 },
+  { id: 'lookout',  label: 'Stand Lookout',   icon: '👀', desc: 'Watch the street while the crew works.',          cashMin: 60,  cashMax: 250, heatMin: 0, heatMax: 3, relationGain: 2, gangRepGain: 1, difficulty: 5 },
+  { id: 'collect',  label: 'Collect a Debt',  icon: '💵', desc: 'Lean on someone who owes the gang money.',        cashMin: 120, cashMax: 500, heatMin: 2, heatMax: 6, relationGain: 5, gangRepGain: 2, difficulty: 10 },
+  { id: 'wheelman', label: 'Be the Wheelman', icon: '🚙', desc: "Drive the getaway car for a job that isn't yours.", cashMin: 150, cashMax: 600, heatMin: 2, heatMax: 7, relationGain: 5, gangRepGain: 3, difficulty: 11 },
+  { id: 'recon',    label: 'Scout a Location', icon: '🔭', desc: 'Case a building the gang is planning to hit.',    cashMin: 80,  cashMax: 300, heatMin: 0, heatMax: 2, relationGain: 3, gangRepGain: 1, difficulty: 6 }
+];
 
 const SHELL_TIERS = [
   { tier: 1, cost: 3000,  launderPerTurn: 600,  fee: 0.15, auditRisk: 6 },
