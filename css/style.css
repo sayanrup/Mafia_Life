@@ -340,6 +340,21 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .log-entry.cat-betrayal, .log-entry.cat-operation_raid, .log-entry.cat-finance_raid, .log-entry.cat-combat { color: var(--red-bright); }
 .log-entry.cat-bribe, .log-entry.cat-lawenforcement { color: #6fa8d1; }
 .log-entry.cat-empire { color: var(--accent); }
+.log-entry.cat-gang { color: #d99a3c; }
+
+/* ---------------- Action Update ---------------- */
+
+.action-update {
+  border-color: var(--accent-dim);
+}
+
+.action-update h3 {
+  margin-bottom: 6px;
+}
+
+.action-update .log {
+  max-height: 140px;
+}
 
 /* ---------------- Criminal Activities Menu ---------------- */
 

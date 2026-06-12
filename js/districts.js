@@ -48,7 +48,6 @@ function initWorld(state) {
       control,
       heat: 0,
       operations: {
-        lab: { tier: 0, raided: false },
         stash: { tier: 0, raided: false },
         route: { tier: 0, raided: false }
       },

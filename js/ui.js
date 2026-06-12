@@ -14,7 +14,6 @@ const TAB_DEFS = [
   { id: 'finance', label: 'Finance' },
   { id: 'family', label: 'Family' },
   { id: 'commission', label: 'Commission', requires: 'commission' },
-  { id: 'empire', label: 'Empire', requires: 'empire' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'events', label: 'Events' },
   { id: 'settings', label: 'Settings' }
@@ -35,7 +34,7 @@ function renderApp() {
     app.innerHTML = renderGameOver();
     return;
   }
-  app.innerHTML = renderTopBar() + renderTabBar() + `<div class="content">${renderTabContent()}</div>`;
+  app.innerHTML = renderTopBar() + renderTabBar() + renderActionUpdate() + `<div class="content">${renderTabContent()}</div>`;
   const existingModal = document.getElementById('modal-root');
   if (existingModal) existingModal.remove();
   if (MODAL) {
@@ -87,8 +86,7 @@ function renderTopBar() {
 function renderTabBar() {
   return `<div class="tab-bar">
     ${TAB_DEFS.filter(t => !t.requires
-        || (t.requires === 'commission' && GAME.commission.unlocked)
-        || (t.requires === 'empire' && canAccessEmpire(GAME)))
+        || (t.requires === 'commission' && GAME.commission.unlocked))
       .map(t => `<button class="tab-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">${t.label}</button>`)
       .join('')}
   </div>`;
@@ -103,12 +101,44 @@ function renderTabContent() {
     case 'finance': return renderFinance();
     case 'family': return renderFamily();
     case 'commission': return renderCommission();
-    case 'empire': return renderEmpire();
     case 'inventory': return renderInventory();
     case 'events': return renderEvents();
     case 'settings': return renderSettings();
     default: return '';
   }
+}
+
+/* ---------------- Action Update Screen ---------------- */
+
+const ACTION_UPDATE_LABELS = {
+  activity: 'Criminal Activity',
+  gang: 'Gang Activity',
+  bribe: 'Bribery',
+  combat: 'Combat',
+  rank: 'Rank Change',
+  family: 'Family',
+  family_death: 'Family',
+  lawenforcement: 'Law Enforcement',
+  operations: 'Drug Operations',
+  finance_raid: 'Finance',
+  betrayal: 'Betrayal',
+  system: 'System',
+  health: 'Health',
+  injury: 'Injury',
+  district_travel: 'Travel'
+};
+
+function renderActionUpdate() {
+  if (!GAME.eventLog.length) return '';
+  const lastCategory = GAME.eventLog[GAME.eventLog.length - 1].category;
+  const relevant = GAME.eventLog.filter(e => e.category === lastCategory).slice(-5);
+  if (!relevant.length) return '';
+  return `
+    <div class="card action-update">
+      <h3>Latest: ${ACTION_UPDATE_LABELS[lastCategory] || 'Update'}</h3>
+      ${renderLog(relevant)}
+    </div>
+  `;
 }
 
 /* ---------------- Home Tab ---------------- */
@@ -147,9 +177,10 @@ function renderHome() {
     <div class="card">
       <h2>Criminal Activities</h2>
       <div class="crime-menu">
-        ${crimeMenuItem('🔪', 'Street Crime', 'Quick muggings for fast, low-risk cash.', "openCrimeModal('street')")}
+        ${crimeMenuItem('🔪', 'Street Crime', 'Muggings and small-time hustles for fast, low-risk cash.', "openCrimeModal('street')")}
         ${crimeMenuItem('💰', 'Heists & Rackets', 'Bigger scores: heists, extortion, smuggling runs.', "openCrimeModal('heists')")}
         ${hasHitTargets ? crimeMenuItem('⚔️', 'Gang Operations', 'Send a message or start a gang war.', "openCrimeModal('gang')") : ''}
+        ${hasHitTargets ? crimeMenuItem('🤲', 'Help a Gang', 'Small jobs for local crews - paid in cash, no membership.', "openCrimeModal('help')") : ''}
         ${crimeMenuItem('💵', 'Deals', 'Sell product from your inventory.', 'openDealsModal()')}
         ${crimeMenuItem('🤝', 'Bribes & Corruption', 'Buy off cops, feds, or rival crews.', 'openBribesModal()')}
       </div>
@@ -204,6 +235,10 @@ function crimeListItem(icon, title, desc, payout, actionHtml) {
   `;
 }
 
+function cashHeatLabel(cashMin, cashMax, heatMin, heatMax) {
+  return `${fmtMoney(cashMin)} - ${fmtMoney(cashMax)} <span class="muted">| Heat +${heatMin}-${heatMax}</span>`;
+}
+
 function closeButtonRow() {
   return `<div class="row" style="justify-content:flex-end; margin-top:10px;"><button class="btn-primary" onclick="closeModal()">Close</button></div>`;
 }
@@ -227,11 +262,14 @@ function renderCrimeModal(category) {
   const district = GAME.districts[GAME.player.currentDistrict];
 
   if (category === 'street') {
+    const items = [
+      crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', cashHeatLabel(60, 160, 0, 6), '<button class="btn-primary" onclick="actionMug()">Do It</button>'),
+      ...STREET_CRIMES.map(c => crimeListItem(c.icon, c.label, c.desc, cashHeatLabel(c.cashMin, c.cashMax, c.heatMin, c.heatMax), `<button class="btn-primary" onclick="actionStreetCrime('${c.id}')">Do It</button>`))
+    ].join('');
     return `
       <h2>Street Crime</h2>
-      <div class="crime-list">
-        ${crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', '$20 - $200', '<button class="btn-primary" onclick="actionMug()">Do It</button>')}
-      </div>
+      <p class="muted small">Each crime can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <div class="crime-list">${items}</div>
       ${closeButtonRow()}
     `;
   }
@@ -241,10 +279,11 @@ function renderCrimeModal(category) {
     const racket = GAME.player.extortionRackets.find(r => r.districtId === district.id);
     return `
       <h2>Heists &amp; Rackets</h2>
+      <p class="muted small">Each action can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
       <div class="crime-list">
-        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', '$400 - $4,000+', '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
-        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/3).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/3` : 'Recurring income', '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
-        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move contraband through your established route.', routeTier === 0 ? 'Requires a route' : 'Arms &amp; Contraband', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
+        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
+        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/3).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/3 <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
+        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move contraband through your established route.', routeTier === 0 ? 'Requires a route' : 'Arms &amp; Contraband <span class="muted">| Heat +0-12 on bust</span>', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
       </div>
       ${closeButtonRow()}
     `;
@@ -261,10 +300,24 @@ function renderCrimeModal(category) {
           <select id="hit-target">${hitTargets}</select>
         </div>
         <div class="crime-list">
-          ${crimeListItem('🔫', 'Send a Message', 'Intimidate a rival gang and shift territory control.', 'Territory shift', '<button class="btn-primary" onclick="actionHit()">Do It</button>')}
-          ${crimeListItem('💣', 'Start Gang War', 'Open conflict for control of this district.', 'High risk', '<button class="btn-danger" onclick="actionStartGangWar()">Do It</button>')}
+          ${crimeListItem('🔫', 'Send a Message', 'Intimidate a rival gang and shift territory control.', 'Territory shift <span class="muted">| Gang Heat +4-10</span>', '<button class="btn-primary" onclick="actionHit()">Do It</button>')}
+          ${crimeListItem('💣', 'Start Gang War', 'Open conflict for control of this district.', 'High risk <span class="muted">| Heat &amp; injury vary</span>', '<button class="btn-danger" onclick="actionStartGangWar()">Do It</button>')}
         </div>
       ` : '<p class="muted">No rival gang presence to target here.</p>'}
+      ${closeButtonRow()}
+    `;
+  }
+
+  if (category === 'help') {
+    const gangsHere = Object.entries(district.control).map(([gid]) => GAME.gangs[gid]).filter(g => !g.isPlayerGang);
+    if (!gangsHere.length) {
+      return `<h2>Help a Gang</h2><p class="muted">No rival crews around here to work for.</p>${closeButtonRow()}`;
+    }
+    const items = GANG_GIGS.map(g => crimeListItem(g.icon, g.label, g.desc, cashHeatLabel(g.cashMin, g.cashMax, g.heatMin, g.heatMax), `<button class="btn-primary" onclick="actionGangGig('${g.id}')">Do It</button>`)).join('');
+    return `
+      <h2>Help a Gang</h2>
+      <p class="muted small">Small jobs for a local crew without joining them. Builds relations and gang reputation. Each job can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <div class="crime-list">${items}</div>
       ${closeButtonRow()}
     `;
   }
@@ -354,10 +407,14 @@ function renderMap() {
         <span class="personality-tag">${g.boss.personality}${g.atWarWithPlayer ? ' &middot; AT WAR' : ''}${g.alliedWithPlayer ? ' &middot; ALLY' : ''}</span>
       </div>`;
     }).join('');
-    const opsLine = ['lab', 'stash', 'route'].map(op => {
+    const opsLine = ['stash', 'route'].map(op => {
       const tier = d.operations[op].tier;
       return `${OPERATION_DEFS[op].label}: ${OPERATION_DEFS[op].tiers[tier].name}${d.operations[op].raided ? ' (raided)' : ''}`;
     }).join(' &middot; ');
+    const farmTotal = d.farms ? Object.values(d.farms).reduce((a, f) => a + f.plots, 0) : 0;
+    const farmLine = farmTotal > 0
+      ? Object.entries(d.farms).filter(([, f]) => f.plots > 0).map(([p, f]) => `${FARM_TYPES[p].label}: ${f.plots} plot(s)`).join(' &middot; ')
+      : '';
 
     return `
       <div class="card">
@@ -366,6 +423,7 @@ function renderMap() {
         ${bosses}
         <div class="muted">District Heat: ${d.heat}/100</div>
         <div class="muted">${opsLine}</div>
+        ${farmLine ? `<div class="muted">${farmLine}</div>` : ''}
         ${d.id !== GAME.player.currentDistrict ? `<div class="row" style="margin-top:6px;"><button onclick="travelTo(${d.id})">Travel here</button></div>` : ''}
       </div>
     `;
@@ -376,38 +434,213 @@ function renderMap() {
 
 /* ---------------- Operations Tab ---------------- */
 
+let OPS_SUBTAB = 'weed';
+
+const OPS_SUBTABS = [
+  { id: 'weed', label: 'Weed' },
+  { id: 'pills', label: 'Pills' },
+  { id: 'powder', label: 'Cocaine' },
+  { id: 'smuggling', label: 'Smuggling' },
+  { id: 'protection', label: 'Protection' },
+  { id: 'kidnapping', label: 'Kidnapping' }
+];
+
+function setOpsSubtab(tab) {
+  OPS_SUBTAB = tab;
+  renderApp();
+}
+
 function renderOperations() {
-  const cards = GAME.districts.map(d => {
-    const rows = ['lab', 'stash', 'route'].map(op => {
-      const def = OPERATION_DEFS[op];
-      const tier = d.operations[op].tier;
-      const current = def.tiers[tier];
-      const next = def.tiers[tier + 1];
-      const check = canUpgradeOperation(GAME, d.id, op);
-      let detail;
-      if (op === 'lab') detail = `Income: ${fmtMoney(current.income)}/turn, Heat: +${current.heat}/turn`;
-      else if (op === 'stash') detail = `Capacity: ${current.capacity}, Heat Mitigation: ${current.heatMitigation}`;
-      else detail = `Throughput: ${current.throughput}/turn, Bust Risk: ${current.bustRisk}%`;
+  const nav = `<div class="tab-bar" style="margin-bottom:10px;">
+    ${OPS_SUBTABS.map(t => `<button class="tab-btn ${OPS_SUBTAB === t.id ? 'active' : ''}" onclick="setOpsSubtab('${t.id}')">${t.label}</button>`).join('')}
+  </div>`;
 
-      return `
-        <div class="card" style="margin-bottom:8px;">
-          <h3>${def.label}: ${current.name} ${d.operations[op].raided ? '<span class="tag dirty">Raided</span>' : ''}</h3>
-          <div class="muted small">${detail}</div>
-          ${next
-            ? `<div class="row between" style="margin-top:6px;">
-                <span class="small">Upgrade to ${next.name}: ${fmtMoney(next.cost)} Dirty Cash</span>
-                <button onclick="actionUpgradeOperation(${d.id}, '${op}')" ${check.ok ? '' : 'disabled'}>${check.ok ? 'Upgrade' : check.reason}</button>
-              </div>`
-            : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
-          }
-        </div>
-      `;
-    }).join('');
+  let body;
+  switch (OPS_SUBTAB) {
+    case 'weed':
+    case 'pills':
+    case 'powder':
+      body = renderFarmSubtab(OPS_SUBTAB);
+      break;
+    case 'smuggling':
+      body = renderSmugglingSubtab();
+      break;
+    case 'protection':
+      body = renderProtectionSubtab();
+      break;
+    case 'kidnapping':
+      body = renderKidnappingSubtab();
+      break;
+    default:
+      body = '';
+  }
 
-    return `<div class="card"><h2>${d.name}</h2>${rows}</div>`;
+  return nav + body;
+}
+
+function renderFarmSubtab(product) {
+  const def = FARM_TYPES[product];
+  if (!canAccessOperations(GAME)) {
+    return `
+      <div class="card">
+        <h2>${def.icon} ${def.label}</h2>
+        <p class="muted">Reach the rank of ${OPS_ECONOMY.unlockRank} to start building a ${def.label.toLowerCase()} operation - buying plots, hiring distributors, setting street prices, and upgrading equipment.</p>
+      </div>
+    `;
+  }
+
+  const ops = GAME.player.operations;
+  const equipTier = ops.equipment[product];
+  const equipCurrent = EQUIPMENT_TIERS[equipTier];
+  const equipNext = EQUIPMENT_TIERS[equipTier + 1];
+  const distributors = ops.distributors[product];
+  const price = ops.prices[product];
+  const minPrice = OPS_ECONOMY.priceMinMult, maxPrice = OPS_ECONOMY.priceMaxMult;
+
+  const districtCards = GAME.districts.map(d => {
+    const farm = d.farms[product];
+    const plotCost = getFarmPlotCost(GAME, d.id, product);
+    const progressPct = clamp((farm.growTurn / def.growTurns) * 100, 0, 100);
+    return `
+      <div class="card">
+        <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
+        <div class="row between"><span>Plots: ${farm.plots}</span><button class="btn-small" onclick="actionBuyFarmPlot(${d.id}, '${product}')">Buy Plot (${fmtMoney(plotCost)})</button></div>
+        ${farm.plots > 0 ? `
+          <div class="bar-label" style="margin-top:6px;"><span>Grow Cycle</span><span>${farm.growTurn}/${def.growTurns} turns</span></div>
+          <div class="bar-track"><div class="bar-fill control" style="width:${progressPct}%"></div></div>
+        ` : ''}
+        <div class="muted small" style="margin-top:6px;">Pending batch value: ${fmtMoney(farm.pendingValue)}</div>
+      </div>
+    `;
   }).join('');
 
-  return `<div class="grid">${cards}</div>`;
+  return `
+    <div class="card">
+      <h2>${def.icon} ${def.label}</h2>
+      <p class="muted small">Each plot matures into a batch worth ${fmtMoney(def.batchValuePerPlot)} (before equipment bonus) every ${def.growTurns} turns. Distributors then sell off the matured batch value over subsequent turns based on your set price.</p>
+      <div class="grid">
+        <div>
+          <h3>Equipment</h3>
+          <div class="muted small">Current: ${equipCurrent.name} (x${equipCurrent.yieldMult.toFixed(2)} yield)</div>
+          ${equipNext
+            ? `<div class="row between" style="margin-top:6px;">
+                <span class="small">Upgrade to ${equipNext.name} (x${equipNext.yieldMult.toFixed(2)}): ${fmtMoney(equipNext.cost)}</span>
+                <button class="btn-small" onclick="actionBuyEquipment('${product}')">Upgrade</button>
+              </div>`
+            : `<div class="small muted" style="margin-top:6px;">Maximum equipment tier reached.</div>`
+          }
+        </div>
+        <div>
+          <h3>Distributors</h3>
+          <div class="muted small">Hired: ${distributors} &middot; Upkeep: ${fmtMoney(DISTRIBUTOR_UPKEEP)}/turn each &middot; Moves up to ${fmtMoney(DISTRIBUTOR_SELL_RATE)} value/turn each at neutral price</div>
+          <div class="row" style="margin-top:6px;">
+            <input type="number" id="ops-distributors-${product}" value="1" min="1" style="width:70px;" />
+            <button class="btn-small" onclick="actionHireDistributors('${product}')">Hire (${fmtMoney(DISTRIBUTOR_HIRE_COST)} ea)</button>
+          </div>
+        </div>
+        <div>
+          <h3>Street Price</h3>
+          <div class="muted small">Markup multiplier (${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)}). Higher markup means more cash per unit sold but slower sales.</div>
+          <div class="row" style="margin-top:6px;">
+            <input type="number" id="ops-price-${product}" value="${price}" min="${minPrice}" max="${maxPrice}" step="0.05" style="width:90px;" />
+            <button class="btn-small" onclick="actionSetOperationPrice('${product}')">Set (current x${price.toFixed(2)})</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="grid">${districtCards}</div>
+  `;
+}
+
+function renderSmugglingSubtab() {
+  const cards = GAME.districts.map(d => {
+    const op = 'route';
+    const def = OPERATION_DEFS[op];
+    const tier = d.operations[op].tier;
+    const current = def.tiers[tier];
+    const next = def.tiers[tier + 1];
+    const check = canUpgradeOperation(GAME, d.id, op);
+    return `
+      <div class="card">
+        <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
+        <h3 style="margin-top:0;">${def.label}: ${current.name} ${d.operations[op].raided ? '<span class="tag dirty">Raided</span>' : ''}</h3>
+        <div class="muted small">Throughput: ${current.throughput}/turn, Bust Risk: ${current.bustRisk}%</div>
+        ${next
+          ? `<div class="row between" style="margin-top:6px;">
+              <span class="small">Upgrade to ${next.name}: ${fmtMoney(next.cost)} Dirty Cash</span>
+              <button onclick="actionUpgradeOperation(${d.id}, '${op}')" ${check.ok ? '' : 'disabled'}>${check.ok ? 'Upgrade' : check.reason}</button>
+            </div>`
+          : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
+        }
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="card">
+      <h2>Smuggling Routes</h2>
+      <p class="muted small">Upgrade routes to increase throughput of arms &amp; contraband produced each turn and to reduce bust risk. Run smuggling jobs from Heists &amp; Rackets on the Home tab.</p>
+    </div>
+    <div class="grid">${cards}</div>
+  `;
+}
+
+function renderProtectionSubtab() {
+  const stashCards = GAME.districts.map(d => {
+    const op = 'stash';
+    const def = OPERATION_DEFS[op];
+    const tier = d.operations[op].tier;
+    const current = def.tiers[tier];
+    const next = def.tiers[tier + 1];
+    const check = canUpgradeOperation(GAME, d.id, op);
+    const racket = GAME.player.extortionRackets.find(r => r.districtId === d.id);
+    const opProtection = d.opProtection || 0;
+
+    return `
+      <div class="card">
+        <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
+        <h3 style="margin-top:0;">${def.label}: ${current.name}</h3>
+        <div class="muted small">Capacity: ${current.capacity}, Heat Mitigation: ${current.heatMitigation}</div>
+        ${next
+          ? `<div class="row between" style="margin-top:6px;">
+              <span class="small">Upgrade to ${next.name}: ${fmtMoney(next.cost)} Dirty Cash</span>
+              <button onclick="actionUpgradeOperation(${d.id}, '${op}')" ${check.ok ? '' : 'disabled'}>${check.ok ? 'Upgrade' : check.reason}</button>
+            </div>`
+          : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
+        }
+        <hr class="sep" />
+        <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/3 (${fmtMoney(racket.level * 60)}/turn)` : 'None - start one from Heists & Rackets.'}</div>
+        ${canAccessOperations(GAME) ? `
+          <hr class="sep" />
+          <div class="muted small">Operation Protection (reduces drug-operation raid risk &amp; heat here)</div>
+          ${statBar('Protection', opProtection, 100, 'control')}
+          <div class="row between" style="margin-top:4px;">
+            <input type="number" id="ops-protection-bribe-${d.id}" placeholder="Bribe amount ($)" min="0" style="width:140px;" />
+            <button class="btn-small" onclick="actionBribeOpProtection(${d.id})">Bribe for Protection</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="card">
+      <h2>Protection</h2>
+      <p class="muted small">Stash houses raise your product capacity and reduce heat from operations. Protection rackets generate recurring income. Operation Protection bribes reduce raid risk on your drug operations in a district.</p>
+    </div>
+    <div class="grid">${stashCards}</div>
+  `;
+}
+
+function renderKidnappingSubtab() {
+  const items = KIDNAP_JOBS.map(j => crimeListItem(j.icon, j.label, j.desc, cashHeatLabel(j.cashMin, j.cashMax, j.heatMin, j.heatMax), `<button class="btn-primary" onclick="actionKidnap('${j.id}')">Do It</button>`)).join('');
+  return `
+    <div class="card">
+      <h2>Kidnapping Racket</h2>
+      <p class="muted small">High-risk, high-reward ransom jobs. Each job can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <div class="crime-list">${items}</div>
+    </div>
+  `;
 }
 
 /* ---------------- Inventory Tab ---------------- */
