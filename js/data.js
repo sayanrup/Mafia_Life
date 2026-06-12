@@ -104,15 +104,6 @@ const PERSONALITY_DESC = {
 };
 
 const OPERATION_DEFS = {
-  lab: {
-    label: 'Drug Lab',
-    tiers: [
-      { name: 'None', cost: 0, income: 0, heat: 0 },
-      { name: 'Street Cook', cost: 1500, income: 8000, heat: 2 },
-      { name: 'Mid-Tier', cost: 6000, income: 20000, heat: 4 },
-      { name: 'Superlab', cost: 18000, income: 50000, heat: 8 }
-    ]
-  },
   stash: {
     label: 'Stash House',
     tiers: [
@@ -144,20 +135,43 @@ const BUSINESS_TYPES = [
   { type: 'Vending Route', basePrice: 4000, baseIncome: 40, launderBonus: 300, heatReduction: 0 }
 ];
 
-const EMPIRE = {
+/* ---------------- Drug Operations (Boss-tier farms/labs) ---------------- */
+
+const FARM_TYPES = {
+  weed:   { product: 'weed',   label: 'Weed Farm',   icon: '🌿', plotBaseCost: 60000,  plotCostStep: 30000, batchValuePerPlot: 150000, growTurns: 3 },
+  pills:  { product: 'pills',  label: 'Pill Press',  icon: '💊', plotBaseCost: 100000, plotCostStep: 50000, batchValuePerPlot: 250000, growTurns: 3 },
+  powder: { product: 'powder', label: 'Cocaine Lab', icon: '❄️', plotBaseCost: 160000, plotCostStep: 80000, batchValuePerPlot: 400000, growTurns: 3 }
+};
+
+const EQUIPMENT_TIERS = [
+  { tier: 0, name: 'Basic Setup',          cost: 0,      yieldMult: 1.0 },
+  { tier: 1, name: 'Upgraded Equipment',   cost: 40000,  yieldMult: 1.3 },
+  { tier: 2, name: 'Industrial Gear',      cost: 120000, yieldMult: 1.7 },
+  { tier: 3, name: 'State-of-the-Art Rig', cost: 300000, yieldMult: 2.5 }
+];
+
+const DISTRIBUTOR_HIRE_COST = 5000;
+const DISTRIBUTOR_UPKEEP = 400;
+const DISTRIBUTOR_SELL_RATE = 60000; // cash value of product a single distributor can move per turn at neutral price
+
+const OPS_ECONOMY = {
   unlockRank: 'Boss',
-  plotBaseCost: 4000,
-  plotCostStep: 2500,
-  productionPerPlot: 4,
-  distributorHireCost: 600,
-  distributorUpkeep: 50,
-  sellPerDistributor: 10,
   protectionPerDollar: 1 / 40,
   protectionDecay: 8,
   raidBaseRisk: 5,
   priceMinMult: 0.5,
   priceMaxMult: 2.0
 };
+
+/* ---------------- Kidnapping Racket ---------------- */
+
+const KIDNAP_JOBS = [
+  { id: 'dealer',     label: 'Snatch a Rival Dealer',        icon: '🎯', desc: 'Grab a low-level rival dealer and hold them for ransom.', cashMin: 2000,  cashMax: 8000,   heatMin: 5,  heatMax: 12, repGain: 2,  difficulty: 14 },
+  { id: 'bookie',     label: 'Kidnap a Bookie',               icon: '📒', desc: "Lean on a bookie who owes the wrong people.",              cashMin: 4000,  cashMax: 15000,  heatMin: 6,  heatMax: 15, repGain: 3,  difficulty: 18 },
+  { id: 'businessman',label: 'Snatch a Businessman',          icon: '💼', desc: 'Grab a wealthy local businessman for a fat ransom.',       cashMin: 10000, cashMax: 40000,  heatMin: 10, heatMax: 22, repGain: 4,  difficulty: 24 },
+  { id: 'lieutenant', label: "Kidnap a Rival's Lieutenant",   icon: '🥃', desc: "Take one of a rival gang's lieutenants hostage.",          cashMin: 15000, cashMax: 60000,  heatMin: 12, heatMax: 28, repGain: 6,  difficulty: 30 },
+  { id: 'tycoon',     label: 'Kidnap a City Tycoon',          icon: '🏙️', desc: 'The biggest score: grab a city tycoon and demand a fortune.', cashMin: 40000, cashMax: 150000, heatMin: 18, heatMax: 35, repGain: 10, difficulty: 38 }
+];
 
 /* ---------------- Action Economy ---------------- */
 

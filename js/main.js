@@ -70,6 +70,10 @@ function actionHit() {
   });
 }
 
+function actionKidnap(jobId) {
+  tryAction('kidnap_' + jobId, () => doKidnapJob(GAME, jobId));
+}
+
 function actionStartGangWar() {
   const select = document.getElementById('hit-target');
   if (!select || !select.value) { showMsg('Gang War', 'No target selected.'); return; }
@@ -136,38 +140,45 @@ function actionHospital() {
   renderApp();
 }
 
-/* ---------------- Drug Empire (no action cost) ---------------- */
+/* ---------------- Drug Operations (no action cost) ---------------- */
 
-function actionBuyLand(districtId, product) {
-  const res = buyLand(GAME, districtId, product);
-  if (!res.ok) { showMsg('Empire', res.reason); return; }
+function actionBuyFarmPlot(districtId, product) {
+  const res = buyFarmPlot(GAME, districtId, product);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
   autosave(GAME);
   renderApp();
 }
 
-function actionHireDistributors(districtId) {
-  const input = document.getElementById(`empire-distributors-${districtId}`);
+function actionHireDistributors(product) {
+  const input = document.getElementById(`ops-distributors-${product}`);
   const count = Math.max(1, parseInt(input.value, 10) || 1);
-  const res = hireDistributors(GAME, districtId, count);
-  if (!res.ok) { showMsg('Empire', res.reason); return; }
+  const res = hireDistributors(GAME, product, count);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
   autosave(GAME);
   renderApp();
 }
 
-function actionSetEmpirePrice(product) {
-  const input = document.getElementById(`empire-price-${product}`);
+function actionSetOperationPrice(product) {
+  const input = document.getElementById(`ops-price-${product}`);
   const price = parseFloat(input.value);
-  const res = setEmpirePrice(GAME, product, price);
-  if (!res.ok) { showMsg('Empire', res.reason); return; }
+  const res = setOperationPrice(GAME, product, price);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
   autosave(GAME);
   renderApp();
 }
 
-function actionBribeProtection(districtId) {
-  const input = document.getElementById(`empire-bribe-${districtId}`);
+function actionBuyEquipment(product) {
+  const res = buyEquipment(GAME, product);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionBribeOpProtection(districtId) {
+  const input = document.getElementById(`ops-protection-bribe-${districtId}`);
   const amount = Math.max(0, parseInt(input.value, 10) || 0);
-  const res = bribeProtection(GAME, districtId, amount);
-  if (!res.ok) { showMsg('Empire', res.reason); return; }
+  const res = bribeOpProtection(GAME, districtId, amount);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
   autosave(GAME);
   renderApp();
 }
@@ -185,7 +196,7 @@ function endTurn() {
   const state = GAME;
 
   tickOperations(state);
-  empireTurnTick(state);
+  farmTick(state);
   extortionTick(state);
   applyLieutenantBonuses(state);
   saturationTick(state);
@@ -285,12 +296,7 @@ function continueAsFamilyMember(memberId) {
     affiliation: { type: 'solo', gangId: null },
     currentDistrict: 0,
     actionCounts: {},
-    empire: {
-      plots: {},
-      distributors: {},
-      prices: Object.fromEntries(Object.keys(PRODUCT_TYPES).map(p => [p, PRODUCT_TYPES[p].baseValue])),
-      protection: {}
-    }
+    operations: freshPlayerOperations()
   };
 
   state.meta.gameOver = false;

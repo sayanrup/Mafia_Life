@@ -59,19 +59,6 @@ function tickOperations(state) {
   const mitigation = totalHeatMitigation(state);
 
   for (const district of state.districts) {
-    // Drug Lab - passive dirty cash income, generates heat
-    const labTier = district.operations.lab.tier;
-    if (labTier > 0 && !district.operations.lab.raided) {
-      const def = OPERATION_DEFS.lab.tiers[labTier];
-      addCash(state, def.income, 0);
-      district.heat = clamp(district.heat + def.heat, 0, 100);
-      addHeat(state, 'pd', Math.max(0, Math.round(def.heat * 0.4) - Math.floor(mitigation / 10)));
-      checkOperationRaid(state, district, 'lab', def.heat * 1.5, mitigation);
-    } else if (district.operations.lab.raided) {
-      district.operations.lab.raidCooldown--;
-      if (district.operations.lab.raidCooldown <= 0) district.operations.lab.raided = false;
-    }
-
     // Smuggling Route - generates product, risk of bust
     const routeTier = district.operations.route.tier;
     if (routeTier > 0 && !district.operations.route.raided) {
@@ -99,19 +86,12 @@ function checkOperationRaid(state, district, opType, riskPercent, mitigation) {
   if (Math.random() * 100 < chance) {
     district.operations[opType].raided = true;
     district.operations[opType].raidCooldown = 2;
-    if (opType === 'lab') {
-      const loss = Math.round(state.player.cash.dirty * 0.15);
-      state.player.cash.dirty -= loss;
-      addHeat(state, 'pd', 8);
-      state.eventLog.push(logEntry(state, `RAID! Police hit your ${OPERATION_DEFS.lab.label} in ${district.name}. You lose ${fmtMoney(loss)} and the operation is offline for 2 turns.`, 'operation_raid'));
-    } else {
-      const lostArms = Math.round(state.player.inventory.product.arms * 0.4);
-      const lostContra = Math.round(state.player.inventory.product.contraband * 0.4);
-      state.player.inventory.product.arms -= lostArms;
-      state.player.inventory.product.contraband -= lostContra;
-      addHeat(state, 'feds', 6);
-      addHeat(state, 'pd', 4);
-      state.eventLog.push(logEntry(state, `BUSTED! A shipment on your ${OPERATION_DEFS.route.label} in ${district.name} was seized. Lost ${lostArms} arms and ${lostContra} contraband. The route is offline for 2 turns.`, 'operation_raid'));
-    }
+    const lostArms = Math.round(state.player.inventory.product.arms * 0.4);
+    const lostContra = Math.round(state.player.inventory.product.contraband * 0.4);
+    state.player.inventory.product.arms -= lostArms;
+    state.player.inventory.product.contraband -= lostContra;
+    addHeat(state, 'feds', 6);
+    addHeat(state, 'pd', 4);
+    state.eventLog.push(logEntry(state, `BUSTED! A shipment on your ${OPERATION_DEFS.route.label} in ${district.name} was seized. Lost ${lostArms} arms and ${lostContra} contraband. The route is offline for 2 turns.`, 'operation_raid'));
   }
 }

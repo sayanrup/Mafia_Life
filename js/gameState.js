@@ -57,12 +57,7 @@ function createNewGame(charData) {
       affiliation: { type: 'solo', gangId: null }, // 'solo' | 'member' | 'founder'
       currentDistrict: 0,
       actionCounts: {}, // actionKey -> uses this turn (reset on endTurn)
-      empire: {
-        plots: {}, // districtId -> {productType: count}
-        distributors: {}, // districtId -> count
-        prices: Object.fromEntries(Object.keys(PRODUCT_TYPES).map(p => [p, PRODUCT_TYPES[p].baseValue])),
-        protection: {} // districtId -> 0-100
-      }
+      operations: null // set by initPlayerOperations below
     },
     districts: [],
     gangs: {},
@@ -77,6 +72,7 @@ function createNewGame(charData) {
   };
 
   initWorld(state);
+  initPlayerOperations(state);
   initLawEnforcement(state);
 
   state.eventLog.push(logEntry(state, `You arrive in ${cityName}. The ${ERAS[state.meta.era] ? ERAS[state.meta.era].label : state.meta.customEraText} city hums with opportunity and danger alike.`, 'system'));
