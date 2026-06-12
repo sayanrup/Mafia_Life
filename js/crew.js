@@ -114,6 +114,7 @@ function loyaltyTurnTick(state) {
 }
 
 function triggerCrewBetrayal(state) {
+  narrate(state, 'loyalty_betrayal');
   const roll = Math.random();
   if (roll < 0.34) {
     const stolen = Math.round(state.player.cash.dirty * (0.05 + Math.random() * 0.15));
@@ -166,6 +167,7 @@ function assignLieutenant(state, ltId, assignment) {
 }
 
 function triggerLieutenantBetrayal(state, lt) {
+  narrate(state, 'loyalty_betrayal');
   const roll = Math.random();
   lt.assignment = null;
   const idx = state.player.lieutenants.findIndex(l => l.id === lt.id);
@@ -192,8 +194,12 @@ function applyLieutenantBonuses(state) {
     const effectiveness = lt.loyalty / 100;
     if (lt.assignment.type === 'district') {
       const d = state.districts[lt.assignment.districtId];
-      if (d && d.operations.lab.tier > 0 && !d.operations.lab.raided) {
-        addCash(state, Math.round(OPERATION_DEFS.lab.tiers[d.operations.lab.tier].income * 0.15 * effectiveness), 0);
+      if (d) {
+        const routeTier = d.operations.route.tier;
+        if (routeTier > 0 && !d.operations.route.raided) {
+          const throughput = OPERATION_DEFS.route.tiers[routeTier].throughput;
+          addCash(state, Math.round(throughput * 3 * effectiveness), 0);
+        }
       }
     } else if (lt.assignment.type === 'smuggling') {
       const cap = getStashCapacity(state);

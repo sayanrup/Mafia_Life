@@ -92,6 +92,7 @@ function checkOperationRaid(state, district, opType, riskPercent, mitigation) {
     state.player.inventory.product.contraband -= lostContra;
     addHeat(state, 'feds', 6);
     addHeat(state, 'pd', 4);
+    narrate(state, 'operation_raid', { vars: { district: district.name } });
     state.eventLog.push(logEntry(state, `BUSTED! A shipment on your ${OPERATION_DEFS.route.label} in ${district.name} was seized. Lost ${lostArms} arms and ${lostContra} contraband. The route is offline for 2 turns.`, 'operation_raid'));
   }
 }

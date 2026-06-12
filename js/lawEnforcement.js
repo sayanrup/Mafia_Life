@@ -113,6 +113,7 @@ function lawEnforcementTurnTick(state) {
       const spike = 8 + Math.floor(Math.random() * 10);
       addHeat(state, 'pd', spike);
       state.player.crew.loyalty = clamp(state.player.crew.loyalty - 8, 0, 100);
+      narrate(state, 'lawenforcement');
       state.eventLog.push(logEntry(state, `Someone in your crew has been talking. PD Heat +${spike} and crew loyalty takes a hit.`, 'lawenforcement'));
       state.lawEnforcement.informantOnPlayer = false;
     }
@@ -127,6 +128,7 @@ function retireOrReassign(state, npc) {
   if (idx === -1) return;
   const roll = Math.random();
   const label = npc.type === 'fed' ? 'Federal' : 'Local PD';
+  narrate(state, 'lawenforcement');
   if (roll < 0.5) {
     state.eventLog.push(logEntry(state, `${label} contact ${npc.name} (${rankOf(npc).name}) has retired. A new face takes over the beat.`, 'lawenforcement'));
   } else {
@@ -150,6 +152,7 @@ function plantInformant(state, gangId) {
   const gang = state.gangs[gangId];
   state.lawEnforcement.informantPlanted = { gangId, turnsRemaining: 5 };
   const districts = gang.territory.map(id => state.districts[id].name).join(', ') || 'no fixed territory';
+  narrate(state, 'lawenforcement');
   state.eventLog.push(logEntry(state, `Your informant is in place inside the ${gang.name}. Boss ${gang.boss.name} (${gang.boss.personality}) operates out of: ${districts}. Their next moves won't surprise you for a while.`, 'lawenforcement'));
   return { success: true };
 }

@@ -124,6 +124,22 @@ const EVENT_POOL = [
   { id: 'com5', category: 'commission', text: '{boss} leans back, arms crossed, and waits to see who blinks first.' },
   { id: 'com6', category: 'commission', text: 'Old alliances and older betrayals hang over the Commission table like smoke.' },
 
+  /* ---------------- Farm/Lab Batch Maturity (6) ---------------- */
+  { id: 'fm1', category: 'farm_maturity', text: 'The {product} operation in {district} comes in heavy this cycle - a batch worth {amount} is ready to move.' },
+  { id: 'fm2', category: 'farm_maturity', text: 'Word from {district}: the latest {product} run is done, and it\'s a good one - {amount} sitting in the back room.' },
+  { id: 'fm3', category: 'farm_maturity', text: 'Your people in {district} seal up another batch of {product}, worth {amount} once it hits the street.' },
+  { id: 'fm4', category: 'farm_maturity', text: 'The {district} operation finishes its cycle. {amount} worth of {product}, ready and waiting on distribution.' },
+  { id: 'fm5', category: 'farm_maturity', text: 'Quiet night in {district} - the {product} batch comes off the line clean, valued at {amount}.' },
+  { id: 'fm6', category: 'farm_maturity', text: 'A courier slips out of {district} before sunrise, leaving behind {amount} in fresh {product} for the distributors.' },
+
+  /* ---------------- Distribution Sale (6) ---------------- */
+  { id: 'ds1', category: 'distribution_sale', text: 'Your distributors clear {amount} moving {product} through {city} tonight - no questions asked.' },
+  { id: 'ds2', category: 'distribution_sale', text: 'The {product} moves fast across {city}. By morning, {amount} has found its way back to you.' },
+  { id: 'ds3', category: 'distribution_sale', text: 'Street-level deals add up. {city}\'s {product} trade nets you {amount} this cycle.' },
+  { id: 'ds4', category: 'distribution_sale', text: 'Your network pushes {product} through every corner of {city} that\'ll have it - {amount} in returns.' },
+  { id: 'ds5', category: 'distribution_sale', text: 'The price held, the buyers showed, and {amount} worth of {product} disappeared into {city}\'s nightlife.' },
+  { id: 'ds6', category: 'distribution_sale', text: 'A quiet but steady night for the {product} trade in {city} - {amount} cleared through your distributors.' },
+
   /* ---------------- Bonus general flavor (extra to exceed 80) ---------------- */
   { id: 'ex1', category: 'turn_tick', text: 'A jukebox somewhere plays a song that\'s older than half the people listening to it.' },
   { id: 'ex2', category: 'turn_tick', text: 'The {era} grinds on around you - {eraFlavor}.' },
@@ -163,6 +179,20 @@ function pickEvent(category) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// Fire an async AI flavor request for a category, appending the result as a
+// follow-up log entry. No-op if no API key is configured.
+function requestNarrativeAI(state, category, extra) {
+  if (!state.settings.apiKey) return;
+  requestAINarrative(state, category, extra, (aiText) => {
+    if (aiText) {
+      state.eventLog.push(logEntry(state, aiText, category + '_ai'));
+      if (typeof window !== 'undefined' && typeof window.onAINarrative === 'function') {
+        window.onAINarrative();
+      }
+    }
+  });
+}
+
 // Push a narrated event into the log. Offline text shows immediately;
 // if an API key is configured, an async AI flavor line may follow.
 function narrate(state, category, extra) {
@@ -170,17 +200,7 @@ function narrate(state, category, extra) {
   if (!evt) return;
   const text = fillTemplate(state, evt.text, extra);
   state.eventLog.push(logEntry(state, text, category));
-
-  if (state.settings.apiKey) {
-    requestAINarrative(state, category, extra, (aiText) => {
-      if (aiText) {
-        state.eventLog.push(logEntry(state, aiText, category + '_ai'));
-        if (typeof window !== 'undefined' && typeof window.onAINarrative === 'function') {
-          window.onAINarrative();
-        }
-      }
-    });
-  }
+  requestNarrativeAI(state, category, extra);
 }
 
 // Apply a generic minor effect for family story events (loyalty drift)
@@ -190,4 +210,5 @@ function applyEventOutcome(state, evt, extra) {
   if (extra && extra.familyMember) {
     extra.familyMember.loyalty = clamp(extra.familyMember.loyalty + (Math.random() < 0.5 ? 2 : -2), 0, 100);
   }
+  requestNarrativeAI(state, 'family', extra);
 }
