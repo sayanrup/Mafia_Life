@@ -125,14 +125,14 @@ const OPERATION_DEFS = {
 };
 
 const BUSINESS_TYPES = [
-  { type: 'Diner', basePrice: 8000, baseIncome: 90, launderBonus: 400, heatReduction: 0 },
-  { type: 'Laundromat', basePrice: 6000, baseIncome: 60, launderBonus: 800, heatReduction: 0 },
-  { type: 'Bar', basePrice: 12000, baseIncome: 140, launderBonus: 600, heatReduction: 1 },
-  { type: 'Auto Repair Shop', basePrice: 15000, baseIncome: 160, launderBonus: 700, heatReduction: 1 },
-  { type: 'Pawn Shop', basePrice: 10000, baseIncome: 110, launderBonus: 900, heatReduction: 0 },
-  { type: 'Real Estate Office', basePrice: 25000, baseIncome: 300, launderBonus: 1500, heatReduction: 2 },
-  { type: 'Nightclub', basePrice: 30000, baseIncome: 380, launderBonus: 1800, heatReduction: 2 },
-  { type: 'Vending Route', basePrice: 4000, baseIncome: 40, launderBonus: 300, heatReduction: 0 }
+  { type: 'Diner', basePrice: 8000, baseIncome: 1000, launderBonus: 400, heatReduction: 0 },
+  { type: 'Laundromat', basePrice: 6000, baseIncome: 750, launderBonus: 800, heatReduction: 0 },
+  { type: 'Bar', basePrice: 12000, baseIncome: 1500, launderBonus: 600, heatReduction: 1 },
+  { type: 'Auto Repair Shop', basePrice: 15000, baseIncome: 1900, launderBonus: 700, heatReduction: 1 },
+  { type: 'Pawn Shop', basePrice: 10000, baseIncome: 1300, launderBonus: 900, heatReduction: 0 },
+  { type: 'Real Estate Office', basePrice: 25000, baseIncome: 3200, launderBonus: 1500, heatReduction: 2 },
+  { type: 'Nightclub', basePrice: 30000, baseIncome: 4000, launderBonus: 1800, heatReduction: 2 },
+  { type: 'Vending Route', basePrice: 4000, baseIncome: 500, launderBonus: 300, heatReduction: 0 }
 ];
 
 /* ---------------- Drug Operations (Boss-tier farms/labs) ---------------- */

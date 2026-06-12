@@ -39,7 +39,12 @@ function totalLaunderCapacity(state) {
     if (c.auditCooldown > 0) continue;
     total += SHELL_TIERS[c.tier - 1].launderPerTurn;
   }
+  total += totalBusinessLaunderCapacity(state);
   return total;
+}
+
+function totalBusinessLaunderCapacity(state) {
+  return state.ownedBusinesses.reduce((sum, b) => sum + (b.damaged ? 0 : b.launderBonus), 0);
 }
 
 function launderingTick(state) {
@@ -65,6 +70,16 @@ function launderingTick(state) {
       c.auditCooldown = 2;
       state.eventLog.push(logEntry(state, `Federal auditors descended on "${c.name}". Lost ${fmtMoney(loss)} and the books are frozen for 2 turns.`, 'finance_raid'));
     }
+  }
+
+  // Business fronts quietly mix a bit of dirty cash into their books too
+  const businessCapacity = totalBusinessLaunderCapacity(state);
+  if (businessCapacity > 0 && state.player.cash.dirty > 0) {
+    const amount = Math.min(businessCapacity, state.player.cash.dirty);
+    const fee = amount * 0.2;
+    const cleaned = (amount - fee) * businessMult;
+    state.player.cash.dirty -= amount;
+    state.player.cash.clean += cleaned;
   }
 
   // Excess dirty cash raises Fed Heat

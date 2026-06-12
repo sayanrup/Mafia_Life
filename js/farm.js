@@ -138,6 +138,7 @@ function farmTick(state) {
         const batchValue = Math.round(farm.plots * def.batchValuePerPlot * equipMult);
         farm.pendingValue += batchValue;
         farm.growTurn = 0;
+        narrate(state, 'farm_maturity', { vars: { district: district.name, product: def.label, amount: fmtMoney(batchValue) } });
         state.eventLog.push(logEntry(state, `Your ${def.label.toLowerCase()} operation in ${district.name} matured: a batch worth ${fmtMoney(batchValue)} is ready to move.`, 'operations'));
       }
 
@@ -165,6 +166,7 @@ function farmTick(state) {
       }
       if (totalRevenue > 0) {
         addCash(state, totalRevenue, 0);
+        narrate(state, 'distribution_sale', { vars: { product: def.label, amount: fmtMoney(totalRevenue) } });
         state.eventLog.push(logEntry(state, `Your distributors moved ${fmtMoney(totalRevenue)} worth of ${def.label.toLowerCase()}.`, 'operations'));
       }
     }
@@ -180,6 +182,7 @@ function checkFarmRaid(state, district, product, farm) {
     farm.pendingValue = Math.round(farm.pendingValue * 0.6);
     addHeat(state, 'pd', 8);
     addHeat(state, 'feds', 4);
+    narrate(state, 'operation_raid', { vars: { district: district.name } });
     state.eventLog.push(logEntry(state, `RAID! Authorities hit your ${FARM_TYPES[product].label.toLowerCase()} operation in ${district.name}. A plot is seized.`, 'operation_raid'));
   }
 }
