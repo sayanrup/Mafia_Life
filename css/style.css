@@ -339,6 +339,78 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .log-entry.cat-rank, .log-entry.cat-family_death { color: var(--accent); font-weight: bold; }
 .log-entry.cat-betrayal, .log-entry.cat-operation_raid, .log-entry.cat-finance_raid, .log-entry.cat-combat { color: var(--red-bright); }
 .log-entry.cat-bribe, .log-entry.cat-lawenforcement { color: #6fa8d1; }
+.log-entry.cat-empire { color: var(--accent); }
+
+/* ---------------- Criminal Activities Menu ---------------- */
+
+.crime-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crime-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+}
+
+.crime-menu-item:hover {
+  border-color: var(--accent);
+}
+
+.crime-item-icon {
+  font-size: 1.4em;
+  flex: 0 0 auto;
+}
+
+.crime-item-info {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.crime-item-title {
+  font-weight: bold;
+}
+
+.crime-chevron {
+  font-size: 1.4em;
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+
+.crime-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crime-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.crime-item-payout {
+  color: var(--accent);
+}
+
+.crime-item-action {
+  flex: 0 0 auto;
+}
 
 /* ---------------- Modal ---------------- */
 

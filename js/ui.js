@@ -14,6 +14,7 @@ const TAB_DEFS = [
   { id: 'finance', label: 'Finance' },
   { id: 'family', label: 'Family' },
   { id: 'commission', label: 'Commission', requires: 'commission' },
+  { id: 'empire', label: 'Empire', requires: 'empire' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'events', label: 'Events' },
   { id: 'settings', label: 'Settings' }
@@ -35,11 +36,10 @@ function renderApp() {
     return;
   }
   app.innerHTML = renderTopBar() + renderTabBar() + `<div class="content">${renderTabContent()}</div>`;
+  const existingModal = document.getElementById('modal-root');
+  if (existingModal) existingModal.remove();
   if (MODAL) {
     document.body.insertAdjacentHTML('beforeend', renderModal());
-  } else {
-    const existing = document.getElementById('modal-root');
-    if (existing) existing.remove();
   }
 }
 
@@ -69,7 +69,6 @@ function renderTopBar() {
       <div class="stat-row">
         <div class="stat-chip cash-dirty"><span class="label">Dirty Cash</span><span class="value">${fmtMoney(p.cash.dirty)}</span></div>
         <div class="stat-chip cash-clean"><span class="label">Clean Cash</span><span class="value">${fmtMoney(p.cash.clean)}</span></div>
-        <div class="stat-chip"><span class="label">Actions Left</span><span class="value">${p.actionsRemaining} / ${ACTIONS_PER_TURN}</span></div>
       </div>
       <div class="bar-group">
         ${statBar('Health', p.health, p.maxHealth, 'health')}
@@ -87,7 +86,9 @@ function renderTopBar() {
 
 function renderTabBar() {
   return `<div class="tab-bar">
-    ${TAB_DEFS.filter(t => !t.requires || (t.requires === 'commission' && GAME.commission.unlocked))
+    ${TAB_DEFS.filter(t => !t.requires
+        || (t.requires === 'commission' && GAME.commission.unlocked)
+        || (t.requires === 'empire' && canAccessEmpire(GAME)))
       .map(t => `<button class="tab-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">${t.label}</button>`)
       .join('')}
   </div>`;
@@ -102,6 +103,7 @@ function renderTabContent() {
     case 'finance': return renderFinance();
     case 'family': return renderFamily();
     case 'commission': return renderCommission();
+    case 'empire': return renderEmpire();
     case 'inventory': return renderInventory();
     case 'events': return renderEvents();
     case 'settings': return renderSettings();
@@ -127,18 +129,7 @@ function renderHome() {
     </div>
   `).join('');
 
-  const noAction = p.actionsRemaining <= 0;
-  const noActionAttr = noAction ? 'disabled' : '';
-
-  const hitTargets = gangsHere.filter(g => !g.gang.isPlayerGang).map(g => `<option value="${g.gang.id}">${g.gang.name}</option>`).join('');
-
-  const routeTier = district.operations.route.tier;
-
-  const productOptions = Object.keys(PRODUCT_TYPES).map(pt => {
-    const owned = p.inventory.product[pt];
-    const price = getDealPrice(GAME, district.id, pt);
-    return `<option value="${pt}">${PRODUCT_TYPES[pt].label} (have ${owned}, ${fmtMoney(price)}/u)</option>`;
-  }).join('');
+  const hasHitTargets = gangsHere.some(g => !g.gang.isPlayerGang);
 
   const travelButtons = GAME.districts.map(d => d.id === district.id
     ? `<button class="disabled" disabled>You are here: ${d.name}</button>`
@@ -154,35 +145,14 @@ function renderHome() {
     </div>
 
     <div class="card">
-      <h2>Activities ${noAction ? '<span class="tag dirty">No actions left</span>' : ''}</h2>
-      <div class="row">
-        <button ${noActionAttr} onclick="actionMug()">Mug / Street Crime</button>
-        <button ${noActionAttr} onclick="actionHeist()">Heist</button>
-        <button ${noActionAttr} onclick="actionExtortion()">Extortion</button>
-        <button ${noActionAttr} onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled title="No smuggling route here"' : ''}>Smuggling Run</button>
+      <h2>Criminal Activities</h2>
+      <div class="crime-menu">
+        ${crimeMenuItem('🔪', 'Street Crime', 'Quick muggings for fast, low-risk cash.', "openCrimeModal('street')")}
+        ${crimeMenuItem('💰', 'Heists & Rackets', 'Bigger scores: heists, extortion, smuggling runs.', "openCrimeModal('heists')")}
+        ${hasHitTargets ? crimeMenuItem('⚔️', 'Gang Operations', 'Send a message or start a gang war.', "openCrimeModal('gang')") : ''}
+        ${crimeMenuItem('💵', 'Deals', 'Sell product from your inventory.', 'openDealsModal()')}
+        ${crimeMenuItem('🤝', 'Bribes & Corruption', 'Buy off cops, feds, or rival crews.', 'openBribesModal()')}
       </div>
-
-      <hr class="sep" />
-      <h3>Hit / Intimidation</h3>
-      ${hitTargets ? `
-        <div class="row">
-          <select id="hit-target">${hitTargets}</select>
-          <button ${noActionAttr} onclick="actionHit()">Send a Message</button>
-          <button ${noActionAttr} class="btn-danger" onclick="actionStartGangWar()">Start Gang War</button>
-        </div>
-      ` : '<p class="muted">No rival gang presence to target here.</p>'}
-
-      <hr class="sep" />
-      <h3>Deals (sell product)</h3>
-      <div class="row">
-        <select id="deal-product">${productOptions}</select>
-        <input type="number" id="deal-qty" value="1" min="1" style="width:80px;" />
-        <button onclick="actionSell()">Sell</button>
-      </div>
-
-      <hr class="sep" />
-      <h3>Bribes</h3>
-      ${renderBribeWidget(district)}
     </div>
 
     <div class="card">
@@ -193,7 +163,7 @@ function renderHome() {
     <div class="card">
       <h2>Turn ${GAME.meta.turn}</h2>
       <div class="row between">
-        <span class="muted">${p.actionsRemaining} action(s) remaining this turn.</span>
+        <span class="muted">Take as many actions as you like, then end the turn.</span>
         <button class="btn-primary" onclick="endTurn()">End Turn</button>
       </div>
     </div>
@@ -202,6 +172,133 @@ function renderHome() {
       <h2>Recent Activity</h2>
       ${renderLog(GAME.eventLog.slice(-12))}
     </div>
+  `;
+}
+
+/* ---------------- Criminal Activities Menu / Modals ---------------- */
+
+function crimeMenuItem(icon, title, desc, onclick) {
+  return `
+    <button class="crime-menu-item" onclick="${onclick}">
+      <span class="crime-item-icon">${icon}</span>
+      <span class="crime-item-info">
+        <span class="crime-item-title">${title}</span>
+        <span class="crime-item-desc muted small">${desc}</span>
+      </span>
+      <span class="crime-chevron">&rsaquo;</span>
+    </button>
+  `;
+}
+
+function crimeListItem(icon, title, desc, payout, actionHtml) {
+  return `
+    <div class="crime-item">
+      <span class="crime-item-icon">${icon}</span>
+      <span class="crime-item-info">
+        <span class="crime-item-title">${title}</span>
+        <span class="crime-item-desc muted small">${desc}</span>
+        <span class="crime-item-payout small">${payout}</span>
+      </span>
+      <span class="crime-item-action">${actionHtml}</span>
+    </div>
+  `;
+}
+
+function closeButtonRow() {
+  return `<div class="row" style="justify-content:flex-end; margin-top:10px;"><button class="btn-primary" onclick="closeModal()">Close</button></div>`;
+}
+
+function openCrimeModal(category) {
+  MODAL = { type: 'crime', category };
+  renderApp();
+}
+
+function openDealsModal() {
+  MODAL = { type: 'deals' };
+  renderApp();
+}
+
+function openBribesModal() {
+  MODAL = { type: 'bribes' };
+  renderApp();
+}
+
+function renderCrimeModal(category) {
+  const district = GAME.districts[GAME.player.currentDistrict];
+
+  if (category === 'street') {
+    return `
+      <h2>Street Crime</h2>
+      <div class="crime-list">
+        ${crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', '$20 - $200', '<button class="btn-primary" onclick="actionMug()">Do It</button>')}
+      </div>
+      ${closeButtonRow()}
+    `;
+  }
+
+  if (category === 'heists') {
+    const routeTier = district.operations.route.tier;
+    const racket = GAME.player.extortionRackets.find(r => r.districtId === district.id);
+    return `
+      <h2>Heists &amp; Rackets</h2>
+      <div class="crime-list">
+        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', '$400 - $4,000+', '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
+        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/3).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/3` : 'Recurring income', '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
+        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move contraband through your established route.', routeTier === 0 ? 'Requires a route' : 'Arms &amp; Contraband', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
+      </div>
+      ${closeButtonRow()}
+    `;
+  }
+
+  if (category === 'gang') {
+    const gangsHere = Object.entries(district.control).map(([gid, pct]) => ({ gang: GAME.gangs[gid], pct }));
+    const hitTargets = gangsHere.filter(g => !g.gang.isPlayerGang).map(g => `<option value="${g.gang.id}">${g.gang.name}</option>`).join('');
+    return `
+      <h2>Gang Operations</h2>
+      ${hitTargets ? `
+        <div class="field">
+          <label>Target Gang</label>
+          <select id="hit-target">${hitTargets}</select>
+        </div>
+        <div class="crime-list">
+          ${crimeListItem('🔫', 'Send a Message', 'Intimidate a rival gang and shift territory control.', 'Territory shift', '<button class="btn-primary" onclick="actionHit()">Do It</button>')}
+          ${crimeListItem('💣', 'Start Gang War', 'Open conflict for control of this district.', 'High risk', '<button class="btn-danger" onclick="actionStartGangWar()">Do It</button>')}
+        </div>
+      ` : '<p class="muted">No rival gang presence to target here.</p>'}
+      ${closeButtonRow()}
+    `;
+  }
+
+  return '';
+}
+
+function renderDealsModal() {
+  const district = GAME.districts[GAME.player.currentDistrict];
+  const p = GAME.player;
+  const productOptions = Object.keys(PRODUCT_TYPES).map(pt => {
+    const owned = p.inventory.product[pt];
+    const price = getDealPrice(GAME, district.id, pt);
+    return `<option value="${pt}">${PRODUCT_TYPES[pt].label} (have ${owned}, ${fmtMoney(price)}/u)</option>`;
+  }).join('');
+
+  return `
+    <h2>Deals</h2>
+    <p class="muted small">Sell product from your inventory at the going rate in ${district.name}.</p>
+    <div class="row">
+      <select id="deal-product">${productOptions}</select>
+      <input type="number" id="deal-qty" value="1" min="1" style="width:80px;" />
+      <button class="btn-primary" onclick="actionSell()">Sell</button>
+    </div>
+    ${closeButtonRow()}
+  `;
+}
+
+function renderBribesModal() {
+  const district = GAME.districts[GAME.player.currentDistrict];
+  return `
+    <h2>Bribes &amp; Corruption</h2>
+    ${renderBribeWidget(district)}
+    ${closeButtonRow()}
   `;
 }
 
@@ -401,6 +498,9 @@ function renderModal() {
   let body = '';
   if (MODAL.type === 'gangwar') body = renderGangWarModal();
   else if (MODAL.type === 'msg') body = `<h2>${MODAL.title}</h2><div>${MODAL.body}</div><div class="row" style="justify-content:flex-end; margin-top:10px;"><button class="btn-primary" onclick="closeModal()">Close</button></div>`;
+  else if (MODAL.type === 'crime') body = renderCrimeModal(MODAL.category);
+  else if (MODAL.type === 'deals') body = renderDealsModal();
+  else if (MODAL.type === 'bribes') body = renderBribesModal();
   return `<div class="modal-overlay" id="modal-root"><div class="modal">${body}</div></div>`;
 }
 

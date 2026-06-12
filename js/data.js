@@ -144,6 +144,21 @@ const BUSINESS_TYPES = [
   { type: 'Vending Route', basePrice: 4000, baseIncome: 40, launderBonus: 300, heatReduction: 0 }
 ];
 
+const EMPIRE = {
+  unlockRank: 'Boss',
+  plotBaseCost: 4000,
+  plotCostStep: 2500,
+  productionPerPlot: 4,
+  distributorHireCost: 600,
+  distributorUpkeep: 50,
+  sellPerDistributor: 10,
+  protectionPerDollar: 1 / 40,
+  protectionDecay: 8,
+  raidBaseRisk: 5,
+  priceMinMult: 0.5,
+  priceMaxMult: 2.0
+};
+
 const SHELL_TIERS = [
   { tier: 1, cost: 3000,  launderPerTurn: 600,  fee: 0.15, auditRisk: 6 },
   { tier: 2, cost: 9000,  launderPerTurn: 1800, fee: 0.12, auditRisk: 9 },

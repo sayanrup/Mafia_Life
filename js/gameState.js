@@ -3,7 +3,6 @@
    Canonical state shape, new-game factory, persistence layer.
    ============================================================ */
 
-const ACTIONS_PER_TURN = 3;
 const SAVE_PREFIX = 'underworld_save_';
 const AUTOSAVE_KEY = 'underworld_autosave';
 const SETTINGS_KEY = 'underworld_settings';
@@ -56,7 +55,12 @@ function createNewGame(charData) {
       extortionRackets: [], // {districtId, level}
       affiliation: { type: 'solo', gangId: null }, // 'solo' | 'member' | 'founder'
       currentDistrict: 0,
-      actionsRemaining: ACTIONS_PER_TURN
+      empire: {
+        plots: {}, // districtId -> {productType: count}
+        distributors: {}, // districtId -> count
+        prices: Object.fromEntries(Object.keys(PRODUCT_TYPES).map(p => [p, PRODUCT_TYPES[p].baseValue])),
+        protection: {} // districtId -> 0-100
+      }
     },
     districts: [],
     gangs: {},
