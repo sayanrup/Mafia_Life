@@ -208,6 +208,20 @@ const SHELL_TIERS = [
   { tier: 3, cost: 25000, launderPerTurn: 5000, fee: 0.08, auditRisk: 13 }
 ];
 
+/* ---------------- AI Narrative Model Options (via OpenRouter) ---------------- */
+// Costs are USD per 1M tokens. null cost = unknown / depends on the model the
+// player types in for the 'custom' option.
+
+const AI_MODEL_OPTIONS = [
+  { id: 'openrouter/auto:free', label: 'OpenRouter Auto (Free)', inputCost: 0,    outputCost: 0 },
+  { id: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', inputCost: 0.05, outputCost: 0.30 },
+  { id: 'moonshotai/kimi-k2', label: 'Kimi K2', inputCost: 0.55, outputCost: 2.20 },
+  { id: 'qwen/qwen-2.5-72b-instruct', label: 'Qwen 2.5 72B Instruct', inputCost: 0.35, outputCost: 0.40 },
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini', inputCost: 0.15, outputCost: 0.60 },
+  { id: 'deepseek/deepseek-chat', label: 'DeepSeek V3', inputCost: 0.27, outputCost: 1.10 },
+  { id: 'custom', label: 'Custom (type a model ID)', inputCost: null, outputCost: null }
+];
+
 /* ---------------- Name Pools ---------------- */
 
 const NAME_POOLS = {

@@ -3,10 +3,9 @@
    Canonical state shape, new-game factory, persistence layer.
    ============================================================ */
 
-const SAVE_PREFIX = 'underworld_save_';
+const SAVE_KEY = 'underworld_save';
 const AUTOSAVE_KEY = 'underworld_autosave';
 const SETTINGS_KEY = 'underworld_settings';
-const SAVE_SLOTS = ['slot1', 'slot2', 'slot3'];
 
 let GAME = null; // the live game state, set by main.js
 
@@ -86,12 +85,22 @@ function logEntry(state, text, category) {
 
 /* ---------------- Settings (separate from save slots) ---------------- */
 
+function defaultSettings() {
+  return {
+    apiKey: '',
+    aiModel: 'openrouter/auto:free',
+    aiCustomModel: '',
+    aiUsage: { inputTokens: 0, outputTokens: 0 },
+    autosaveEnabled: true
+  };
+}
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return Object.assign(defaultSettings(), JSON.parse(raw));
   } catch (e) { /* ignore */ }
-  return { apiKey: '', autosaveEnabled: true };
+  return defaultSettings();
 }
 
 function saveSettings(settings) {
@@ -121,7 +130,7 @@ function loadAutosave() {
   return raw ? deserializeState(raw) : null;
 }
 
-function saveToSlot(state, slotId) {
+function saveGame(state) {
   const meta = {
     name: state.player.name,
     rank: state.player.rank,
@@ -130,48 +139,18 @@ function saveToSlot(state, slotId) {
     cash: state.player.cash.dirty + state.player.cash.clean,
     savedAt: Date.now()
   };
-  localStorage.setItem(SAVE_PREFIX + slotId, serializeState(state));
-  localStorage.setItem(SAVE_PREFIX + slotId + '_meta', JSON.stringify(meta));
+  localStorage.setItem(SAVE_KEY, serializeState(state));
+  localStorage.setItem(SAVE_KEY + '_meta', JSON.stringify(meta));
 }
 
-function loadFromSlot(slotId) {
-  const raw = localStorage.getItem(SAVE_PREFIX + slotId);
+function loadGame() {
+  const raw = localStorage.getItem(SAVE_KEY);
   return raw ? deserializeState(raw) : null;
 }
 
-function getSlotMeta(slotId) {
-  const raw = localStorage.getItem(SAVE_PREFIX + slotId + '_meta');
+function getSaveMeta() {
+  const raw = localStorage.getItem(SAVE_KEY + '_meta');
   return raw ? JSON.parse(raw) : null;
-}
-
-function deleteSlot(slotId) {
-  localStorage.removeItem(SAVE_PREFIX + slotId);
-  localStorage.removeItem(SAVE_PREFIX + slotId + '_meta');
-}
-
-function exportStateToFile(state) {
-  const blob = new Blob([serializeState(state)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `underworld_${state.player.name.replace(/\s+/g, '_')}_day${state.meta.day}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function importStateFromFile(file, callback) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const state = deserializeState(e.target.result);
-      callback(state, null);
-    } catch (err) {
-      callback(null, err);
-    }
-  };
-  reader.readAsText(file);
 }
 
 /* ---------------- Derived Helpers ---------------- */
