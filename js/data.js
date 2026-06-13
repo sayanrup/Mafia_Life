@@ -201,14 +201,17 @@ const EQUIPMENT_TIERS = [
   { tier: 6, name: 'Cartel-Grade Operation', cost: 650000, yieldMult: 3.3 }
 ];
 
-/* ---------------- Distributors (5 hireable tiers per product) ---------------- */
+/* ---------------- Distributors (6 hireable tiers per product) ---------------- */
+// No upfront hiring cost - distributors are paid a per-turn wage instead.
+// Actual units moved each turn vary +/-50% with equipment efficiency and gang heat.
 
 const DISTRIBUTOR_TYPES = [
-  { id: 'street',    label: 'Street Runner',     hireCost: 5000,   upkeep: 400,  capacity: 2000,  unlockCash: 0 },
-  { id: 'van',       label: 'Van Crew',          hireCost: 15000,  upkeep: 900,  capacity: 5000,  unlockCash: 10000 },
-  { id: 'wholesale', label: 'Wholesale Broker',  hireCost: 35000,  upkeep: 1800, capacity: 11000, unlockCash: 50000 },
-  { id: 'cartel',    label: 'Cartel Liaison',    hireCost: 70000,  upkeep: 3200, capacity: 22000, unlockCash: 150000 },
-  { id: 'syndicate', label: 'Syndicate Fixer',   hireCost: 120000, upkeep: 5000, capacity: 38000, unlockCash: 400000 }
+  { id: 'dealer',    label: 'Independent Dealer', upkeep: 200,  capacity: 1000,  unlockCash: 0 },
+  { id: 'street',    label: 'Street Runner',      upkeep: 400,  capacity: 2000,  unlockCash: 0 },
+  { id: 'van',       label: 'Van Crew',           upkeep: 900,  capacity: 5000,  unlockCash: 10000 },
+  { id: 'wholesale', label: 'Wholesale Broker',   upkeep: 1800, capacity: 11000, unlockCash: 50000 },
+  { id: 'cartel',    label: 'Cartel Liaison',     upkeep: 3200, capacity: 22000, unlockCash: 150000 },
+  { id: 'syndicate', label: 'Syndicate Fixer',    upkeep: 5000, capacity: 38000, unlockCash: 400000 }
 ];
 
 /* ---------------- Security Details (preset operation-protection payoffs) ---------------- */

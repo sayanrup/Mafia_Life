@@ -125,11 +125,8 @@ function hireDistributors(state, product, typeId, count) {
   const room = limits.maxDistributors - totalDistributors(state);
   if (room <= 0) return { ok: false, reason: `Your current limit is ${limits.maxDistributors} distributor(s) total. Earn more Dirty Cash to hire more.` };
   count = Math.min(count, room);
-  const cost = type.hireCost * count;
-  if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} in Dirty Cash.` };
-  state.player.cash.dirty -= cost;
   state.player.operations.distributors[product][typeId] += count;
-  state.eventLog.push(logEntry(state, `You hire ${count}x ${type.label} to move ${FARM_TYPES[product].label.toLowerCase()} for ${fmtMoney(cost)}.`, 'operations'));
+  state.eventLog.push(logEntry(state, `You bring on ${count}x ${type.label} to move ${FARM_TYPES[product].label.toLowerCase()} (${fmtMoney(type.upkeep)}/turn wage each).`, 'operations'));
   return { ok: true };
 }
 
@@ -282,6 +279,14 @@ function farmTick(state) {
       if (state.criminalWorld && state.criminalWorld.smugglingBonusTurns > 0) {
         sellCapacity *= (1 + state.criminalWorld.smugglingBonusMult);
       }
+
+      // Distributor performance swings +/-50% with equipment efficiency and gang heat.
+      const equipTier = state.player.operations.equipment[product];
+      const efficiency = equipTier / (EQUIPMENT_TIERS.length - 1);
+      const gangHeat = (state.player.heat.gangs || 0) / 100;
+      const distVariance = clamp(1 + efficiency * 0.5 - gangHeat * 0.5, 0.5, 1.5);
+      sellCapacity *= distVariance;
+
       const priceMult = state.player.operations.prices[product];
       const marketing = state.player.operations.marketing[product];
       const marketingBonus = marketing && marketing.turnsLeft > 0
