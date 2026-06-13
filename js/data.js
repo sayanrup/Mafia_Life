@@ -262,11 +262,11 @@ const OPS_ECONOMY = {
 // maxPlotsPerDistrict applies per district per product (max 5 = all facility tiers).
 
 const OPS_CASH_LIMITS = [
-  { minDirtyCash: 0,      unlockedProducts: ['weed'],                       maxPlotsPerDistrict: 2, maxEquipmentTier: 1, maxDistributors: 2 },
-  { minDirtyCash: 10000,  unlockedProducts: ['weed'],                       maxPlotsPerDistrict: 3, maxEquipmentTier: 2, maxDistributors: 3 },
-  { minDirtyCash: 50000,  unlockedProducts: ['weed', 'pills'],              maxPlotsPerDistrict: 4, maxEquipmentTier: 4, maxDistributors: 6 },
-  { minDirtyCash: 150000, unlockedProducts: ['weed', 'pills', 'powder'],    maxPlotsPerDistrict: 5, maxEquipmentTier: 5, maxDistributors: 10 },
-  { minDirtyCash: 400000, unlockedProducts: ['weed', 'pills', 'powder'],    maxPlotsPerDistrict: 5, maxEquipmentTier: 6, maxDistributors: 20 }
+  { minDirtyCash: 0,      unlockedProducts: ['weed'],                       maxPlotsPerDistrict: 2, maxEquipmentTier: 1, maxDistributors: 3 },
+  { minDirtyCash: 10000,  unlockedProducts: ['weed'],                       maxPlotsPerDistrict: 3, maxEquipmentTier: 2, maxDistributors: 5 },
+  { minDirtyCash: 50000,  unlockedProducts: ['weed', 'pills'],              maxPlotsPerDistrict: 4, maxEquipmentTier: 4, maxDistributors: 9 },
+  { minDirtyCash: 150000, unlockedProducts: ['weed', 'pills', 'powder'],    maxPlotsPerDistrict: 5, maxEquipmentTier: 5, maxDistributors: 15 },
+  { minDirtyCash: 400000, unlockedProducts: ['weed', 'pills', 'powder'],    maxPlotsPerDistrict: 5, maxEquipmentTier: 6, maxDistributors: 25 }
 ];
 
 function peakDirtyCash(state) {
