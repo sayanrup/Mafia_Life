@@ -51,8 +51,24 @@ function estimateAICost(settings) {
   const usage = settings.aiUsage || { inputTokens: 0, outputTokens: 0 };
   const def = AI_MODEL_OPTIONS.find(m => m.id === settings.aiModel);
   if (!def || def.inputCost === null || def.outputCost === null) return null;
-  const cost = (usage.inputTokens / 1e6) * def.inputCost + (usage.outputTokens / 1e6) * def.outputCost;
+  const cost = costForUsage(usage, def);
   return { cost, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens };
+}
+
+// Cost in USD for a given token usage under a model's per-million-token pricing.
+function costForUsage(usage, modelDef) {
+  if (!modelDef || modelDef.inputCost === null || modelDef.outputCost === null) return null;
+  return (usage.inputTokens / 1e6) * modelDef.inputCost + (usage.outputTokens / 1e6) * modelDef.outputCost;
+}
+
+// Per-model cost breakdown for the tokens consumed so far, used by the
+// Settings cost calculator to compare what the run would have cost on
+// each priced model.
+function aiCostBreakdown(settings) {
+  const usage = settings.aiUsage || { inputTokens: 0, outputTokens: 0 };
+  return AI_MODEL_OPTIONS
+    .filter(m => m.inputCost !== null && m.outputCost !== null)
+    .map(m => ({ id: m.id, label: m.label, inputCost: m.inputCost, outputCost: m.outputCost, cost: costForUsage(usage, m) }));
 }
 
 /* ---------------- Batched Narration ---------------- */

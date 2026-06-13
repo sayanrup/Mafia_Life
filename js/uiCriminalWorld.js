@@ -27,21 +27,22 @@ function renderCriminalWorld() {
   const gangCards = activeGangs.map(g => {
     const status = g.atWarWithPlayer ? '<span class="tag dirty">AT WAR</span>' : (g.alliedWithPlayer ? '<span class="tag clean">ALLIED</span>' : '');
     const territory = Math.round(gangTerritoryScore(GAME, g.id));
-    return `
-      <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
-        <div class="muted small">Personality: ${g.boss.personality} (${PERSONALITY_DESC[g.boss.personality]}) &middot; Territory Index: ${territory}</div>
-        <div class="muted small">Crew: ${g.crewSize || 0} &middot; Crew Skill: ${g.crewSkill || 0}/100 &middot; Treasury: ${fmtMoney(g.treasury || 0)}</div>
-        ${statBar('Relation', g.relationToPlayer + 100, 200, 'rep-gang', `${g.relationToPlayer}`)}
-        <div class="row" style="margin-top:6px;">
-          <button onclick="actionProposeTruce('${g.id}')">Propose Truce</button>
-          <button onclick="actionProposeAlliance('${g.id}')">Propose Alliance</button>
-          ${g.atWarWithPlayer
-            ? `<button onclick="actionOfferPeace('${g.id}')">Offer Peace</button>`
-            : `<button class="btn-danger" onclick="actionDeclareWar('${g.id}')">Declare War</button>`}
-        </div>
+    const summary = `
+      <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
+      <div class="muted small">Personality: ${g.boss.personality} (${PERSONALITY_DESC[g.boss.personality]}) &middot; Territory Index: ${territory}</div>
+      <div class="muted small">Crew: ${g.crewSize || 0} &middot; Crew Skill: ${g.crewSkill || 0}/100 &middot; Treasury: ${fmtMoney(g.treasury || 0)}</div>
+      ${statBar('Relation', g.relationToPlayer + 100, 200, 'rep-gang', `${g.relationToPlayer}`)}
+    `;
+    const body = `
+      <div class="row">
+        <button onclick="actionProposeTruce('${g.id}')">Propose Truce</button>
+        <button onclick="actionProposeAlliance('${g.id}')">Propose Alliance</button>
+        ${g.atWarWithPlayer
+          ? `<button onclick="actionOfferPeace('${g.id}')">Offer Peace</button>`
+          : `<button class="btn-danger" onclick="actionDeclareWar('${g.id}')">Declare War</button>`}
       </div>
     `;
+    return collapsibleCard(`cwgang-${g.id}`, summary, body, 'margin-bottom:6px;');
   }).join('');
 
   const eliminatedRows = eliminatedGangs.map(g => `<div class="muted small">${g.name} - wiped off the map.</div>`).join('');

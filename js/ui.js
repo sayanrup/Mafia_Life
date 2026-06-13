@@ -87,6 +87,27 @@ function statBar(label, value, max, cls, displayOverride) {
   </div>`;
 }
 
+/* ---------------- Collapsible Cards ---------------- */
+// Lists of similar cards (districts, rival gangs, businesses, etc.) start
+// collapsed to keep long lists scannable; expanding one is remembered across
+// re-renders via this in-memory set (cleared on page reload).
+
+const EXPANDED_CARDS = new Set();
+
+function onCardToggle(id, el) {
+  if (el.open) EXPANDED_CARDS.add(id); else EXPANDED_CARDS.delete(id);
+}
+
+function collapsibleCard(id, summaryHtml, bodyHtml, style) {
+  const open = EXPANDED_CARDS.has(id);
+  return `
+    <details class="card" ${style ? `style="${style}"` : ''} ${open ? 'open' : ''} ontoggle="onCardToggle('${id}', this)">
+      <summary><div class="card-summary">${summaryHtml}</div></summary>
+      <div class="card-body">${bodyHtml}</div>
+    </details>
+  `;
+}
+
 function renderTopBar() {
   const p = GAME.player;
   const era = GAME.meta.era === 'custom' ? GAME.meta.customEraText : ERAS[GAME.meta.era].label;
@@ -503,18 +524,19 @@ function renderDistrictsSubtab() {
       : '';
     const activityRows = (d.lastEvents || []).map(e => `<div class="muted small">${e}</div>`).join('');
 
-    return `
-      <div class="card">
-        <h2>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h2>
-        <div class="control-bar">${segs}</div>
-        ${bosses}
-        <div class="muted">District Heat: ${d.heat}/100</div>
-        <div class="muted">${opsLine}</div>
-        ${farmLine ? `<div class="muted">${farmLine}</div>` : ''}
-        ${activityRows ? `<div style="margin-top:6px;"><div class="muted small"><strong>Recent Activity</strong></div>${activityRows}</div>` : ''}
-        ${d.id !== GAME.player.currentDistrict ? `<div class="row" style="margin-top:6px;"><button onclick="travelTo(${d.id})">Travel here</button></div>` : ''}
-      </div>
+    const summary = `
+      <h2>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h2>
+      <div class="control-bar">${segs}</div>
     `;
+    const body = `
+      ${bosses}
+      <div class="muted">District Heat: ${d.heat}/100</div>
+      <div class="muted">${opsLine}</div>
+      ${farmLine ? `<div class="muted">${farmLine}</div>` : ''}
+      ${activityRows ? `<div style="margin-top:6px;"><div class="muted small"><strong>Recent Activity</strong></div>${activityRows}</div>` : ''}
+      ${d.id !== GAME.player.currentDistrict ? `<div class="row" style="margin-top:6px;"><button onclick="travelTo(${d.id})">Travel here</button></div>` : ''}
+    `;
+    return collapsibleCard(`district-${d.id}`, summary, body);
   }).join('');
 
   return `<div class="grid">${cards}</div>`;
@@ -549,25 +571,26 @@ function renderGangsSubtab() {
       `<div class="muted small">Extortion Racket - ${districtName(r.districtId)} (Level ${r.level}, ${fmtMoney(extortionRacketIncome(r.level))}/turn)</div>`
     ).join('');
 
-    return `
-      <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
-        <div class="muted small">Personality: ${g.boss.personality} &middot; Territory Index: ${territory}</div>
-        <div class="muted small">Crew Size: ${g.crewSize || 0} &middot; Crew Skill: ${g.crewSkill || 0}/100 &middot; Treasury: ${fmtMoney(g.treasury || 0)}</div>
-        <div style="margin-top:6px;">
-          <div class="muted small"><strong>Businesses</strong></div>
-          ${businessRows || '<div class="muted small">None</div>'}
-        </div>
-        <div style="margin-top:6px;">
-          <div class="muted small"><strong>Drug Operations</strong></div>
-          ${opsRows || '<div class="muted small">None</div>'}
-        </div>
-        <div style="margin-top:6px;">
-          <div class="muted small"><strong>Rackets</strong></div>
-          ${racketRows || '<div class="muted small">None</div>'}
-        </div>
+    const summary = `
+      <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
+      <div class="muted small">Personality: ${g.boss.personality} &middot; Territory Index: ${territory}</div>
+      <div class="muted small">Crew Size: ${g.crewSize || 0} &middot; Crew Skill: ${g.crewSkill || 0}/100 &middot; Treasury: ${fmtMoney(g.treasury || 0)}</div>
+    `;
+    const body = `
+      <div>
+        <div class="muted small"><strong>Businesses</strong></div>
+        ${businessRows || '<div class="muted small">None</div>'}
+      </div>
+      <div style="margin-top:6px;">
+        <div class="muted small"><strong>Drug Operations</strong></div>
+        ${opsRows || '<div class="muted small">None</div>'}
+      </div>
+      <div style="margin-top:6px;">
+        <div class="muted small"><strong>Rackets</strong></div>
+        ${racketRows || '<div class="muted small">None</div>'}
       </div>
     `;
+    return collapsibleCard(`mapgang-${g.id}`, summary, body, 'margin-bottom:6px;');
   }).join('');
 
   return `<div class="grid">${cards}</div>`;
@@ -667,25 +690,28 @@ function renderFarmSubtab(product) {
     const securityButtons = SECURITY_TIERS.map(t => `<button class="btn-small" onclick="actionHireSecurityDetail(${d.id}, '${t.id}')" title="${t.desc}">${t.label} (${fmtMoney(t.amount)})</button>`).join('');
     const netWorth = getFarmNetWorth(GAME, d.id, product);
     const lastProfit = (farm.lastRevenue || 0) - (farm.lastExpense || 0);
-    return `
-      <div class="card">
-        <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
-        <div class="row between"><span>Facility: ${currentTierName} (${farm.plots}/${def.facilityTiers.length})</span><button class="btn-small" onclick="actionBuyFarmPlot(${d.id}, '${product}')" ${upgradeDisabled ? 'disabled' : ''}>${upgradeLabel}</button></div>
-        ${farm.plots > 0 ? `
-          <div class="bar-label" style="margin-top:6px;"><span>Grow Cycle</span><span>${farm.growTurn}/${growTurns} turns</span></div>
-          <div class="bar-track"><div class="bar-fill control" style="width:${progressPct}%"></div></div>
-        ` : ''}
-        <div class="muted small" style="margin-top:6px;">Pending batch value: ${fmtMoney(farm.pendingValue)}</div>
-        <div class="muted small" style="margin-top:6px;">Security/Protection: ${Math.round(d.opProtection || 0)}%${(d.protectionIncome || 0) > 0 && (d.opProtection || 0) > 0 ? ` (kicking back ${fmtMoney(d.protectionIncome)}/turn)` : ''}</div>
-        ${farm.plots > 0 ? `
-          <div class="muted small" style="margin-top:6px;">Net Worth: ${fmtMoney(netWorth)} &middot; Last Turn Revenue: ${fmtMoney(farm.lastRevenue || 0)} &middot; Expense: ${fmtMoney(farm.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
-          <div class="row" style="margin-top:4px;">
-            <button class="btn-danger btn-small" onclick="actionSellFarmOperation(${d.id}, '${product}')">Sell Operation (${fmtMoney(Math.round(netWorth * 1.5))})</button>
-          </div>
-        ` : ''}
-        <div class="row" style="flex-wrap:wrap; gap:4px; margin-top:4px;">${securityButtons}</div>
-      </div>
+    const summary = `
+      <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
+      <div class="muted small">Facility: ${currentTierName} (${farm.plots}/${def.facilityTiers.length})</div>
+      ${farm.plots > 0 ? `<div class="bar-track" style="margin-top:4px;"><div class="bar-fill control" style="width:${progressPct}%"></div></div>` : ''}
     `;
+    const body = `
+      <div class="row between"><span>Upgrade</span><button class="btn-small" onclick="actionBuyFarmPlot(${d.id}, '${product}')" ${upgradeDisabled ? 'disabled' : ''}>${upgradeLabel}</button></div>
+      ${farm.plots > 0 ? `
+        <div class="bar-label" style="margin-top:6px;"><span>Grow Cycle</span><span>${farm.growTurn}/${growTurns} turns</span></div>
+        <div class="bar-track"><div class="bar-fill control" style="width:${progressPct}%"></div></div>
+      ` : ''}
+      <div class="muted small" style="margin-top:6px;">Pending batch value: ${fmtMoney(farm.pendingValue)}</div>
+      <div class="muted small" style="margin-top:6px;">Security/Protection: ${Math.round(d.opProtection || 0)}%${(d.protectionIncome || 0) > 0 && (d.opProtection || 0) > 0 ? ` (kicking back ${fmtMoney(d.protectionIncome)}/turn)` : ''}</div>
+      ${farm.plots > 0 ? `
+        <div class="muted small" style="margin-top:6px;">Net Worth: ${fmtMoney(netWorth)} &middot; Last Turn Revenue: ${fmtMoney(farm.lastRevenue || 0)} &middot; Expense: ${fmtMoney(farm.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
+        <div class="row" style="margin-top:4px;">
+          <button class="btn-danger btn-small" onclick="actionSellFarmOperation(${d.id}, '${product}')">Sell Operation (${fmtMoney(Math.round(netWorth * 1.5))})</button>
+        </div>
+      ` : ''}
+      <div class="row" style="flex-wrap:wrap; gap:4px; margin-top:4px;">${securityButtons}</div>
+    `;
+    return collapsibleCard(`farm-${product}-${d.id}`, summary, body);
   }).join('');
 
   const distributorRows = DISTRIBUTOR_TYPES.map(t => {
@@ -765,20 +791,18 @@ function renderSmugglingSubtab() {
     const current = def.tiers[tier];
     const next = def.tiers[tier + 1];
     const check = canUpgradeOperation(GAME, d.id, op);
-    return `
-      <div class="card">
-        <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
-        <h3 style="margin-top:0;">${def.label}: ${current.name} ${d.operations[op].raided ? '<span class="tag dirty">Raided</span>' : ''}</h3>
-        <div class="muted small">Throughput: ${current.throughput}/turn, Bust Risk: ${current.bustRisk}%</div>
-        ${next
-          ? `<div class="row between" style="margin-top:6px;">
-              <span class="small">Upgrade to ${next.name}: ${fmtMoney(next.cost)} Dirty Cash</span>
-              <button onclick="actionUpgradeOperation(${d.id}, '${op}')" ${check.ok ? '' : 'disabled'}>${check.ok ? 'Upgrade' : check.reason}</button>
-            </div>`
-          : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
-        }
-      </div>
+    const summary = `
+      <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
+      <h3 style="margin-top:0;">${def.label}: ${current.name} ${d.operations[op].raided ? '<span class="tag dirty">Raided</span>' : ''}</h3>
+      <div class="muted small">Throughput: ${current.throughput}/turn, Bust Risk: ${current.bustRisk}%</div>
     `;
+    const body = next
+      ? `<div class="row between">
+          <span class="small">Upgrade to ${next.name}: ${fmtMoney(next.cost)} Dirty Cash</span>
+          <button onclick="actionUpgradeOperation(${d.id}, '${op}')" ${check.ok ? '' : 'disabled'}>${check.ok ? 'Upgrade' : check.reason}</button>
+        </div>`
+      : `<div class="small muted">Maximum tier reached.</div>`;
+    return collapsibleCard(`smuggle-${d.id}`, summary, body);
   }).join('');
 
   return `
@@ -802,33 +826,34 @@ function renderProtectionSubtab() {
     const opProtection = d.opProtection || 0;
 
     const goodsUsed = d.farms ? Object.values(d.farms).reduce((a, f) => a + f.pendingValue, 0) : 0;
-    return `
-      <div class="card">
-        <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
-        <h3 style="margin-top:0;">${def.label}: ${current.name}</h3>
-        <div class="muted small">Capacity: ${current.capacity}, Heat Mitigation: ${current.heatMitigation}</div>
-        ${current.goodsCapacity > 0 ? `<div class="muted small">Goods Storage: ${fmtMoney(goodsUsed)} / ${fmtMoney(current.goodsCapacity)}${goodsUsed > current.goodsCapacity ? ' (overflowing - rivals will raid the excess)' : ' (spare space rents out to other crews for income each turn)'}</div>` : `<div class="muted small">No goods storage - build a Safehouse or better to rent spare space to other crews for income.</div>`}
-        ${next
-          ? `<div class="row between" style="margin-top:6px;">
-              <span class="small">Upgrade to ${next.name}: ${fmtMoney(next.cost)} Dirty Cash</span>
-              <button onclick="actionUpgradeOperation(${d.id}, '${op}')" ${check.ok ? '' : 'disabled'}>${check.ok ? 'Upgrade' : check.reason}</button>
-            </div>`
-          : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
-        }
-        <hr class="sep" />
-        <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/3 (${fmtMoney(extortionRacketIncome(racket.level))}/turn)` : 'None - start one from Heists & Rackets.'}</div>
-        ${canAccessOperations(GAME) ? `
-          <hr class="sep" />
-          <div class="muted small">Operation Protection (reduces drug-operation raid risk &amp; heat here)</div>
-          ${statBar('Protection', opProtection, 100, 'control')}
-          ${(d.protectionIncome || 0) > 0 && opProtection > 0 ? `<div class="muted small" style="margin-top:4px;">Paid-off contacts kick back ${fmtMoney(d.protectionIncome)}/turn while protection holds.</div>` : ''}
-          <div class="row between" style="margin-top:4px;">
-            <input type="number" id="ops-protection-bribe-${d.id}" placeholder="Bribe amount ($)" min="0" style="width:140px;" />
-            <button class="btn-small" onclick="actionBribeOpProtection(${d.id})">Bribe for Protection</button>
-          </div>
-        ` : ''}
-      </div>
+    const summary = `
+      <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
+      <h3 style="margin-top:0;">${def.label}: ${current.name}</h3>
+      <div class="muted small">Capacity: ${current.capacity}, Heat Mitigation: ${current.heatMitigation}</div>
     `;
+    const body = `
+      ${current.goodsCapacity > 0 ? `<div class="muted small">Goods Storage: ${fmtMoney(goodsUsed)} / ${fmtMoney(current.goodsCapacity)}${goodsUsed > current.goodsCapacity ? ' (overflowing - rivals will raid the excess)' : ' (spare space rents out to other crews for income each turn)'}</div>` : `<div class="muted small">No goods storage - build a Safehouse or better to rent spare space to other crews for income.</div>`}
+      ${next
+        ? `<div class="row between" style="margin-top:6px;">
+            <span class="small">Upgrade to ${next.name}: ${fmtMoney(next.cost)} Dirty Cash</span>
+            <button onclick="actionUpgradeOperation(${d.id}, '${op}')" ${check.ok ? '' : 'disabled'}>${check.ok ? 'Upgrade' : check.reason}</button>
+          </div>`
+        : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
+      }
+      <hr class="sep" />
+      <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/3 (${fmtMoney(extortionRacketIncome(racket.level))}/turn)` : 'None - start one from Heists & Rackets.'}</div>
+      ${canAccessOperations(GAME) ? `
+        <hr class="sep" />
+        <div class="muted small">Operation Protection (reduces drug-operation raid risk &amp; heat here)</div>
+        ${statBar('Protection', opProtection, 100, 'control')}
+        ${(d.protectionIncome || 0) > 0 && opProtection > 0 ? `<div class="muted small" style="margin-top:4px;">Paid-off contacts kick back ${fmtMoney(d.protectionIncome)}/turn while protection holds.</div>` : ''}
+        <div class="row between" style="margin-top:4px;">
+          <input type="number" id="ops-protection-bribe-${d.id}" placeholder="Bribe amount ($)" min="0" style="width:140px;" />
+          <button class="btn-small" onclick="actionBribeOpProtection(${d.id})">Bribe for Protection</button>
+        </div>
+      ` : ''}
+    `;
+    return collapsibleCard(`stash-${d.id}`, summary, body);
   }).join('');
 
   return `

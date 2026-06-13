@@ -17,6 +17,21 @@ function renderSettings() {
     ? `Estimated spend: ~$${costEstimate.cost.toFixed(4)} (${usage.inputTokens.toLocaleString()} input / ${usage.outputTokens.toLocaleString()} output tokens)`
     : `Tokens used so far: ${usage.inputTokens.toLocaleString()} input / ${usage.outputTokens.toLocaleString()} output (cost varies by model)`;
 
+  const hasUsage = usage.inputTokens > 0 || usage.outputTokens > 0;
+  const costRows = aiCostBreakdown(settings).map(m => `
+    <div class="row between">
+      <span>${m.label}${m.id === settings.aiModel ? ' <span class="tag clean">Current</span>' : ''}</span>
+      <span class="muted small">$${m.inputCost.toFixed(2)}/M in, $${m.outputCost.toFixed(2)}/M out &middot; <strong>$${m.cost.toFixed(4)}</strong></span>
+    </div>
+  `).join('');
+  const costCalculatorCard = `
+    <div class="card">
+      <h2>AI Cost Calculator</h2>
+      <p class="muted small">What your ${usage.inputTokens.toLocaleString()} input / ${usage.outputTokens.toLocaleString()} output tokens so far would cost on each priced model. Switch models in the dropdown above to compare before committing to one.</p>
+      ${hasUsage ? costRows : '<p class="muted small">No AI tokens consumed yet this run.</p>'}
+    </div>
+  `;
+
   return `
     <div class="card">
       <h2>AI Narrative (optional)</h2>
@@ -51,6 +66,8 @@ function renderSettings() {
         <button class="btn-danger" onclick="actionClearApiKey()">Clear Key</button>
       </div>
     </div>
+
+    ${costCalculatorCard}
 
     <div class="card">
       <h2>Game</h2>

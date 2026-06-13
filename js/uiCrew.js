@@ -110,20 +110,21 @@ function renderLieutenantsCard() {
     const assignmentDef = lt.assignment ? LIEUTENANT_ASSIGNMENTS.find(a => a.id === lt.assignment.type) : null;
     const current = assignmentDef ? `${assignmentDef.label} - ${GAME.districts[lt.assignment.districtId].name}` : 'Unassigned';
     const currentValue = lt.assignment ? `${lt.assignment.type}:${lt.assignment.districtId}` : 'none';
-    return `
-      <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong>${lt.name}</strong><span class="muted small">${current}</span></div>
-        ${statBar('Loyalty', lt.loyalty, 100, 'loyalty')}
-        <div class="row" style="margin-top:6px;">
-          <select id="lt-assign-${lt.id}">
-            <option value="none" ${currentValue === 'none' ? 'selected' : ''}>No Assignment</option>
-            ${LIEUTENANT_ASSIGNMENTS.map(a => GAME.districts.map(d => `<option value="${a.id}:${d.id}" ${currentValue === `${a.id}:${d.id}` ? 'selected' : ''}>${a.label} - ${d.name}</option>`).join('')).join('')}
-          </select>
-          <button onclick="actionAssignLieutenant('${lt.id}')">Assign</button>
-        </div>
-        ${assignmentDef ? `<p class="muted small" style="margin-top:4px;">${assignmentDef.desc}</p>` : ''}
-      </div>
+    const summary = `
+      <div class="row between"><strong>${lt.name}</strong><span class="muted small">${current}</span></div>
+      ${statBar('Loyalty', lt.loyalty, 100, 'loyalty')}
     `;
+    const body = `
+      <div class="row">
+        <select id="lt-assign-${lt.id}">
+          <option value="none" ${currentValue === 'none' ? 'selected' : ''}>No Assignment</option>
+          ${LIEUTENANT_ASSIGNMENTS.map(a => GAME.districts.map(d => `<option value="${a.id}:${d.id}" ${currentValue === `${a.id}:${d.id}` ? 'selected' : ''}>${a.label} - ${d.name}</option>`).join('')).join('')}
+        </select>
+        <button onclick="actionAssignLieutenant('${lt.id}')">Assign</button>
+      </div>
+      ${assignmentDef ? `<p class="muted small" style="margin-top:4px;">${assignmentDef.desc}</p>` : ''}
+    `;
+    return collapsibleCard(`lt-${lt.id}`, summary, body, 'margin-bottom:6px;');
   }).join('');
 
   return `
