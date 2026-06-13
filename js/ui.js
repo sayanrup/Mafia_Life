@@ -610,10 +610,10 @@ function renderFarmSubtab(product) {
     const owned = distCounts[t.id] || 0;
     return `
       <div class="row between" style="margin-bottom:4px;">
-        <span>${t.label} <span class="muted small">(owned ${owned} &middot; ${fmtMoney(t.capacity)} cap &middot; ${fmtMoney(t.upkeep)}/turn ea)</span></span>
+        <span>${t.label} <span class="muted small">(owned ${owned} &middot; ${fmtMoney(t.capacity)} cap &middot; ${fmtMoney(t.upkeep)}/turn wage ea)</span></span>
         ${locked
           ? `<span class="muted small">Unlocks at ${fmtMoney(t.unlockCash)} Dirty Cash</span>`
-          : `<span class="row"><input type="number" id="ops-distributors-${product}-${t.id}" value="1" min="1" style="width:60px;" /><button class="btn-small" onclick="actionHireDistributors('${product}', '${t.id}')">Hire (${fmtMoney(t.hireCost)} ea)</button></span>`}
+          : `<span class="row"><input type="number" id="ops-distributors-${product}-${t.id}" value="1" min="1" style="width:60px;" /><button class="btn-small" onclick="actionHireDistributors('${product}', '${t.id}')">Hire (Free)</button></span>`}
       </div>
     `;
   }).join('');
