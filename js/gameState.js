@@ -95,6 +95,7 @@ function defaultSettings() {
     aiModel: 'openrouter/auto:free',
     aiCustomModel: '',
     aiUsage: { inputTokens: 0, outputTokens: 0 },
+    aiNarrationFrequency: 'all', // 'all' | 'major' | 'off'
     autosaveEnabled: true
   };
 }
