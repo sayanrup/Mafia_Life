@@ -6,11 +6,39 @@ function renderCrew() {
   return `
     ${renderAffiliationCard()}
     ${renderCrewStatsCard()}
+    ${renderCrewRosterCard()}
     ${renderTrainingCard()}
     ${renderLieutenantsCard()}
     ${renderArmoryCard()}
     ${renderVehiclesCard()}
   `;
+}
+
+function renderCrewRosterCard() {
+  syncCrewMembers(GAME);
+  const members = GAME.player.crew.members;
+  const canPromote = canPromoteLieutenant(GAME);
+
+  const rows = members.map(m => {
+    const summary = `
+      <div class="row between"><strong>${m.name}</strong></div>
+      ${statBar('Loyalty', m.loyalty, 100, 'loyalty')}
+    `;
+    const body = `
+      <div class="row" style="flex-wrap:wrap; gap:4px;">
+        <button class="btn-small" onclick="actionFireCrewMember('${m.id}')">Fire</button>
+        <button class="btn-small" onclick="actionPromoteCrewMember('${m.id}')" ${canPromote ? '' : 'disabled'} title="Requires crew Loyalty 65+ and an open Lieutenant slot">Promote to Lieutenant</button>
+        <button class="btn-danger btn-small" onclick="actionKillCrewMember('${m.id}')">Kill</button>
+      </div>
+    `;
+    return collapsibleCard(`crewmember-${m.id}`, summary, body, 'margin-bottom:6px;');
+  }).join('');
+
+  const summary = `
+    <h2>Crew Roster (${members.length})</h2>
+    <p class="muted small">Manage your crew member by member. Firing lets someone go quietly, promoting moves them up to Lieutenant, and killing sends a message - at a cost to crew loyalty and PD Heat.</p>
+  `;
+  return collapsibleCard('crew-roster', summary, rows || '<p class="muted">Your crew is empty - recruit some muscle above.</p>', '', true);
 }
 
 function renderAffiliationCard() {
@@ -59,7 +87,7 @@ function renderAffiliationCard() {
     `;
   }
 
-  return `<div class="card"><h2>Gang Affiliation</h2>${repBars}${body}</div>`;
+  return collapsibleCard('crew-affiliation', `<h2>Gang Affiliation</h2>${repBars}`, body, '', true);
 }
 
 function renderImprisonedCrewSection(p) {
@@ -80,27 +108,27 @@ function renderCrewStatsCard() {
   const p = GAME.player;
   const cap = getCrewCap(GAME);
   const upkeep = totalUpkeepCost(GAME);
-  return `
-    <div class="card">
-      <h2>Crew</h2>
-      <div class="row between"><span>Size</span><span>${p.crew.size} / ${cap}</span></div>
-      <div class="row between"><span>Quality</span><span>${p.crew.quality.toFixed(1)}</span></div>
-      <div class="row between"><span>Equipped Weapon Tier</span><span>${WEAPON_TIERS[p.crew.weaponTier].label}</span></div>
-      ${statBar('Loyalty', p.crew.loyalty, 100, 'loyalty')}
-      <hr class="sep" />
-      <div class="row between">
-        <span>Upkeep this turn: ${fmtMoney(upkeep)} ${p.crew.upkeepPaid ? '<span class="tag clean">Paid</span>' : '<span class="tag dirty">Unpaid</span>'}</span>
-      </div>
-      <label style="display:flex; align-items:center; gap:6px; margin-top:4px;">
-        <input type="checkbox" id="auto-upkeep" style="width:auto;" ${p.crew.autoPayUpkeep ? 'checked' : ''} onchange="actionToggleAutoUpkeep()" />
-        <span class="small">Automatically pay crew upkeep each turn if affordable</span>
-      </label>
-      <div class="row" style="margin-top:6px;">
-        <input type="number" id="recruit-count" value="1" min="1" style="width:80px;" />
-        <button onclick="actionRecruit()">Recruit (${fmtMoney(RECRUIT_COST)} each)</button>
-      </div>
+  const summary = `
+    <h2>Crew</h2>
+    <div class="row between"><span>Size</span><span>${p.crew.size} / ${cap}</span></div>
+    <div class="row between"><span>Quality</span><span>${p.crew.quality.toFixed(1)}</span></div>
+    <div class="row between"><span>Equipped Weapon Tier</span><span>${WEAPON_TIERS[p.crew.weaponTier].label}</span></div>
+    ${statBar('Loyalty', p.crew.loyalty, 100, 'loyalty')}
+  `;
+  const body = `
+    <div class="row between">
+      <span>Upkeep this turn: ${fmtMoney(upkeep)} ${p.crew.upkeepPaid ? '<span class="tag clean">Paid</span>' : '<span class="tag dirty">Unpaid</span>'}</span>
+    </div>
+    <label style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+      <input type="checkbox" id="auto-upkeep" style="width:auto;" ${p.crew.autoPayUpkeep ? 'checked' : ''} onchange="actionToggleAutoUpkeep()" />
+      <span class="small">Automatically pay crew upkeep each turn if affordable</span>
+    </label>
+    <div class="row" style="margin-top:6px;">
+      <input type="number" id="recruit-count" value="1" min="1" style="width:80px;" />
+      <button onclick="actionRecruit()">Recruit (${fmtMoney(RECRUIT_COST)} each)</button>
     </div>
   `;
+  return collapsibleCard('crew-stats', summary, body, '', true);
 }
 
 function renderLieutenantsCard() {
@@ -127,25 +155,23 @@ function renderLieutenantsCard() {
     return collapsibleCard(`lt-${lt.id}`, summary, body, 'margin-bottom:6px;');
   }).join('');
 
-  return `
-    <div class="card">
-      <h2>Lieutenants (${lts.length} / ${maxLieutenants(GAME)})</h2>
-      ${rows || '<p class="muted">No lieutenants promoted yet.</p>'}
-      <button onclick="actionPromoteLieutenant()" ${canPromoteLieutenant(GAME) ? '' : 'disabled'}>Promote a Lieutenant (requires Loyalty 65+)</button>
-    </div>
+  const body = `
+    ${rows || '<p class="muted">No lieutenants promoted yet.</p>'}
+    <button onclick="actionPromoteLieutenant()" ${canPromoteLieutenant(GAME) ? '' : 'disabled'}>Promote a Lieutenant (requires Loyalty 65+)</button>
   `;
+  return collapsibleCard('crew-lieutenants', `<h2>Lieutenants (${lts.length} / ${maxLieutenants(GAME)})</h2>`, body, '', true);
 }
 
 function renderArmoryCard() {
   const rows = WEAPON_TIERS.map(t => {
     const locked = !isUnlockedForRank(GAME, t.unlockRank);
-    return `
-    <div class="card" style="margin-bottom:6px;">
+    const summary = `
       <div class="row between">
         <strong>${t.label}</strong>
         <span class="muted small">Owned: ${GAME.player.armory[t.id]} &middot; Combat Bonus: +${t.combatBonus}</span>
       </div>
-      ${locked ? `<p class="muted small">Unlocks at ${t.unlockRank}</p>` : `
+    `;
+    const body = locked ? `<p class="muted small">Unlocks at ${t.unlockRank}</p>` : `
       <div class="row" style="margin-top:6px;">
         <input type="number" id="buy-weapon-${t.id}" value="1" min="1" style="width:80px;" />
         <button onclick="actionBuyWeapons(${t.id})">Buy @ ${fmtMoney(t.unitCost)} each</button>
@@ -153,12 +179,11 @@ function renderArmoryCard() {
       <div class="row" style="margin-top:6px;">
         <input type="number" id="armory-sell-${t.id}" value="1" min="1" style="width:80px;" />
         <button class="btn-small" onclick="actionSellWeapons(${t.id})" ${GAME.player.armory[t.id] > 0 ? '' : 'disabled'}>Sell @ ${fmtMoney(Math.round(t.unitCost * WEAPON_SELL_MULT))} each</button>
-      </div>`}
-    </div>
-  `;
+      </div>`;
+    return collapsibleCard(`armory-${t.id}`, summary, body, 'margin-bottom:6px;', true);
   }).join('');
 
-  return `<div class="card"><h2>Armory</h2><p class="muted small">Equip your crew (size ${GAME.player.crew.size}) with enough units of a tier to raise your combat bonus.</p>${rows}</div>`;
+  return collapsibleCard('crew-armory', `<h2>Armory</h2><p class="muted small">Equip your crew (size ${GAME.player.crew.size}) with enough units of a tier to raise your combat bonus.</p>`, rows, '', true);
 }
 
 function renderTrainingCard() {
@@ -182,13 +207,7 @@ function renderTrainingCard() {
     `;
   }).join('');
 
-  return `
-    <div class="card">
-      <h2>Crew Training</h2>
-      <p class="muted small">Permanent crew quality upgrades. Quality: ${GAME.player.crew.quality.toFixed(1)}</p>
-      ${rows}
-    </div>
-  `;
+  return collapsibleCard('crew-training', `<h2>Crew Training</h2><p class="muted small">Permanent crew quality upgrades. Quality: ${GAME.player.crew.quality.toFixed(1)}</p>`, rows, '', true);
 }
 
 function renderVehiclesCard() {
@@ -220,20 +239,20 @@ function renderVehiclesCard() {
   `;
   }).join('');
 
-  return `
-    <div class="card">
-      <h2>Vehicles (Distribution Fleet)</h2>
-      <p class="muted small">Vehicles add cargo capacity that's shared across your distributors, letting them move far more product per turn than on foot.</p>
-      <div class="row between"><span>Total Cargo Capacity</span><span>${fmtMoney(totalCargo)}</span></div>
-      <div class="row between"><span>Total Vehicle Upkeep</span><span>${fmtMoney(totalUpkeep)}/turn</span></div>
-      <hr class="sep" />
-      <h3>Owned</h3>
-      ${ownedRows}
-      <hr class="sep" />
-      <h3>Buy</h3>
-      ${buyRows}
-    </div>
+  const summary = `
+    <h2>Vehicles (Distribution Fleet)</h2>
+    <p class="muted small">Vehicles add cargo capacity that's shared across your distributors, letting them move far more product per turn than on foot.</p>
+    <div class="row between"><span>Total Cargo Capacity</span><span>${fmtMoney(totalCargo)}</span></div>
+    <div class="row between"><span>Total Vehicle Upkeep</span><span>${fmtMoney(totalUpkeep)}/turn</span></div>
   `;
+  const body = `
+    <h3>Owned</h3>
+    ${ownedRows}
+    <hr class="sep" />
+    <h3>Buy</h3>
+    ${buyRows}
+  `;
+  return collapsibleCard('crew-vehicles', summary, body, '', true);
 }
 
 /* ---------------- Action Handlers ---------------- */
@@ -316,4 +335,23 @@ function actionAssignLieutenant(ltId) {
   assignLieutenant(GAME, ltId, assignment);
   autosave(GAME);
   renderApp();
+}
+
+function actionFireCrewMember(memberId) {
+  const res = fireCrewMember(GAME, memberId);
+  if (!res.ok) showMsg('Crew', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionPromoteCrewMember(memberId) {
+  const res = promoteCrewMemberToLieutenant(GAME, memberId);
+  if (!res.ok) showMsg('Crew', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionKillCrewMember(memberId) {
+  if (!confirm('Kill this crew member? This will hurt crew loyalty and raise PD Heat.')) return;
+  const res = killCrewMember(GAME, memberId);
+  if (!res.ok) showMsg('Crew', res.reason);
+  else { autosave(GAME); renderApp(); }
 }

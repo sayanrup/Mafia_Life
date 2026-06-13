@@ -138,6 +138,70 @@ function totalUpkeepCost(state) {
   return state.player.crew.size * UPKEEP_PER_MEMBER + totalVehicleUpkeep(state);
 }
 
+/* ---------------- Crew Roster ---------------- */
+
+// Keeps `crew.members` (individually-named crew shown in the Crew tab roster)
+// in sync with the aggregate `crew.size` used everywhere else - pads with
+// freshly-generated members when size grows, trims from the end when it shrinks.
+function syncCrewMembers(state) {
+  const crew = state.player.crew;
+  if (!Array.isArray(crew.members)) crew.members = [];
+  while (crew.members.length < crew.size) {
+    crew.members.push({
+      id: 'crew_' + Math.random().toString(36).slice(2, 8),
+      name: randomName(Math.random() < 0.3 ? 'female' : 'male'),
+      loyalty: clamp(crew.loyalty + Math.floor(Math.random() * 21) - 10, 0, 100)
+    });
+  }
+  while (crew.members.length > crew.size) {
+    crew.members.pop();
+  }
+}
+
+function fireCrewMember(state, memberId) {
+  const crew = state.player.crew;
+  const idx = crew.members.findIndex(m => m.id === memberId);
+  if (idx === -1) return { ok: false, reason: 'Crew member not found.' };
+  const member = crew.members[idx];
+  crew.members.splice(idx, 1);
+  crew.size = Math.max(0, crew.size - 1);
+  recalcEquippedWeaponTier(state);
+  state.eventLog.push(logEntry(state, `You let ${member.name} go. One less mouth to feed.`, 'crew'));
+  return { ok: true };
+}
+
+function promoteCrewMemberToLieutenant(state, memberId) {
+  if (!canPromoteLieutenant(state)) return { ok: false, reason: 'Need crew loyalty 65+ and an open Lieutenant slot.' };
+  const crew = state.player.crew;
+  const idx = crew.members.findIndex(m => m.id === memberId);
+  if (idx === -1) return { ok: false, reason: 'Crew member not found.' };
+  const member = crew.members[idx];
+  crew.members.splice(idx, 1);
+  const lt = {
+    id: 'lt_' + Math.random().toString(36).slice(2, 8),
+    name: member.name,
+    loyalty: clamp(member.loyalty, 0, 100),
+    assignment: null
+  };
+  state.player.lieutenants.push(lt);
+  state.eventLog.push(logEntry(state, `${lt.name} has been promoted to Lieutenant.`, 'crew'));
+  return { ok: true, lieutenant: lt };
+}
+
+function killCrewMember(state, memberId) {
+  const crew = state.player.crew;
+  const idx = crew.members.findIndex(m => m.id === memberId);
+  if (idx === -1) return { ok: false, reason: 'Crew member not found.' };
+  const member = crew.members[idx];
+  crew.members.splice(idx, 1);
+  crew.size = Math.max(0, crew.size - 1);
+  crew.loyalty = clamp(crew.loyalty - 10, 0, 100);
+  addHeat(state, 'pd', 5);
+  recalcEquippedWeaponTier(state);
+  state.eventLog.push(logEntry(state, `You had ${member.name} taken care of. The rest of the crew got the message - loyalty's shaken and word travels fast.`, 'betrayal'));
+  return { ok: true };
+}
+
 /* ---------------- Crew Training ---------------- */
 
 function trainCrew(state, programId) {

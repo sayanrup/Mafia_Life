@@ -82,37 +82,28 @@ function renderFinance() {
   return `
     ${renderFinancePL()}
 
-    <div class="card">
-      <h2>Cash</h2>
+    ${collapsibleCard('finance-cash', '<h2>Cash</h2>', `
       <div class="row between"><span>Dirty Cash</span><span class="tag dirty">${fmtMoney(p.cash.dirty)}</span></div>
       <div class="row between"><span>Clean Cash</span><span class="tag clean">${fmtMoney(p.cash.clean)}</span></div>
       <div class="muted small" style="margin-top:6px;">Laundering capacity: ${fmtMoney(capacity)}/turn. Excess dirty cash raises Federal Heat.</div>
-    </div>
+    `, '', true)}
 
-    <div class="card">
-      <h2>Laundering Methods</h2>
+    ${collapsibleCard('finance-laundering', '<h2>Laundering Methods</h2>', `
       <p class="muted small">One-off launders for Dirty Cash. Higher-rank methods take a smaller cut but raise more heat on other tracks. Shell companies and business fronts launder automatically every turn on top of these.</p>
       ${launderingMethodRows}
-    </div>
+    `, '', true)}
 
-    <div class="card">
-      <h2>Shell Companies</h2>
+    ${collapsibleCard('finance-shells', '<h2>Shell Companies</h2>', `
       ${shellRows || '<p class="muted">None established.</p>'}
       <div class="row">
         <input type="text" id="shell-name" placeholder="Company name (optional)" />
         <button onclick="actionEstablishShell()">Establish (${fmtMoney(SHELL_TIERS[0].cost)} Clean Cash)</button>
       </div>
-    </div>
+    `, '', true)}
 
-    <div class="card">
-      <h2>Business Fronts - Marketplace (${currentDistrict.name})</h2>
-      ${marketCards}
-    </div>
+    ${collapsibleCard('finance-market', `<h2>Business Fronts - Marketplace (${currentDistrict.name})</h2>`, marketCards, '', true)}
 
-    <div class="card">
-      <h2>Owned Businesses</h2>
-      ${ownedRows || '<p class="muted">You own no businesses yet.</p>'}
-    </div>
+    ${collapsibleCard('finance-owned', '<h2>Owned Businesses</h2>', ownedRows || '<p class="muted">You own no businesses yet.</p>', '', true)}
   `;
 }
 
@@ -161,11 +152,7 @@ function renderFinancePL() {
     `;
   }).join('') : '<p class="muted">No active operations or businesses generating income yet.</p>';
 
-  return `
-    <div class="card">
-      <h2>Profit &amp; Loss (Last Turn)</h2>
-      ${rowsHtml}
-      ${rows.length ? `
+  const totalRow = rows.length ? `
         <div class="row between pl-row pl-total">
           <span>Total</span>
           <span class="row" style="gap:10px;">
@@ -174,9 +161,9 @@ function renderFinancePL() {
             <strong style="color:${totalProfit >= 0 ? 'var(--green)' : 'var(--red-bright)'}">${fmtMoney(totalProfit)}</strong>
           </span>
         </div>
-      ` : ''}
-    </div>
-  `;
+  ` : '';
+
+  return collapsibleCard('finance-pl', '<h2>Profit &amp; Loss (Last Turn)</h2>', rowsHtml + totalRow, '', true);
 }
 
 function actionLaunderViaMethod(methodId) {
