@@ -2,18 +2,21 @@
    UNDERWORLD - Money Laundering & Legit Business Fronts
    ============================================================ */
 
-/* ---------------- Laundering via Rival Gangs (no shell needed) ---------------- */
+/* ---------------- Laundering Methods (one-off, no shell needed) ---------------- */
 
-function launderViaGangs(state, amount) {
+function launderViaMethod(state, methodId, amount) {
+  const method = LAUNDERING_METHODS.find(m => m.id === methodId);
+  if (!method) return { ok: false, reason: 'Unknown laundering method.' };
+  if (!isUnlockedForRank(state, method.unlockRank)) return { ok: false, reason: `${method.label} unlocks at rank ${method.unlockRank}.` };
   amount = Math.max(0, Math.floor(amount) || 0);
   if (amount <= 0) return { ok: false, reason: 'Enter an amount to launder.' };
   if (state.player.cash.dirty < amount) return { ok: false, reason: `Requires ${fmtMoney(amount)} in Dirty Cash.` };
-  const fee = amount * GANG_LAUNDER_CUT;
+  const fee = amount * method.fee;
   const cleaned = Math.round(amount - fee);
   state.player.cash.dirty -= amount;
   state.player.cash.clean += cleaned;
-  addHeat(state, 'gangs', 1);
-  state.eventLog.push(logEntry(state, `A rival crew laundered ${fmtMoney(amount)} for you, taking a ${Math.round(GANG_LAUNDER_CUT * 100)}% cut. You netted ${fmtMoney(cleaned)} clean.`, 'finance'));
+  addHeat(state, method.heatTrack, method.heatAmount);
+  state.eventLog.push(logEntry(state, `You launder ${fmtMoney(amount)} via ${method.label.toLowerCase()}, taking a ${Math.round(method.fee * 100)}% cut. You netted ${fmtMoney(cleaned)} clean.`, 'finance'));
   return { ok: true, cleaned };
 }
 
@@ -40,6 +43,7 @@ function upgradeShellCompany(state, companyId) {
   if (!company) return { ok: false, reason: 'Not found.' };
   if (company.tier >= SHELL_TIERS.length) return { ok: false, reason: 'Already at maximum cover tier.' };
   const nextDef = SHELL_TIERS[company.tier];
+  if (!isUnlockedForRank(state, nextDef.unlockRank)) return { ok: false, reason: `Tier ${nextDef.tier} cover unlocks at rank ${nextDef.unlockRank}.` };
   const cost = Math.round(nextDef.cost * familyDiscountMultiplier(state));
   if (state.player.cash.clean < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} Clean Cash.` };
   state.player.cash.clean -= cost;
@@ -111,6 +115,8 @@ function buyBusiness(state, districtId, marketId) {
   const market = state.businessMarket[districtId];
   const listing = market.find(b => b.id === marketId);
   if (!listing) return { ok: false, reason: 'Listing not found.' };
+  const def = BUSINESS_TYPES.find(t => t.type === listing.type);
+  if (def && !isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${listing.type} unlocks at rank ${def.unlockRank}.` };
   const price = Math.round(listing.price * familyDiscountMultiplier(state));
   if (state.player.cash.clean < price) return { ok: false, reason: `Requires ${fmtMoney(price)} Clean Cash.` };
   state.player.cash.clean -= price;

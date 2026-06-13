@@ -229,15 +229,6 @@ function actionSellWeapons(tier) {
   renderApp();
 }
 
-function actionLaunderViaGangs() {
-  const input = document.getElementById('launder-gang-amount');
-  const amount = Math.max(0, parseInt(input.value, 10) || 0);
-  const res = launderViaGangs(GAME, amount);
-  if (!res.ok) { showMsg('Laundering', res.reason); return; }
-  autosave(GAME);
-  renderApp();
-}
-
 /* ---------------- Criminal World (Council Decisions) ---------------- */
 
 function actionResolveCouncilDecision(optionId) {
