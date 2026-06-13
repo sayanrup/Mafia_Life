@@ -32,7 +32,8 @@ function scenarioStreetHustle(state, gang, district, label) {
 
 function scenarioHeist(state, gang, district, label) {
   const crew = gang.crewSize || 10;
-  const successChance = clamp(35 + crew, 35, 85);
+  const skill = gang.crewSkill || 50;
+  const successChance = clamp(20 + crew + skill / 4, 35, 90);
   if (Math.random() * 100 < successChance) {
     const take = 1500 + Math.floor(Math.random() * 4500);
     gang.treasury = (gang.treasury || 0) + take;

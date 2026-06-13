@@ -86,7 +86,7 @@ function launderingTick(state) {
       state.player.cash.clean += cleaned;
     }
     // Outside clients also pay the shell company to launder their money - the cover takes its cut as clean income.
-    const outsideRevenue = Math.round(tierDef.launderPerTurn * tierDef.fee * businessMult);
+    const outsideRevenue = Math.round(tierDef.launderPerTurn * businessMult);
     state.player.cash.clean += outsideRevenue;
     c.lastRevenue = outsideRevenue;
     // Audit risk
