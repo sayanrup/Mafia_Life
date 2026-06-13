@@ -142,6 +142,23 @@ function migrateState(state) {
     state.criminalWorld = { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 };
   }
 
+  if (state.player.operations) {
+    const ops = state.player.operations;
+    for (const product of Object.keys(FARM_TYPES)) {
+      const dist = ops.distributors[product];
+      if (typeof dist === 'number') {
+        const counts = freshDistributorCounts();
+        counts.street = dist;
+        ops.distributors[product] = counts;
+      } else if (dist) {
+        for (const t of DISTRIBUTOR_TYPES) if (!(t.id in dist)) dist[t.id] = 0;
+      }
+    }
+    if (!ops.marketing) {
+      ops.marketing = { weed: { campaignId: null, turnsLeft: 0 }, pills: { campaignId: null, turnsLeft: 0 }, powder: { campaignId: null, turnsLeft: 0 } };
+    }
+  }
+
   if (Array.isArray(state.ownedBusinesses)) {
     for (const b of state.ownedBusinesses) {
       const def = BUSINESS_TYPES.find(t => t.type === b.type);

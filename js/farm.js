@@ -7,11 +7,18 @@ function canAccessOperations(state) {
   return rankIndex(state.player.rank) >= rankIndex(OPS_ECONOMY.unlockRank);
 }
 
+function freshDistributorCounts() {
+  const counts = {};
+  for (const t of DISTRIBUTOR_TYPES) counts[t.id] = 0;
+  return counts;
+}
+
 function freshPlayerOperations() {
   return {
-    distributors: { weed: 0, pills: 0, powder: 0 },
+    distributors: { weed: freshDistributorCounts(), pills: freshDistributorCounts(), powder: freshDistributorCounts() },
     prices: { weed: 1, pills: 1, powder: 1 },
-    equipment: { weed: 0, pills: 0, powder: 0 }
+    equipment: { weed: 0, pills: 0, powder: 0 },
+    marketing: { weed: { campaignId: null, turnsLeft: 0 }, pills: { campaignId: null, turnsLeft: 0 }, powder: { campaignId: null, turnsLeft: 0 } }
   };
 }
 
@@ -53,21 +60,34 @@ function buyFarmPlot(state, districtId, product) {
 /* ---------------- Distributors ---------------- */
 
 function totalDistributors(state) {
-  return Object.values(state.player.operations.distributors).reduce((a, b) => a + b, 0);
+  let total = 0;
+  for (const product of Object.keys(state.player.operations.distributors)) {
+    const counts = state.player.operations.distributors[product];
+    for (const typeId of Object.keys(counts)) total += counts[typeId];
+  }
+  return total;
 }
 
-function hireDistributors(state, product, count) {
+function productDistributorCount(state, product) {
+  const counts = state.player.operations.distributors[product];
+  return Object.values(counts).reduce((a, b) => a + b, 0);
+}
+
+function hireDistributors(state, product, typeId, count) {
   if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
+  const type = DISTRIBUTOR_TYPES.find(t => t.id === typeId);
+  if (!type) return { ok: false, reason: 'Unknown distributor type.' };
+  if (!isUnlockedForRank(state, type.unlockRank)) return { ok: false, reason: `${type.label} unlocks at rank ${type.unlockRank}.` };
   const limits = getOpsLimits(state);
   count = Math.max(1, Math.floor(count) || 0);
   const room = limits.maxDistributors - totalDistributors(state);
   if (room <= 0) return { ok: false, reason: `Your rank limits you to ${limits.maxDistributors} distributor(s) total. Rank up to hire more.` };
   count = Math.min(count, room);
-  const cost = DISTRIBUTOR_HIRE_COST * count;
+  const cost = type.hireCost * count;
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} in Dirty Cash.` };
   state.player.cash.dirty -= cost;
-  state.player.operations.distributors[product] += count;
-  state.eventLog.push(logEntry(state, `You hire ${count} distributor(s) to move ${FARM_TYPES[product].label.toLowerCase()} for ${fmtMoney(cost)}.`, 'operations'));
+  state.player.operations.distributors[product][typeId] += count;
+  state.eventLog.push(logEntry(state, `You hire ${count}x ${type.label} to move ${FARM_TYPES[product].label.toLowerCase()} for ${fmtMoney(cost)}.`, 'operations'));
   return { ok: true };
 }
 
@@ -111,6 +131,28 @@ function bribeOpProtection(state, districtId, amount) {
   return { ok: true };
 }
 
+/* ---------------- Security Details (preset protection payoffs) ---------------- */
+
+function hireSecurityDetail(state, districtId, tierId) {
+  const tier = SECURITY_TIERS.find(t => t.id === tierId);
+  if (!tier) return { ok: false, reason: 'Unknown security detail.' };
+  return bribeOpProtection(state, districtId, tier.amount);
+}
+
+/* ---------------- Marketing Campaigns (temporary demand boosts) ---------------- */
+
+function launchMarketingCampaign(state, product, campaignId) {
+  if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
+  const campaign = MARKETING_CAMPAIGNS.find(c => c.id === campaignId);
+  if (!campaign) return { ok: false, reason: 'Unknown campaign.' };
+  if (!isUnlockedForRank(state, campaign.unlockRank)) return { ok: false, reason: `${campaign.label} unlocks at rank ${campaign.unlockRank}.` };
+  if (state.player.cash.dirty < campaign.cost) return { ok: false, reason: `Requires ${fmtMoney(campaign.cost)} in Dirty Cash.` };
+  state.player.cash.dirty -= campaign.cost;
+  state.player.operations.marketing[product] = { campaignId: campaign.id, turnsLeft: campaign.turns };
+  state.eventLog.push(logEntry(state, `You launch a "${campaign.label}" campaign for your ${FARM_TYPES[product].label.toLowerCase()} operation (+${Math.round(campaign.demandBonus * 100)}% demand for ${campaign.turns} turn(s)).`, 'operations'));
+  return { ok: true };
+}
+
 /* ---------------- Turn Tick: Growth, Raids, Distribution ---------------- */
 
 function farmTick(state) {
@@ -119,7 +161,11 @@ function farmTick(state) {
   const distributorCount = totalDistributors(state);
   const vehicleCapacity = totalVehicleCapacity(state);
   if (distributorCount > 0) {
-    const upkeep = distributorCount * DISTRIBUTOR_UPKEEP;
+    let upkeep = 0;
+    for (const product of Object.keys(FARM_TYPES)) {
+      const counts = state.player.operations.distributors[product];
+      for (const type of DISTRIBUTOR_TYPES) upkeep += (counts[type.id] || 0) * type.upkeep;
+    }
     if (state.player.cash.dirty >= upkeep) {
       state.player.cash.dirty -= upkeep;
     } else {
@@ -159,16 +205,23 @@ function farmTick(state) {
     }
 
     // Distribution: distributors sell from matured batches across all districts
-    let sellCapacity = state.player.operations.distributors[product] * DISTRIBUTOR_BASE_CAPACITY;
+    const productDistCount = productDistributorCount(state, product);
+    const counts = state.player.operations.distributors[product];
+    let sellCapacity = 0;
+    for (const type of DISTRIBUTOR_TYPES) sellCapacity += (counts[type.id] || 0) * type.capacity;
     if (distributorCount > 0) {
-      sellCapacity += vehicleCapacity * (state.player.operations.distributors[product] / distributorCount);
+      sellCapacity += vehicleCapacity * (productDistCount / distributorCount);
     }
     if (sellCapacity > 0) {
       if (state.criminalWorld && state.criminalWorld.smugglingBonusTurns > 0) {
         sellCapacity *= (1 + state.criminalWorld.smugglingBonusMult);
       }
       const priceMult = state.player.operations.prices[product];
-      const demandMult = clamp(2 - priceMult, 0.4, 1.5); // higher markup = slower sales
+      const marketing = state.player.operations.marketing[product];
+      const marketingBonus = marketing && marketing.turnsLeft > 0
+        ? (MARKETING_CAMPAIGNS.find(c => c.id === marketing.campaignId) || {}).demandBonus || 0
+        : 0;
+      const demandMult = clamp(2 - priceMult + marketingBonus, 0.4, 2.5); // higher markup = slower sales, marketing offsets it
       sellCapacity *= demandMult;
 
       let totalRevenue = 0;
@@ -185,6 +238,17 @@ function farmTick(state) {
         addCash(state, totalRevenue, 0);
         narrate(state, 'distribution_sale', { vars: { product: def.label, amount: fmtMoney(totalRevenue) } });
         state.eventLog.push(logEntry(state, `Your distributors moved ${fmtMoney(totalRevenue)} worth of ${def.label.toLowerCase()}.`, 'operations'));
+      }
+    }
+
+    const marketing = state.player.operations.marketing[product];
+    if (marketing && marketing.turnsLeft > 0) {
+      marketing.turnsLeft--;
+      if (marketing.turnsLeft <= 0) {
+        const campaign = MARKETING_CAMPAIGNS.find(c => c.id === marketing.campaignId);
+        state.eventLog.push(logEntry(state, `Your "${campaign ? campaign.label : 'marketing'}" campaign for ${def.label.toLowerCase()} has run its course.`, 'operations'));
+        marketing.campaignId = null;
+        marketing.turnsLeft = 0;
       }
     }
   }

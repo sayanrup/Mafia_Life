@@ -91,6 +91,7 @@ function totalVehicleUpkeep(state) {
 function buyVehicle(state, typeId) {
   const def = VEHICLE_TYPES.find(v => v.id === typeId);
   if (!def) return { ok: false, reason: 'Unknown vehicle.' };
+  if (!isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${def.label} unlocks at rank ${def.unlockRank}.` };
   if (state.player.cash.dirty < def.cost) return { ok: false, reason: `Requires ${fmtMoney(def.cost)} in Dirty Cash.` };
   state.player.cash.dirty -= def.cost;
   state.player.vehicles.push({ id: 'veh_' + Math.random().toString(36).slice(2, 8), typeId: def.id });
