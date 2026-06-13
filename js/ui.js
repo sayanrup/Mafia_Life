@@ -92,14 +92,17 @@ function statBar(label, value, max, cls, displayOverride) {
 // collapsed to keep long lists scannable; expanding one is remembered across
 // re-renders via this in-memory set (cleared on page reload).
 
-const EXPANDED_CARDS = new Set();
+const CARD_TOGGLES = new Map();
 
 function onCardToggle(id, el) {
-  if (el.open) EXPANDED_CARDS.add(id); else EXPANDED_CARDS.delete(id);
+  CARD_TOGGLES.set(id, el.open);
 }
 
-function collapsibleCard(id, summaryHtml, bodyHtml, style) {
-  const open = EXPANDED_CARDS.has(id);
+// defaultOpen lets primary/singleton cards start expanded while list-item
+// cards (districts, lieutenants, etc.) default to collapsed; either way the
+// user's explicit toggle wins on subsequent re-renders.
+function collapsibleCard(id, summaryHtml, bodyHtml, style, defaultOpen) {
+  const open = CARD_TOGGLES.has(id) ? CARD_TOGGLES.get(id) : !!defaultOpen;
   return `
     <details class="card" ${style ? `style="${style}"` : ''} ${open ? 'open' : ''} ontoggle="onCardToggle('${id}', this)">
       <summary><div class="card-summary">${summaryHtml}</div></summary>
@@ -739,45 +742,48 @@ function renderFarmSubtab(product) {
     `;
   }).join('');
 
+  const facilitiesCard = collapsibleCard(`farm-facilities-${product}`, `
+    <h2>${def.icon} ${def.label}</h2>
+    <p class="muted small">Build up your facility tier by tier (Terrace Grow &rarr; Rented Grow House &rarr; Garage Setup &rarr; Small Field &rarr; Mega Field). Each tier you own adds to your batch value and may speed up the grow cycle. Distributors then sell off the matured batch value over subsequent turns based on your set price.</p>
+    <div class="muted small">Your current Dirty Cash tier allows up to ${limits.maxPlotsPerDistrict} facility tier(s)/district, equipment tier ${limits.maxEquipmentTier}, and ${limits.maxDistributors} distributor(s) total (shared across products). Earn more Dirty Cash to expand further.</div>
+  `, `
+    <div class="muted small">Current equipment: ${equipCurrent.name} (x${equipCurrent.yieldMult.toFixed(2)} yield)</div>
+    ${equipNext && !equipLocked
+      ? `<div class="row between" style="margin-top:6px;">
+          <span class="small">Upgrade to ${equipNext.name} (x${equipNext.yieldMult.toFixed(2)}): ${fmtMoney(equipNext.cost)}</span>
+          <button class="btn-small" onclick="actionBuyEquipment('${product}')">Upgrade</button>
+        </div>`
+      : equipNext
+        ? `<div class="small muted" style="margin-top:6px;">Further upgrades unlock at a higher Dirty Cash tier.</div>`
+        : `<div class="small muted" style="margin-top:6px;">Maximum equipment tier reached.</div>`
+    }
+  `, '', true);
+
+  const distributorsCard = collapsibleCard(`farm-distributors-${product}`, '<h2>Distributors</h2>', `
+    <div class="muted small">Hired: ${productDistTotal} total &middot; vehicle share +${fmtMoney(myVehicleShare)}/turn for this product. Buy vehicles in the Crew tab to move more product.</div>
+    <div style="margin-top:6px;">${distributorRows}</div>
+  `, '', true);
+
+  const priceCard = collapsibleCard(`farm-price-${product}`, '<h2>Street Price</h2>', `
+    <div class="muted small">Markup multiplier (${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)}). Higher markup means more cash per unit sold but slower sales.</div>
+    <div class="row" style="margin-top:6px;">
+      <input type="number" id="ops-price-${product}" value="${price}" min="${minPrice}" max="${maxPrice}" step="0.05" style="width:90px;" />
+      <button class="btn-small" onclick="actionSetOperationPrice('${product}')">Set (current x${price.toFixed(2)})</button>
+    </div>
+    <div class="row" style="flex-wrap:wrap; gap:4px; margin-top:6px;">${pricePresetRow}</div>
+  `, '', true);
+
+  const marketingCard = collapsibleCard(`farm-marketing-${product}`, '<h2>Marketing Campaigns</h2>', `
+    <div class="muted small">${activeCampaign ? `Active: ${activeCampaign.label} (+${Math.round(activeCampaign.demandBonus * 100)}% demand, ${marketing.turnsLeft} turn(s) left)` : 'No active campaign for this product.'}</div>
+    <div style="margin-top:6px;">${marketingRows}</div>
+  `, '', true);
+
   return `
-    <div class="card">
-      <h2>${def.icon} ${def.label}</h2>
-      <p class="muted small">Build up your facility tier by tier (Terrace Grow &rarr; Rented Grow House &rarr; Garage Setup &rarr; Small Field &rarr; Mega Field). Each tier you own adds to your batch value and may speed up the grow cycle. Distributors then sell off the matured batch value over subsequent turns based on your set price.</p>
-      <div class="muted small">Your current Dirty Cash tier allows up to ${limits.maxPlotsPerDistrict} facility tier(s)/district, equipment tier ${limits.maxEquipmentTier}, and ${limits.maxDistributors} distributor(s) total (shared across products). Earn more Dirty Cash to expand further.</div>
-      <div class="grid">
-        <div>
-          <h3>Facilities / Equipment</h3>
-          <div class="muted small">Current: ${equipCurrent.name} (x${equipCurrent.yieldMult.toFixed(2)} yield)</div>
-          ${equipNext && !equipLocked
-            ? `<div class="row between" style="margin-top:6px;">
-                <span class="small">Upgrade to ${equipNext.name} (x${equipNext.yieldMult.toFixed(2)}): ${fmtMoney(equipNext.cost)}</span>
-                <button class="btn-small" onclick="actionBuyEquipment('${product}')">Upgrade</button>
-              </div>`
-            : equipNext
-              ? `<div class="small muted" style="margin-top:6px;">Further upgrades unlock at a higher Dirty Cash tier.</div>`
-              : `<div class="small muted" style="margin-top:6px;">Maximum equipment tier reached.</div>`
-          }
-        </div>
-        <div>
-          <h3>Distributors</h3>
-          <div class="muted small">Hired: ${productDistTotal} total &middot; vehicle share +${fmtMoney(myVehicleShare)}/turn for this product. Buy vehicles in the Crew tab to move more product.</div>
-          <div style="margin-top:6px;">${distributorRows}</div>
-        </div>
-        <div>
-          <h3>Street Price</h3>
-          <div class="muted small">Markup multiplier (${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)}). Higher markup means more cash per unit sold but slower sales.</div>
-          <div class="row" style="margin-top:6px;">
-            <input type="number" id="ops-price-${product}" value="${price}" min="${minPrice}" max="${maxPrice}" step="0.05" style="width:90px;" />
-            <button class="btn-small" onclick="actionSetOperationPrice('${product}')">Set (current x${price.toFixed(2)})</button>
-          </div>
-          <div class="row" style="flex-wrap:wrap; gap:4px; margin-top:6px;">${pricePresetRow}</div>
-        </div>
-        <div>
-          <h3>Marketing Campaigns</h3>
-          <div class="muted small">${activeCampaign ? `Active: ${activeCampaign.label} (+${Math.round(activeCampaign.demandBonus * 100)}% demand, ${marketing.turnsLeft} turn(s) left)` : 'No active campaign for this product.'}</div>
-          <div style="margin-top:6px;">${marketingRows}</div>
-        </div>
-      </div>
+    <div class="grid">
+      ${facilitiesCard}
+      ${distributorsCard}
+      ${priceCard}
+      ${marketingCard}
     </div>
     <div class="grid">${districtCards}</div>
   `;
@@ -806,10 +812,7 @@ function renderSmugglingSubtab() {
   }).join('');
 
   return `
-    <div class="card">
-      <h2>Smuggling Routes</h2>
-      <p class="muted small">Upgrade routes to increase throughput of arms &amp; contraband produced each turn and to reduce bust risk. Run smuggling jobs from Heists &amp; Rackets on the Home tab.</p>
-    </div>
+    ${collapsibleCard('smuggling-intro', '<h2>Smuggling Routes</h2>', '<p class="muted small">Upgrade routes to increase throughput of arms &amp; contraband produced each turn and to reduce bust risk. Run smuggling jobs from Heists &amp; Rackets on the Home tab.</p>', '', true)}
     <div class="grid">${cards}</div>
   `;
 }
@@ -857,10 +860,7 @@ function renderProtectionSubtab() {
   }).join('');
 
   return `
-    <div class="card">
-      <h2>Protection</h2>
-      <p class="muted small">Stash houses raise your product capacity and reduce heat from operations. Protection rackets generate recurring income. Operation Protection bribes reduce raid risk on your drug operations in a district.</p>
-    </div>
+    ${collapsibleCard('protection-intro', '<h2>Protection</h2>', '<p class="muted small">Stash houses raise your product capacity and reduce heat from operations. Protection rackets generate recurring income. Operation Protection bribes reduce raid risk on your drug operations in a district.</p>', '', true)}
     <div class="grid">${stashCards}</div>
   `;
 }
@@ -870,13 +870,13 @@ function renderKidnappingSubtab() {
     const locked = !isUnlockedForRank(GAME, j.unlockRank);
     return crimeListItem(j.icon, j.label, j.desc, cashHeatLabel(j.cashMin, j.cashMax, j.heatMin, j.heatMax), locked ? `<span class="muted small">Unlocks at ${j.unlockRank}</span>` : `<button class="btn-primary" onclick="actionKidnap('${j.id}')">Do It</button>`);
   }).join('');
-  return `
-    <div class="card">
-      <h2>Kidnapping Racket</h2>
-      <p class="muted small">High-risk, high-reward ransom jobs. Each job can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
-      <div class="crime-list">${items}</div>
-    </div>
-  `;
+  return collapsibleCard(
+    'kidnapping-racket',
+    '<h2>Kidnapping Racket</h2>',
+    `<p class="muted small">High-risk, high-reward ransom jobs. Each job can be run up to ${MAX_ACTION_REPEATS}x per turn.</p><div class="crime-list">${items}</div>`,
+    '',
+    true
+  );
 }
 
 /* ---------------- Inventory Tab ---------------- */

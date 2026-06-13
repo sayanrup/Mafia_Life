@@ -52,7 +52,8 @@ function createNewGame(charData) {
         upkeepPaid: true,
         autoPayUpkeep: true,
         trainingCompleted: [],
-        imprisoned: 0
+        imprisoned: 0,
+        members: [] // {id, name, loyalty} - kept in sync with `size` by syncCrewMembers()
       },
       armory: freshArmory(),
       lieutenants: [], // {id, name, loyalty, assignment: null|{type: one of LIEUTENANT_ASSIGNMENTS ids, districtId}}
@@ -195,6 +196,11 @@ function migrateState(state) {
   if (state.player.crew.imprisoned === undefined) {
     state.player.crew.imprisoned = 0;
   }
+
+  if (!Array.isArray(state.player.crew.members)) {
+    state.player.crew.members = [];
+  }
+  syncCrewMembers(state);
 
   if (state.player.inventory && !state.player.inventory.consumables) {
     state.player.inventory.consumables = {};
