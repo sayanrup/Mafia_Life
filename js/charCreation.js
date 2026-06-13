@@ -34,10 +34,19 @@ function renderCharacterCreation() {
       <p class="cc-subtitle">Every empire starts in the gutter. Build yours.</p>
 
       <div class="card">
-        <h2>Your Name</h2>
-        <div class="field">
-          <input type="text" id="cc-name" placeholder="What do they call you?" value="${CC.name}" oninput="ccUpdateField('name', this.value)" />
+        <h2>Your Character</h2>
+        <div class="row" style="gap:12px;">
+          <div class="field" style="flex:1; min-width:140px;">
+            <label>Name</label>
+            <input type="text" id="cc-name" placeholder="What do they call you?" value="${CC.name}" oninput="ccUpdateField('name', this.value)" />
+          </div>
+          <div class="field" style="flex:1; min-width:140px;">
+            <label>City</label>
+            <input list="city-suggestions" id="cc-city" placeholder="Name your city" value="${CC.cityName}" oninput="ccUpdateField('cityName', this.value)" />
+            <datalist id="city-suggestions">${citySuggestions}</datalist>
+          </div>
         </div>
+        <p class="small muted">Pick a city suggestion or type your own. District names will be generated from it.</p>
       </div>
 
       <div class="card">
@@ -49,15 +58,6 @@ function renderCharacterCreation() {
             <input type="text" id="cc-custom-era" placeholder="e.g. a rain-soaked cyberpunk sprawl" value="${CC.customEra}" oninput="ccUpdateField('customEra', this.value)" />
           </div>
         ` : ''}
-      </div>
-
-      <div class="card">
-        <h2>Your City</h2>
-        <div class="field">
-          <input list="city-suggestions" id="cc-city" placeholder="Name your city" value="${CC.cityName}" oninput="ccUpdateField('cityName', this.value)" />
-          <datalist id="city-suggestions">${citySuggestions}</datalist>
-          <p class="small muted">Pick a suggestion or type your own. District names will be generated from it.</p>
-        </div>
       </div>
 
       <div class="card">
