@@ -18,10 +18,16 @@ function canAccessCriminalWorld(state) {
 
 function checkCriminalWorldUnlock(state) {
   if (state.criminalWorld.unlocked) return;
-  if (!playerGangId(state)) return;
-  if (computeTerritoryInfluence(state) >= 50) {
+  const myGangId = playerGangId(state);
+  if (!myGangId) return;
+  const avgInfluence = computeTerritoryInfluence(state);
+  const bestDistrict = Math.max(0, ...state.districts.map(d => d.control[myGangId] || 0));
+  if (avgInfluence >= 50) {
     state.criminalWorld.unlocked = true;
     state.eventLog.push(logEntry(state, `Your gang now holds over half the city's territory. You've earned a seat in the Criminal World - the true power brokers of ${state.meta.cityName} now answer your calls.`, 'criminalworld'));
+  } else if (bestDistrict >= 50) {
+    state.criminalWorld.unlocked = true;
+    state.eventLog.push(logEntry(state, `Your gang now dominates a district outright. You've earned a seat in the Criminal World - the true power brokers of ${state.meta.cityName} now answer your calls.`, 'criminalworld'));
   }
 }
 

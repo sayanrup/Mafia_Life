@@ -139,35 +139,35 @@ const OPERATION_DEFS = {
   route: {
     label: 'Smuggling Route',
     tiers: [
-      { name: 'None', cost: 0, throughput: 0, bustRisk: 0 },
-      { name: 'Local Courier', cost: 1000, throughput: 30, bustRisk: 12 },
-      { name: 'Cross-Border Line', cost: 5000, throughput: 90, bustRisk: 18 },
-      { name: 'Cartel Pipeline', cost: 15000, throughput: 250, bustRisk: 25 }
+      { name: 'None', cost: 0, throughput: 0, bustRisk: 0, cashMin: 0, cashMax: 0 },
+      { name: 'Local Courier', cost: 1000, throughput: 30, bustRisk: 12, cashMin: 1200, cashMax: 2400 },
+      { name: 'Cross-Border Line', cost: 5000, throughput: 90, bustRisk: 18, cashMin: 4000, cashMax: 8000 },
+      { name: 'Cartel Pipeline', cost: 15000, throughput: 250, bustRisk: 25, cashMin: 9000, cashMax: 16000 }
     ]
   }
 };
 
 const BUSINESS_TYPES = [
-  { type: 'Street Side Lemonade Stall', basePrice: 100,    baseIncome: 20,    launderBonus: 10,    heatReduction: 0 },
-  { type: 'Newspaper Stand',            basePrice: 300,    baseIncome: 50,    launderBonus: 30,    heatReduction: 0 },
-  { type: 'Food Cart',                  basePrice: 800,    baseIncome: 120,   launderBonus: 80,    heatReduction: 0 },
-  { type: 'Vending Route',              basePrice: 2000,   baseIncome: 280,   launderBonus: 180,   heatReduction: 0 },
-  { type: 'Tattoo Parlor',              basePrice: 4000,   baseIncome: 520,   launderBonus: 300,   heatReduction: 0 },
-  { type: 'Laundromat',                 basePrice: 6000,   baseIncome: 750,   launderBonus: 900,   heatReduction: 0 },
-  { type: 'Diner',                      basePrice: 9000,   baseIncome: 1150,  launderBonus: 500,   heatReduction: 0 },
-  { type: 'Pawn Shop',                  basePrice: 13000,  baseIncome: 1650,  launderBonus: 1200,  heatReduction: 1 },
-  { type: 'Bar',                        basePrice: 18000,  baseIncome: 2250,  launderBonus: 900,   heatReduction: 1 },
-  { type: 'Auto Repair Shop',           basePrice: 24000,  baseIncome: 3000,  launderBonus: 1100,  heatReduction: 1 },
-  { type: 'Check Cashing Store',        basePrice: 30000,  baseIncome: 3750,  launderBonus: 2800,  heatReduction: 1 },
-  { type: 'Tow Yard',                   basePrice: 38000,  baseIncome: 4700,  launderBonus: 1700,  heatReduction: 1 },
-  { type: 'Storage Facility',           basePrice: 48000,  baseIncome: 6000,  launderBonus: 3000,  heatReduction: 2 },
-  { type: 'Real Estate Office',         basePrice: 60000,  baseIncome: 7500,  launderBonus: 3600,  heatReduction: 2 },
-  { type: 'Construction Firm',          basePrice: 75000,  baseIncome: 9300,  launderBonus: 5000,  heatReduction: 2 },
-  { type: 'Nightclub',                  basePrice: 95000,  baseIncome: 11800, launderBonus: 4500,  heatReduction: 2 },
-  { type: 'Import/Export Co',           basePrice: 120000, baseIncome: 15000, launderBonus: 8000,  heatReduction: 2 },
-  { type: 'Casino',                     basePrice: 160000, baseIncome: 20000, launderBonus: 10500, heatReduction: 3 },
-  { type: 'Luxury Car Dealership',      basePrice: 210000, baseIncome: 26000, launderBonus: 14000, heatReduction: 3 },
-  { type: 'Hotel Chain',                basePrice: 280000, baseIncome: 35000, launderBonus: 19000, heatReduction: 3 }
+  { type: 'Street Side Lemonade Stall', basePrice: 100,    baseIncome: 30,    launderBonus: 10,    heatReduction: 0 },
+  { type: 'Newspaper Stand',            basePrice: 300,    baseIncome: 75,    launderBonus: 30,    heatReduction: 0 },
+  { type: 'Food Cart',                  basePrice: 800,    baseIncome: 180,   launderBonus: 80,    heatReduction: 0 },
+  { type: 'Vending Route',              basePrice: 2000,   baseIncome: 420,   launderBonus: 180,   heatReduction: 0 },
+  { type: 'Tattoo Parlor',              basePrice: 4000,   baseIncome: 780,   launderBonus: 300,   heatReduction: 0 },
+  { type: 'Laundromat',                 basePrice: 6000,   baseIncome: 1125,  launderBonus: 900,   heatReduction: 0 },
+  { type: 'Diner',                      basePrice: 9000,   baseIncome: 1725,  launderBonus: 500,   heatReduction: 0 },
+  { type: 'Pawn Shop',                  basePrice: 13000,  baseIncome: 2475,  launderBonus: 1200,  heatReduction: 1 },
+  { type: 'Bar',                        basePrice: 18000,  baseIncome: 3375,  launderBonus: 900,   heatReduction: 1 },
+  { type: 'Auto Repair Shop',           basePrice: 24000,  baseIncome: 4500,  launderBonus: 1100,  heatReduction: 1 },
+  { type: 'Check Cashing Store',        basePrice: 30000,  baseIncome: 5625,  launderBonus: 2800,  heatReduction: 1 },
+  { type: 'Tow Yard',                   basePrice: 38000,  baseIncome: 7050,  launderBonus: 1700,  heatReduction: 1 },
+  { type: 'Storage Facility',           basePrice: 48000,  baseIncome: 9000,  launderBonus: 3000,  heatReduction: 2 },
+  { type: 'Real Estate Office',         basePrice: 60000,  baseIncome: 11250, launderBonus: 3600,  heatReduction: 2 },
+  { type: 'Construction Firm',          basePrice: 75000,  baseIncome: 13950, launderBonus: 5000,  heatReduction: 2 },
+  { type: 'Nightclub',                  basePrice: 95000,  baseIncome: 17700, launderBonus: 4500,  heatReduction: 2 },
+  { type: 'Import/Export Co',           basePrice: 120000, baseIncome: 22500, launderBonus: 8000,  heatReduction: 2 },
+  { type: 'Casino',                     basePrice: 160000, baseIncome: 30000, launderBonus: 10500, heatReduction: 3 },
+  { type: 'Luxury Car Dealership',      basePrice: 210000, baseIncome: 39000, launderBonus: 14000, heatReduction: 3 },
+  { type: 'Hotel Chain',                basePrice: 280000, baseIncome: 52500, launderBonus: 19000, heatReduction: 3 }
 ];
 
 /* ---------------- Drug Operations (Boss-tier farms/labs) ---------------- */
@@ -177,11 +177,11 @@ const BUSINESS_TYPES = [
 // facility have been bought (1 = Terrace only, 5 = fully built out).
 function buildFarmTiers(mult) {
   return [
-    { name: 'Terrace Grow',      cost: Math.round(100 * mult),   batchValue: Math.round(1000 * mult),   growTurns: 1 },
-    { name: 'Rented Grow House', cost: Math.round(6000 * mult),  batchValue: Math.round(8000 * mult),   growTurns: 2 },
-    { name: 'Garage Setup',      cost: Math.round(20000 * mult), batchValue: Math.round(30000 * mult),  growTurns: 2 },
-    { name: 'Small Field',       cost: Math.round(35000 * mult), batchValue: Math.round(60000 * mult),  growTurns: 3 },
-    { name: 'Mega Field',        cost: Math.round(60000 * mult), batchValue: Math.round(150000 * mult), growTurns: 3 }
+    { name: 'Terrace Grow',      cost: Math.round(100 * mult),   batchValue: Math.round(2000 * mult),   growTurns: 1 },
+    { name: 'Rented Grow House', cost: Math.round(6000 * mult),  batchValue: Math.round(16000 * mult),  growTurns: 2 },
+    { name: 'Garage Setup',      cost: Math.round(20000 * mult), batchValue: Math.round(60000 * mult),  growTurns: 2 },
+    { name: 'Small Field',       cost: Math.round(35000 * mult), batchValue: Math.round(120000 * mult), growTurns: 3 },
+    { name: 'Mega Field',        cost: Math.round(60000 * mult), batchValue: Math.round(300000 * mult), growTurns: 3 }
   ];
 }
 
@@ -206,12 +206,12 @@ const EQUIPMENT_TIERS = [
 // Actual units moved each turn vary +/-50% with equipment efficiency and gang heat.
 
 const DISTRIBUTOR_TYPES = [
-  { id: 'dealer',    label: 'Independent Dealer', upkeep: 200,  capacity: 1000,  unlockCash: 0 },
-  { id: 'street',    label: 'Street Runner',      upkeep: 400,  capacity: 2000,  unlockCash: 0 },
-  { id: 'van',       label: 'Van Crew',           upkeep: 900,  capacity: 5000,  unlockCash: 10000 },
-  { id: 'wholesale', label: 'Wholesale Broker',   upkeep: 1800, capacity: 11000, unlockCash: 50000 },
-  { id: 'cartel',    label: 'Cartel Liaison',     upkeep: 3200, capacity: 22000, unlockCash: 150000 },
-  { id: 'syndicate', label: 'Syndicate Fixer',    upkeep: 5000, capacity: 38000, unlockCash: 400000 }
+  { id: 'dealer',    label: 'Independent Dealer', upkeep: 200,  capacity: 2500,  unlockCash: 0 },
+  { id: 'street',    label: 'Street Runner',      upkeep: 400,  capacity: 5000,  unlockCash: 0 },
+  { id: 'van',       label: 'Van Crew',           upkeep: 900,  capacity: 12500, unlockCash: 10000 },
+  { id: 'wholesale', label: 'Wholesale Broker',   upkeep: 1800, capacity: 27500, unlockCash: 50000 },
+  { id: 'cartel',    label: 'Cartel Liaison',     upkeep: 3200, capacity: 55000, unlockCash: 150000 },
+  { id: 'syndicate', label: 'Syndicate Fixer',    upkeep: 5000, capacity: 95000, unlockCash: 400000 }
 ];
 
 /* ---------------- Security Details (preset operation-protection payoffs) ---------------- */
@@ -250,7 +250,7 @@ const OPS_ECONOMY = {
   protectionPerDollar: 1 / 40,
   protectionDecay: 8,
   protectionIncomeRate: 10, // $/turn kicked back per point of opProtection from generic bribes
-  raidBaseRisk: 5,
+  raidBaseRisk: 3,
   priceMinMult: 0.5,
   priceMaxMult: 2.0,
   stashRentalRate: 0.015 // % of free stash goods-capacity paid to you per turn by other crews renting space
@@ -284,6 +284,23 @@ function getOpsLimits(state) {
 
 function isUnlockedForCash(state, unlockCash) {
   return peakDirtyCash(state) >= (unlockCash || 0);
+}
+
+// Beyond the Dirty Cash gate, building a product's facility up to the
+// "Garage Setup" tier (3) in any district also unlocks the next product in
+// the weed -> pills -> powder chain, so players can work their way up
+// through upgrades alone.
+const PRODUCT_PROGRESSION_TIER = 3;
+const PRODUCT_PROGRESSION_CHAIN = { pills: 'weed', powder: 'pills' };
+
+function getUnlockedProducts(state) {
+  const unlocked = new Set(getOpsLimits(state).unlockedProducts);
+  for (const [product, prereq] of Object.entries(PRODUCT_PROGRESSION_CHAIN)) {
+    if (unlocked.has(product)) continue;
+    const maxTier = Math.max(0, ...state.districts.map(d => d.farms[prereq].plots));
+    if (maxTier >= PRODUCT_PROGRESSION_TIER) unlocked.add(product);
+  }
+  return ['weed', 'pills', 'powder'].filter(p => unlocked.has(p));
 }
 
 /* ---------------- Vehicles (Distribution Fleet) ---------------- */

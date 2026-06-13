@@ -64,7 +64,7 @@ function getFarmBatchValue(state, districtId, product) {
 
 function buyFarmPlot(state, districtId, product) {
   const limits = getOpsLimits(state);
-  if (!limits.unlockedProducts.includes(product)) return { ok: false, reason: `${FARM_TYPES[product].label} operations unlock once you've earned more Dirty Cash.` };
+  if (!getUnlockedProducts(state).includes(product)) return { ok: false, reason: `${FARM_TYPES[product].label} operations unlock once you've earned more Dirty Cash or built up your other operations.` };
   const farm = state.districts[districtId].farms[product];
   if (farm.plots >= limits.maxPlotsPerDistrict) return { ok: false, reason: `Your current limit is ${limits.maxPlotsPerDistrict} ${FARM_TYPES[product].label.toLowerCase()} facility tier(s) per district. Earn more Dirty Cash to expand.` };
   const cost = getFarmPlotCost(state, districtId, product);
@@ -252,7 +252,7 @@ function farmTick(state) {
       }
 
       farm.growTurn++;
-      district.heat = clamp(district.heat + farm.plots, 0, 100);
+      district.heat = clamp(district.heat + Math.ceil(farm.plots / 2), 0, 100);
       addHeat(state, 'pd', Math.max(0, Math.round(farm.plots / 2) - Math.floor((district.opProtection || 0) / 20)));
 
       if (farm.growTurn >= getFarmGrowTurns(state, district.id, product)) {
