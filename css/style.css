@@ -1,23 +1,24 @@
 /* ============================================================
    UNDERWORLD - Stylesheet
-   Noir / gangster theme: dark slate, gold accent, blood-red highlights
+   Modern dark navy/blue theme with clean sans-serif typography
    ============================================================ */
 
 :root {
-  --bg: #0c0d10;
-  --bg-alt: #15171c;
-  --panel: #1b1e25;
-  --panel-light: #242832;
-  --border: #2e333d;
-  --text: #d8d9dc;
-  --text-dim: #8a8d96;
-  --accent: #c9a227;
-  --accent-dim: #8a7320;
-  --red: #9c2c2c;
-  --red-bright: #d14b4b;
-  --green: #3f8f5b;
-  --blue: #3b6ea5;
-  --shadow: rgba(0,0,0,0.5);
+  --bg: #0a0e1a;
+  --bg-alt: #0d1322;
+  --panel: #131a2c;
+  --panel-light: #1b2438;
+  --border: #232c44;
+  --text: #eef1f7;
+  --text-dim: #8995ad;
+  --accent: #4f8df5;
+  --accent-dim: #355fa0;
+  --gold: #f0a830;
+  --red: #c0383d;
+  --red-bright: #ff6b6f;
+  --green: #34d399;
+  --blue: #5b9bd9;
+  --shadow: rgba(0,0,0,0.6);
 }
 
 * { box-sizing: border-box; }
@@ -27,7 +28,7 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Georgia', 'Times New Roman', serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   min-height: 100%;
 }
 
@@ -47,6 +48,13 @@ html, body {
 }
 
 /* ---------------- Header / Top Bar ---------------- */
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 4px 12px var(--shadow);
+}
 
 .topbar {
   background: linear-gradient(180deg, #1a1c22 0%, #121419 100%);
@@ -143,7 +151,7 @@ html, body {
 .bar-fill.heat-feds { background: #b15be0; }
 .bar-fill.heat-gangs { background: var(--red-bright); }
 .bar-fill.rep-street { background: #d99a3c; }
-.bar-fill.rep-gang { background: #c9a227; }
+.bar-fill.rep-gang { background: var(--gold); }
 .bar-fill.rep-cartel { background: #5bb0c9; }
 .bar-fill.loyalty { background: #6fb56f; }
 .bar-fill.control { background: var(--accent); }
@@ -182,7 +190,7 @@ html, body {
 .tab-btn.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
-  text-shadow: 0 0 8px rgba(201,162,39,0.35);
+  text-shadow: 0 0 8px rgba(79,141,245,0.35);
 }
 
 /* ---------------- Content ---------------- */
@@ -258,7 +266,7 @@ button, .btn {
 button:hover:not(:disabled), .btn:hover:not(.disabled) {
   border-color: var(--accent);
   color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(201,162,39,0.15);
+  box-shadow: 0 0 0 1px rgba(79,141,245,0.15);
 }
 
 button:active:not(:disabled), .btn:active:not(.disabled) {
@@ -273,15 +281,15 @@ button:disabled, .btn.disabled {
 .btn-primary {
   background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dim) 100%);
   border-color: var(--accent);
-  color: #1a1408;
+  color: #0a1428;
   font-weight: bold;
   text-shadow: 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ddb939 0%, var(--accent) 100%);
-  color: #1a1408;
-  box-shadow: 0 0 10px rgba(201,162,39,0.45);
+  background: linear-gradient(180deg, #7db4ff 0%, var(--accent) 100%);
+  color: #0a1428;
+  box-shadow: 0 0 10px rgba(79,141,245,0.45);
 }
 
 .btn-danger {
@@ -311,7 +319,7 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent-dim);
-  box-shadow: 0 0 0 2px rgba(201,162,39,0.15);
+  box-shadow: 0 0 0 2px rgba(79,141,245,0.15);
 }
 
 label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom: 4px; }
@@ -431,7 +439,7 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .crime-menu-item:hover {
   border-color: var(--accent);
   transform: translateX(2px);
-  box-shadow: 0 0 10px rgba(201,162,39,0.15);
+  box-shadow: 0 0 10px rgba(79,141,245,0.15);
 }
 
 .crime-item-icon {
@@ -471,7 +479,7 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 }
 
 .crime-item-payout {
-  color: var(--accent);
+  color: var(--gold);
 }
 
 .crime-item-action {
@@ -545,7 +553,7 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .option-card.selected {
   border-color: var(--accent);
   background: var(--panel-light);
-  box-shadow: 0 0 10px rgba(201,162,39,0.2);
+  box-shadow: 0 0 10px rgba(79,141,245,0.2);
 }
 
 .option-card h3 { margin: 0 0 4px 0; color: var(--accent); font-size: 1em; }
@@ -592,6 +600,23 @@ hr.sep {
   border: none;
   border-top: 1px solid var(--border);
   margin: 10px 0;
+}
+
+.pl-row {
+  border-bottom: 1px dashed var(--border);
+  padding: 4px 0;
+}
+
+.pl-row:last-child {
+  border-bottom: none;
+}
+
+.pl-total {
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+  margin-top: 4px;
+  padding-top: 8px;
+  font-weight: bold;
 }
 
 .small { font-size: 0.78em; }

@@ -48,7 +48,7 @@ function renderApp() {
     focusInfo = { id: active.id, tag: active.tagName, selectionStart: active.selectionStart, selectionEnd: active.selectionEnd };
   }
 
-  app.innerHTML = renderTopBar() + renderTabBar() + renderActionUpdate() + `<div class="content">${renderTabContent()}</div>`;
+  app.innerHTML = `<div class="sticky-header">${renderTopBar()}${renderTabBar()}</div>` + renderActionUpdate() + `<div class="content">${renderTabContent()}</div>`;
 
   if (focusInfo) {
     const el = document.getElementById(focusInfo.id);

@@ -77,6 +77,8 @@ function renderFinance() {
   }).join('');
 
   return `
+    ${renderFinancePL()}
+
     <div class="card">
       <h2>Cash</h2>
       <div class="row between"><span>Dirty Cash</span><span class="tag dirty">${fmtMoney(p.cash.dirty)}</span></div>
@@ -107,6 +109,65 @@ function renderFinance() {
     <div class="card">
       <h2>Owned Businesses</h2>
       ${ownedRows || '<p class="muted">You own no businesses yet.</p>'}
+    </div>
+  `;
+}
+
+function renderFinancePL() {
+  const rows = [];
+
+  for (const d of GAME.districts) {
+    for (const product of Object.keys(FARM_TYPES)) {
+      const farm = d.farms[product];
+      if (farm.plots > 0) {
+        rows.push({ name: `${FARM_TYPES[product].icon} ${FARM_TYPES[product].label} - ${d.name}`, revenue: farm.lastRevenue || 0, expense: farm.lastExpense || 0 });
+      }
+    }
+    if ((d.opProtection || 0) > 0 && (d.protectionIncome || 0) > 0) {
+      rows.push({ name: `Operation Protection Kickback - ${d.name}`, revenue: d.protectionIncome, expense: 0 });
+    }
+  }
+
+  for (const racket of GAME.player.extortionRackets) {
+    rows.push({ name: `Extortion Racket - ${GAME.districts[racket.districtId].name}`, revenue: racket.level * 60, expense: 0 });
+  }
+
+  for (const b of GAME.ownedBusinesses) {
+    rows.push({ name: `${b.type} - ${GAME.districts[b.districtId].name}`, revenue: b.lastRevenue || 0, expense: b.lastExpense || 0 });
+  }
+
+  const totalRevenue = rows.reduce((a, r) => a + r.revenue, 0);
+  const totalExpense = rows.reduce((a, r) => a + r.expense, 0);
+  const totalProfit = totalRevenue - totalExpense;
+
+  const rowsHtml = rows.length ? rows.map(r => {
+    const profit = r.revenue - r.expense;
+    return `
+      <div class="row between pl-row">
+        <span>${r.name}</span>
+        <span class="row" style="gap:10px;">
+          <span class="muted small">Rev: ${fmtMoney(r.revenue)}</span>
+          <span class="muted small">Exp: ${fmtMoney(r.expense)}</span>
+          <strong style="color:${profit >= 0 ? 'var(--green)' : 'var(--red-bright)'}">${fmtMoney(profit)}</strong>
+        </span>
+      </div>
+    `;
+  }).join('') : '<p class="muted">No active operations or businesses generating income yet.</p>';
+
+  return `
+    <div class="card">
+      <h2>Profit &amp; Loss (Last Turn)</h2>
+      ${rowsHtml}
+      ${rows.length ? `
+        <div class="row between pl-row pl-total">
+          <span>Total</span>
+          <span class="row" style="gap:10px;">
+            <span class="small">Rev: ${fmtMoney(totalRevenue)}</span>
+            <span class="small">Exp: ${fmtMoney(totalExpense)}</span>
+            <strong style="color:${totalProfit >= 0 ? 'var(--green)' : 'var(--red-bright)'}">${fmtMoney(totalProfit)}</strong>
+          </span>
+        </div>
+      ` : ''}
     </div>
   `;
 }

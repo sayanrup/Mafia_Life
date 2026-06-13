@@ -301,6 +301,13 @@ function endTurn() {
   const committedCrime = Object.keys(state.player.actionCounts).length > 0;
   if (!committedCrime) addHeat(state, 'pd', -25);
 
+  // Federal attention fades when no major crimes (heists, gang gigs, smuggling, hits, kidnappings) happened.
+  const majorCrimeKeys = ['heist', 'smuggling', 'hit'];
+  const committedMajorCrime = Object.keys(state.player.actionCounts).some(k =>
+    majorCrimeKeys.includes(k) || k.startsWith('gig_') || k.startsWith('kidnap_')
+  );
+  if (!committedMajorCrime) addHeat(state, 'feds', -10);
+
   state.meta.day++;
   state.meta.turn++;
   state.player.actionCounts = {};
