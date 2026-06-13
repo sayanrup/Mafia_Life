@@ -242,6 +242,17 @@ function migrateState(state) {
     }
   }
 
+  if (state.gangs) {
+    for (const gang of Object.values(state.gangs)) {
+      if (gang.isPlayerGang) continue;
+      if (typeof gang.treasury !== 'number') gang.treasury = 5000 + Math.floor(Math.random() * 15000);
+      if (typeof gang.crewSize !== 'number') gang.crewSize = 10 + Math.floor(Math.random() * 15);
+      if (!Array.isArray(gang.businesses)) gang.businesses = [];
+      if (!gang.operations || Array.isArray(gang.operations)) gang.operations = {};
+      if (!Array.isArray(gang.rackets)) gang.rackets = [];
+    }
+  }
+
   if (Array.isArray(state.ownedBusinesses)) {
     for (const b of state.ownedBusinesses) {
       if (typeof b.level !== 'number') b.level = 1;

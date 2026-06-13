@@ -283,6 +283,7 @@ function endTurn() {
   informantPlantedTick(state);
   weakenedGangsTick(state);
   runRivalGangAI(state);
+  gangActivityTick(state);
   commissionTurnTick(state);
   criminalWorldTick(state);
   gangRelationsTick(state);
