@@ -235,7 +235,7 @@ function startExtortion(state) {
 
 function extortionTick(state) {
   for (const racket of state.player.extortionRackets) {
-    const income = racket.level * 60;
+    const income = extortionRacketIncome(racket.level);
     addCash(state, income, 0);
     const district = state.districts[racket.districtId];
     district.heat = clamp(district.heat + racket.level, 0, 100);

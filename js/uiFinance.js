@@ -130,7 +130,7 @@ function renderFinancePL() {
   }
 
   for (const racket of GAME.player.extortionRackets) {
-    rows.push({ name: `Extortion Racket - ${GAME.districts[racket.districtId].name}`, revenue: racket.level * 60, expense: 0 });
+    rows.push({ name: `Extortion Racket - ${GAME.districts[racket.districtId].name}`, revenue: extortionRacketIncome(racket.level), expense: 0 });
   }
 
   for (const c of GAME.shellCompanies) {

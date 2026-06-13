@@ -29,6 +29,7 @@ function initWorld(state) {
       territory: [],
       treasury: 5000 + Math.floor(Math.random() * 15000),
       crewSize: 10 + Math.floor(Math.random() * 15),
+      crewSkill: 30 + Math.floor(Math.random() * 51), // 30-80, overall crew effectiveness
       businesses: [], // {id, districtId, type, baseIncome, level}
       operations: {}, // districtId -> {weed, pills, powder, arms, contraband} levels 0-5
       rackets: [] // {districtId, level}

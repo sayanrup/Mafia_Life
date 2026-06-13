@@ -31,6 +31,7 @@ function renderCriminalWorld() {
       <div class="card" style="margin-bottom:6px;">
         <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
         <div class="muted small">Personality: ${g.boss.personality} (${PERSONALITY_DESC[g.boss.personality]}) &middot; Territory Index: ${territory}</div>
+        <div class="muted small">Crew: ${g.crewSize || 0} &middot; Crew Skill: ${g.crewSkill || 0}/100 &middot; Treasury: ${fmtMoney(g.treasury || 0)}</div>
         ${statBar('Relation', g.relationToPlayer + 100, 200, 'rep-gang', `${g.relationToPlayer}`)}
         <div class="row" style="margin-top:6px;">
           <button onclick="actionProposeTruce('${g.id}')">Propose Truce</button>

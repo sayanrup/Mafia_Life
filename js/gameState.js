@@ -247,9 +247,43 @@ function migrateState(state) {
       if (gang.isPlayerGang) continue;
       if (typeof gang.treasury !== 'number') gang.treasury = 5000 + Math.floor(Math.random() * 15000);
       if (typeof gang.crewSize !== 'number') gang.crewSize = 10 + Math.floor(Math.random() * 15);
+      if (typeof gang.crewSkill !== 'number') gang.crewSkill = 30 + Math.floor(Math.random() * 51);
       if (!Array.isArray(gang.businesses)) gang.businesses = [];
       if (!gang.operations || Array.isArray(gang.operations)) gang.operations = {};
       if (!Array.isArray(gang.rackets)) gang.rackets = [];
+    }
+  }
+
+  // Top up older saves whose business marketplace listings predate the
+  // 10-per-district expansion.
+  if (state.businessMarket && Array.isArray(state.districts)) {
+    for (const d of state.districts) {
+      const market = state.businessMarket[d.id] || (state.businessMarket[d.id] = []);
+      if (market.length >= 10) continue;
+      const usedTypes = new Set(market.map(b => b.type));
+      for (const biz of (state.ownedBusinesses || [])) {
+        if (biz.districtId === d.id) usedTypes.add(biz.type);
+      }
+      for (const g of Object.values(state.gangs || {})) {
+        for (const b of (g.businesses || [])) {
+          if (b.districtId === d.id) usedTypes.add(b.type);
+        }
+      }
+      const candidates = BUSINESS_TYPES.filter(b => !usedTypes.has(b.type)).sort(() => Math.random() - 0.5);
+      let idx = market.length;
+      while (market.length < 10 && candidates.length) {
+        const b = candidates.shift();
+        const variance = 0.85 + Math.random() * 0.3;
+        market.push({
+          id: `${d.id}_${idx}`,
+          type: b.type,
+          price: Math.round(b.basePrice * variance),
+          baseIncome: Math.round(b.baseIncome * variance),
+          launderBonus: b.launderBonus,
+          heatReduction: b.heatReduction
+        });
+        idx++;
+      }
     }
   }
 

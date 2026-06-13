@@ -63,11 +63,11 @@ const ORIGINS = {
 };
 
 const RANKS = [
-  { id: 'Associate', threshold: 0,   crewCap: 4,  perk: 'Can run basic crimes and smuggling.' },
-  { id: 'Soldier',    threshold: 20, crewCap: 8,  perk: 'Unlocks Bribe (Rival Crew) and Stash House upgrades.' },
-  { id: 'Capo',       threshold: 45, crewCap: 14, perk: 'Unlocks Lieutenants and Shell Companies.' },
-  { id: 'Underboss',  threshold: 70, crewCap: 22, perk: 'Unlocks founding/leading a Gang and major gang wars.' },
-  { id: 'Boss',       threshold: 90, crewCap: 35, perk: 'Unlocks the Commission.' }
+  { id: 'Associate', threshold: 0,   crewCap: 8,  perk: 'Can run basic crimes and smuggling.' },
+  { id: 'Soldier',    threshold: 20, crewCap: 16, perk: 'Unlocks Bribe (Rival Crew) and Stash House upgrades.' },
+  { id: 'Capo',       threshold: 45, crewCap: 28, perk: 'Unlocks Lieutenants and Shell Companies.' },
+  { id: 'Underboss',  threshold: 70, crewCap: 44, perk: 'Unlocks founding/leading a Gang and major gang wars.' },
+  { id: 'Boss',       threshold: 90, crewCap: 70, perk: 'Unlocks the Commission.' }
 ];
 
 // Weighted score used to evaluate rank-up: street + gang + cartel rep, averaged with territory influence (computed at runtime)
@@ -399,6 +399,14 @@ const SHELL_TIERS = [
   { tier: 5, cost: 140000, launderPerTurn: 93000, fee: 0.045, auditRisk: 19, unlockRank: 'Underboss' },
   { tier: 6, cost: 300000, launderPerTurn: 200000, fee: 0.03, auditRisk: 22, unlockRank: 'Boss' }
 ];
+
+// Recurring per-turn payout from an extortion racket, by level (1-3). Each
+// level roughly doubles to triples the payout of the one before it.
+const EXTORTION_RACKET_INCOME = [1000, 2500, 6000];
+
+function extortionRacketIncome(level) {
+  return EXTORTION_RACKET_INCOME[level - 1] || EXTORTION_RACKET_INCOME[EXTORTION_RACKET_INCOME.length - 1];
+}
 
 const LAUNDERING_METHODS = [
   { id: 'streetcontacts', label: 'Street Contacts',     desc: 'Outside fixers launder cash on the spot, steep cut.', fee: 0.30, heatTrack: 'gangs', heatAmount: 1, unlockRank: 'Associate' },
