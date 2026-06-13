@@ -276,12 +276,18 @@ function travelTo(districtId) {
 function endTurn() {
   const state = GAME;
 
+  // Auto-laundering (shell companies & business fronts) runs first, on
+  // dirty cash carried over from last turn - so this turn's fresh
+  // operation income (weed, extortion, etc.) lands in Dirty Cash and stays
+  // visible there until next turn rather than vanishing into Clean Cash
+  // the instant it's earned.
+  launderingTick(state);
+
   tickOperations(state);
   farmTick(state);
   extortionTick(state);
   applyLieutenantBonuses(state);
   saturationTick(state);
-  launderingTick(state);
   businessIncomeTick(state);
   checkBusinessDamage(state);
 
