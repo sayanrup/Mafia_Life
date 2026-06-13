@@ -17,6 +17,13 @@ function renderAffiliationCard() {
   const p = GAME.player;
   let body = '';
 
+  const repBars = `
+    <div class="row between"><span>Rank</span><span>${p.rank}</span></div>
+    ${statBar('Gang Rep', p.reputation.gang, 100, 'rep-gang')}
+    ${statBar('Cartel Rep', p.reputation.cartel, 100, 'rep-cartel')}
+    <hr class="sep" />
+  `;
+
   if (p.affiliation.type === 'solo') {
     const joinable = Object.values(GAME.gangs).filter(g => !g.isPlayerGang);
     const gangRows = joinable.map(g => `
@@ -36,7 +43,6 @@ function renderAffiliationCard() {
         <input type="text" id="found-gang-name" placeholder="Gang name" />
         <button onclick="actionFoundGang()" ${canFoundGang(GAME) ? '' : 'disabled'}>Found Gang</button>
       </div>
-      ${!canFoundGang(GAME) ? `<p class="small muted">Current Gang Rep: ${Math.round(p.reputation.gang)} / 30</p>` : ''}
     `;
   } else {
     const gang = GAME.gangs[p.affiliation.gangId];
@@ -48,7 +54,7 @@ function renderAffiliationCard() {
     `;
   }
 
-  return `<div class="card"><h2>Gang Affiliation</h2>${body}</div>`;
+  return `<div class="card"><h2>Gang Affiliation</h2>${repBars}${body}</div>`;
 }
 
 function renderCrewStatsCard() {

@@ -37,7 +37,7 @@ function doMugging(state) {
 function doStreetCrime(state, crimeId) {
   const def = STREET_CRIMES.find(c => c.id === crimeId);
   if (!def) return { ok: false, reason: 'Unknown crime.' };
-  if (!isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${def.label} unlocks at rank ${def.unlockRank}.` };
+  if (!isUnlockedForProgress(state, def.unlockProgress)) return { ok: false, reason: `${def.label} unlocks once your Street Rep or PD Heat reaches ${def.unlockProgress}.` };
 
   const district = state.districts[state.player.currentDistrict];
   const result = resolveScuffle(state, def.difficulty);
@@ -79,7 +79,7 @@ function doHeist(state) {
   const result = resolveScuffle(state, difficulty);
 
   if (result.result === 'success') {
-    const gain = Math.round(1200 + Math.random() * 2800 + state.player.crew.size * 100);
+    const gain = Math.round(1500 + Math.random() * 3000 + state.player.crew.size * 100);
     addCash(state, gain, 0);
     addRep(state, 'street', 6);
     addRep(state, 'gang', 10);
@@ -87,7 +87,7 @@ function doHeist(state) {
     narrate(state, 'post_crime_success');
     state.eventLog.push(logEntry(state, `Heist in ${district.name}: +${fmtMoney(gain)} dirty cash. PD Heat +6.`, 'activity'));
   } else if (result.result === 'partial') {
-    const gain = Math.round(400 + Math.random() * 900);
+    const gain = Math.round(1000 + Math.random() * 1500);
     addCash(state, gain, 0);
     addHeat(state, 'pd', 12);
     state.player.crew.loyalty = clamp(state.player.crew.loyalty - 2, 0, 100);
@@ -149,7 +149,7 @@ function doHit(state, targetGangId) {
 function doGangGig(state, gigId) {
   const def = GANG_GIGS.find(g => g.id === gigId);
   if (!def) return { ok: false, reason: 'Unknown job.' };
-  if (!isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${def.label} unlocks at rank ${def.unlockRank}.` };
+  if (!isUnlockedForGangRep(state, def.unlockGangRep)) return { ok: false, reason: `${def.label} unlocks at Gang Rep ${def.unlockGangRep}.` };
 
   const district = state.districts[state.player.currentDistrict];
   const gangsHere = Object.entries(district.control).map(([gid]) => state.gangs[gid]).filter(g => !g.isPlayerGang);

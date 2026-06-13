@@ -25,36 +25,44 @@ function renderFinance() {
     `;
   }).join('');
 
-  const marketCards = GAME.districts.map(d => {
-    const listings = GAME.businessMarket[d.id];
-    if (!listings.length) return '';
-    const rows = listings.map(b => {
-      const def = BUSINESS_TYPES.find(t => t.type === b.type);
-      const locked = def && !isUnlockedForRank(GAME, def.unlockRank);
-      return `
+  const currentDistrict = GAME.districts[GAME.player.currentDistrict];
+  const currentListings = GAME.businessMarket[GAME.player.currentDistrict] || [];
+  const marketCards = currentListings.length ? currentListings.map(b => {
+    const def = BUSINESS_TYPES.find(t => t.type === b.type);
+    const locked = def && !isUnlockedForRank(GAME, def.unlockRank);
+    const nextUpgradeCost = businessUpgradeCost(b.price, 1);
+    return `
       <div class="row between">
-        <span>${b.type} - ${fmtMoney(b.price)} <span class="muted small">(+${fmtMoney(b.baseIncome)}/turn, +${fmtMoney(b.launderBonus)} launder cap, -${b.heatReduction} heat)</span></span>
+        <span>${b.type} <span class="muted small">(Buy: ${fmtMoney(b.price)} &middot; Lvl 2 upgrade: ${fmtMoney(nextUpgradeCost)})</span></span>
         ${locked
           ? `<span class="muted small">Unlocks at ${def.unlockRank}</span>`
-          : `<button onclick="actionBuyBusiness(${d.id}, '${b.id}')" ${p.cash.clean >= b.price ? '' : 'disabled'}>Buy</button>`}
+          : `<button onclick="actionBuyBusiness(${GAME.player.currentDistrict}, '${b.id}')" ${p.cash.clean >= b.price ? '' : 'disabled'}>Buy</button>`}
       </div>
     `;
-    }).join('');
-    return `<div class="card" style="margin-bottom:6px;"><h3>${d.name}</h3>${rows}</div>`;
-  }).join('');
+  }).join('') : '<p class="muted">No listings remaining here.</p>';
 
-  const ownedRows = GAME.ownedBusinesses.map(b => {
-    const d = GAME.districts[b.districtId];
-    return `
+  const ownedByDistrict = {};
+  for (const b of GAME.ownedBusinesses) {
+    (ownedByDistrict[b.districtId] = ownedByDistrict[b.districtId] || []).push(b);
+  }
+  const ownedRows = Object.keys(ownedByDistrict).map(districtId => {
+    const d = GAME.districts[districtId];
+    const rows = ownedByDistrict[districtId].map(b => {
+      const upgradeCost = businessUpgradeCost(b.purchasePrice, b.level);
+      return `
       <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong>${b.type}</strong><span class="muted small">${d.name}${b.damaged ? ' - <span class="tag dirty">Damaged</span>' : ''}</span></div>
-        <div class="muted small">Income: ${fmtMoney(b.damaged ? 0 : b.baseIncome)}/turn &middot; Resale: ${fmtMoney(resaleValue(GAME, b.id))}</div>
-        <div class="row" style="margin-top:4px;">
+        <div class="row between"><strong>${b.type}</strong><span class="muted small">Level ${b.level}${b.damaged ? ' - <span class="tag dirty">Damaged</span>' : ''}</span></div>
+        <div class="muted small">Income: ${fmtMoney(b.damaged ? 0 : Math.round(b.baseIncome * businessLevelMult(b)))}/turn &middot; Protection: ${Math.round(b.protection || 0)}% &middot; Resale: ${fmtMoney(resaleValue(GAME, b.id))}</div>
+        <div class="row" style="margin-top:4px; flex-wrap:wrap; gap:4px;">
           ${b.damaged ? `<button onclick="actionRepairBusiness('${b.id}')">Repair (${fmtMoney(Math.round(b.purchasePrice * 0.25))})</button>` : ''}
+          ${upgradeCost != null ? `<button class="btn-small" onclick="actionUpgradeBusiness('${b.id}')">Upgrade to Lvl ${b.level + 1} (${fmtMoney(upgradeCost)})</button>` : '<span class="muted small">Max Level</span>'}
+          <span class="row" style="gap:4px;"><input type="number" id="bribe-${b.id}-amount" value="500" min="1" style="width:80px;" /><button class="btn-small" onclick="actionBribeBusiness('${b.id}')">Bribe (Protection)</button></span>
           <button class="btn-danger" onclick="actionSellBusiness('${b.id}')">Sell</button>
         </div>
       </div>
     `;
+    }).join('');
+    return `<div class="card" style="margin-bottom:6px;"><h3>${d.name}</h3>${rows}</div>`;
   }).join('');
 
   const launderingMethodRows = LAUNDERING_METHODS.map(m => {
@@ -93,8 +101,8 @@ function renderFinance() {
     </div>
 
     <div class="card">
-      <h2>Business Fronts - Marketplace</h2>
-      ${marketCards || '<p class="muted">No listings remaining.</p>'}
+      <h2>Business Fronts - Marketplace (${currentDistrict.name})</h2>
+      ${marketCards}
     </div>
 
     <div class="card">
@@ -140,6 +148,20 @@ function actionSellBusiness(id) {
 function actionRepairBusiness(id) {
   const res = repairBusiness(GAME, id);
   if (!res.ok) showMsg('Repair', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionUpgradeBusiness(id) {
+  const res = upgradeBusiness(GAME, id);
+  if (!res.ok) showMsg('Upgrade Business', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionBribeBusiness(id) {
+  const input = document.getElementById(`bribe-${id}-amount`);
+  const amount = Math.max(0, parseInt(input.value, 10) || 0);
+  const res = bribeBusinessProtection(GAME, id, amount);
+  if (!res.ok) showMsg('Bribe', res.reason);
   else { autosave(GAME); renderApp(); }
 }
 

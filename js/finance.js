@@ -63,7 +63,7 @@ function totalLaunderCapacity(state) {
 }
 
 function totalBusinessLaunderCapacity(state) {
-  return state.ownedBusinesses.reduce((sum, b) => sum + (b.damaged ? 0 : b.launderBonus), 0);
+  return state.ownedBusinesses.reduce((sum, b) => sum + (b.damaged ? 0 : Math.round(b.launderBonus * businessLevelMult(b))), 0);
 }
 
 function launderingTick(state) {
@@ -128,13 +128,49 @@ function buyBusiness(state, districtId, marketId) {
     launderBonus: listing.launderBonus,
     heatReduction: listing.heatReduction,
     purchasePrice: price,
-    damaged: false
+    damaged: false,
+    level: 1,
+    protection: 0
   };
   state.ownedBusinesses.push(business);
   state.businessMarket[districtId] = market.filter(b => b.id !== marketId);
   addRep(state, 'street', 2);
   state.eventLog.push(logEntry(state, `Acquired ${business.type} in ${state.districts[districtId].name} for ${fmtMoney(price)}.`, 'finance'));
   return { ok: true, business };
+}
+
+// Cost to upgrade a business from its current level to the next (null if already at max level 3).
+function businessUpgradeCost(purchasePrice, level) {
+  if (level >= 3) return null;
+  return Math.round(purchasePrice * (level === 1 ? 0.6 : 1.2));
+}
+
+function businessLevelMult(business) {
+  return 1 + (business.level - 1) * 0.5;
+}
+
+function upgradeBusiness(state, businessId) {
+  const business = state.ownedBusinesses.find(b => b.id === businessId);
+  if (!business) return { ok: false, reason: 'Not found.' };
+  const cost = businessUpgradeCost(business.purchasePrice, business.level);
+  if (cost == null) return { ok: false, reason: 'Already at the maximum level.' };
+  if (state.player.cash.clean < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} Clean Cash.` };
+  state.player.cash.clean -= cost;
+  business.level++;
+  state.eventLog.push(logEntry(state, `Upgraded ${business.type} in ${state.districts[business.districtId].name} to Level ${business.level} for ${fmtMoney(cost)}.`, 'finance'));
+  return { ok: true };
+}
+
+function bribeBusinessProtection(state, businessId, amount) {
+  const business = state.ownedBusinesses.find(b => b.id === businessId);
+  if (!business) return { ok: false, reason: 'Not found.' };
+  amount = Math.max(0, Math.floor(amount) || 0);
+  if (amount <= 0) return { ok: false, reason: 'Enter a bribe amount.' };
+  if (state.player.cash.dirty < amount) return { ok: false, reason: `Requires ${fmtMoney(amount)} in Dirty Cash.` };
+  state.player.cash.dirty -= amount;
+  business.protection = clamp((business.protection || 0) + amount * OPS_ECONOMY.protectionPerDollar, 0, 100);
+  state.eventLog.push(logEntry(state, `You bribe local officials to keep an eye on your ${business.type} in ${state.districts[business.districtId].name} for ${fmtMoney(amount)}.`, 'finance'));
+  return { ok: true };
 }
 
 function resaleValue(state, businessId) {
@@ -146,6 +182,7 @@ function resaleValue(state, businessId) {
   const repFactor = (state.player.reputation.street + state.player.reputation.gang) / 200; // 0-1
   const heatFactor = 1 - district.heat / 250; // high district heat erodes resale value
   let value = business.purchasePrice * (0.4 + controlPct / 200 + repFactor * 0.2) * heatFactor + business.baseIncome * 8;
+  value *= businessLevelMult(business);
   if (business.damaged) value *= 0.6;
   return Math.round(Math.max(0, value));
 }
@@ -177,7 +214,7 @@ function businessIncomeTick(state) {
   const districtCounts = {};
   for (const b of state.ownedBusinesses) {
     if (!b.damaged) {
-      const income = Math.round(b.baseIncome * mult);
+      const income = Math.round(b.baseIncome * mult * businessLevelMult(b));
       total += income;
     }
     districtCounts[b.districtId] = (districtCounts[b.districtId] || 0) + 1;
@@ -193,15 +230,19 @@ function businessIncomeTick(state) {
   return total;
 }
 
-// Random event hook: damage a business in districts with active gang conflict
+// Random event hook: damage a business in districts with active gang conflict.
+// Protection (bought via bribes) reduces the chance and decays each turn.
 function checkBusinessDamage(state) {
   for (const b of state.ownedBusinesses) {
-    if (b.damaged) continue;
     const district = state.districts[b.districtId];
-    if (district.heat > 50 && Math.random() < 0.05) {
-      b.damaged = true;
-      state.eventLog.push(logEntry(state, `Crossfire in ${district.name} left your ${b.type} damaged. Income halted until repaired.`, 'finance_raid'));
+    if (!b.damaged) {
+      const protectionFactor = 1 - (b.protection || 0) / 100;
+      if (district.heat > 50 && Math.random() < 0.05 * protectionFactor) {
+        b.damaged = true;
+        state.eventLog.push(logEntry(state, `Crossfire in ${district.name} left your ${b.type} damaged. Income halted until repaired.`, 'finance_raid'));
+      }
     }
+    b.protection = clamp((b.protection || 0) - 5, 0, 100);
   }
 }
 

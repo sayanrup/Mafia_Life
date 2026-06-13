@@ -7,7 +7,8 @@
    ============================================================ */
 
 // Chance per turn (when no dilemma is already pending) that a new one fires.
-const STREET_DILEMMA_CHANCE = 0.35;
+// Set to 1.0 so every turn brings at least one AI-narrated situation.
+const STREET_DILEMMA_CHANCE = 1.0;
 
 /* ---------------- Dilemma Generators ---------------- */
 

@@ -103,8 +103,6 @@ function renderTopBar() {
         ${statBar('Fed Heat', p.heat.feds, 100, 'heat-feds')}
         ${statBar('Gang Heat', p.heat.gangs, 100, 'heat-gangs')}
         ${statBar('Street Rep', p.reputation.street, 100, 'rep-street')}
-        ${statBar('Gang Rep', p.reputation.gang, 100, 'rep-gang')}
-        ${statBar('Cartel Rep', p.reputation.cartel, 100, 'rep-cartel')}
         ${statBar('Crew Loyalty', p.crew.loyalty, 100, 'loyalty')}
       </div>
     </div>
@@ -310,8 +308,8 @@ function renderCrimeModal(category) {
     const items = [
       crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', cashHeatLabel(60, 160, 0, 6), '<button class="btn-primary" onclick="actionMug()">Do It</button>'),
       ...STREET_CRIMES.map(c => {
-        const locked = !isUnlockedForRank(GAME, c.unlockRank);
-        return crimeListItem(c.icon, c.label, c.desc, cashHeatLabel(c.cashMin, c.cashMax, c.heatMin, c.heatMax), locked ? `<span class="muted small">Unlocks at ${c.unlockRank}</span>` : `<button class="btn-primary" onclick="actionStreetCrime('${c.id}')">Do It</button>`);
+        const locked = !isUnlockedForProgress(GAME, c.unlockProgress);
+        return crimeListItem(c.icon, c.label, c.desc, cashHeatLabel(c.cashMin, c.cashMax, c.heatMin, c.heatMax), locked ? `<span class="muted small">Unlocks at Street Rep/PD Heat ${c.unlockProgress}</span>` : `<button class="btn-primary" onclick="actionStreetCrime('${c.id}')">Do It</button>`);
       })
     ].join('');
     return `
@@ -363,8 +361,8 @@ function renderCrimeModal(category) {
       return `<h2>Help a Gang</h2><p class="muted">No rival crews around here to work for.</p>${closeButtonRow()}`;
     }
     const items = GANG_GIGS.map(g => {
-      const locked = !isUnlockedForRank(GAME, g.unlockRank);
-      return crimeListItem(g.icon, g.label, g.desc, cashHeatLabel(g.cashMin, g.cashMax, g.heatMin, g.heatMax), locked ? `<span class="muted small">Unlocks at ${g.unlockRank}</span>` : `<button class="btn-primary" onclick="actionGangGig('${g.id}')">Do It</button>`);
+      const locked = !isUnlockedForGangRep(GAME, g.unlockGangRep);
+      return crimeListItem(g.icon, g.label, g.desc, cashHeatLabel(g.cashMin, g.cashMax, g.heatMin, g.heatMax), locked ? `<span class="muted small">Unlocks at Gang Rep ${g.unlockGangRep}</span>` : `<button class="btn-primary" onclick="actionGangGig('${g.id}')">Do It</button>`);
     }).join('');
     return `
       <h2>Help a Gang</h2>
@@ -535,10 +533,11 @@ function renderFarmSubtab(product) {
   const limits = getOpsLimits(GAME);
 
   if (!limits.unlockedProducts.includes(product)) {
+    const nextTier = OPS_CASH_LIMITS.find(t => t.unlockedProducts.includes(product));
     return `
       <div class="card">
         <h2>${def.icon} ${def.label}</h2>
-        <p class="muted">${def.label} operations unlock at a higher rank. Keep building your reputation and territory to rank up.</p>
+        <p class="muted">${def.label} operations unlock once you've earned ${fmtMoney(nextTier ? nextTier.minDirtyCash : 0)} Dirty Cash. Keep running operations and crimes to build up your Dirty Cash.</p>
       </div>
     `;
   }
@@ -561,15 +560,23 @@ function renderFarmSubtab(product) {
   const districtCards = GAME.districts.map(d => {
     const farm = d.farms[product];
     const plotCost = getFarmPlotCost(GAME, d.id, product);
-    const progressPct = clamp((farm.growTurn / def.growTurns) * 100, 0, 100);
+    const growTurns = getFarmGrowTurns(GAME, d.id, product);
+    const progressPct = clamp((farm.growTurn / growTurns) * 100, 0, 100);
     const atPlotCap = farm.plots >= limits.maxPlotsPerDistrict;
+    const currentTierName = farm.plots > 0 ? def.facilityTiers[farm.plots - 1].name : 'None';
+    const nextTier = def.facilityTiers[farm.plots];
+    let upgradeLabel;
+    if (atPlotCap) upgradeLabel = farm.plots >= def.facilityTiers.length ? 'Max Tier' : 'Dirty Cash Limit';
+    else if (!nextTier || plotCost == null) upgradeLabel = 'Max Tier';
+    else upgradeLabel = `Build ${nextTier.name} (${fmtMoney(plotCost)})`;
+    const upgradeDisabled = atPlotCap || !nextTier || plotCost == null;
     const securityButtons = SECURITY_TIERS.map(t => `<button class="btn-small" onclick="actionHireSecurityDetail(${d.id}, '${t.id}')" title="${t.desc}">${t.label} (${fmtMoney(t.amount)})</button>`).join('');
     return `
       <div class="card">
         <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
-        <div class="row between"><span>Plots: ${farm.plots}/${limits.maxPlotsPerDistrict}</span><button class="btn-small" onclick="actionBuyFarmPlot(${d.id}, '${product}')" ${atPlotCap ? 'disabled' : ''}>${atPlotCap ? 'Rank Limit' : `Buy Plot (${fmtMoney(plotCost)})`}</button></div>
+        <div class="row between"><span>Facility: ${currentTierName} (${farm.plots}/${def.facilityTiers.length})</span><button class="btn-small" onclick="actionBuyFarmPlot(${d.id}, '${product}')" ${upgradeDisabled ? 'disabled' : ''}>${upgradeLabel}</button></div>
         ${farm.plots > 0 ? `
-          <div class="bar-label" style="margin-top:6px;"><span>Grow Cycle</span><span>${farm.growTurn}/${def.growTurns} turns</span></div>
+          <div class="bar-label" style="margin-top:6px;"><span>Grow Cycle</span><span>${farm.growTurn}/${growTurns} turns</span></div>
           <div class="bar-track"><div class="bar-fill control" style="width:${progressPct}%"></div></div>
         ` : ''}
         <div class="muted small" style="margin-top:6px;">Pending batch value: ${fmtMoney(farm.pendingValue)}</div>
@@ -580,13 +587,13 @@ function renderFarmSubtab(product) {
   }).join('');
 
   const distributorRows = DISTRIBUTOR_TYPES.map(t => {
-    const locked = !isUnlockedForRank(GAME, t.unlockRank);
+    const locked = !isUnlockedForCash(GAME, t.unlockCash);
     const owned = distCounts[t.id] || 0;
     return `
       <div class="row between" style="margin-bottom:4px;">
         <span>${t.label} <span class="muted small">(owned ${owned} &middot; ${fmtMoney(t.capacity)} cap &middot; ${fmtMoney(t.upkeep)}/turn ea)</span></span>
         ${locked
-          ? `<span class="muted small">Unlocks at ${t.unlockRank}</span>`
+          ? `<span class="muted small">Unlocks at ${fmtMoney(t.unlockCash)} Dirty Cash</span>`
           : `<span class="row"><input type="number" id="ops-distributors-${product}-${t.id}" value="1" min="1" style="width:60px;" /><button class="btn-small" onclick="actionHireDistributors('${product}', '${t.id}')">Hire (${fmtMoney(t.hireCost)} ea)</button></span>`}
       </div>
     `;
@@ -595,11 +602,11 @@ function renderFarmSubtab(product) {
   const pricePresetRow = PRICE_PRESETS.map(p => `<button class="btn-small" onclick="actionSetOperationPricePreset('${product}', ${p.mult})">${p.label} (x${p.mult.toFixed(2)})</button>`).join('');
 
   const marketingRows = MARKETING_CAMPAIGNS.map(c => {
-    const locked = !isUnlockedForRank(GAME, c.unlockRank);
+    const locked = !isUnlockedForCash(GAME, c.unlockCash);
     return `
       <div class="row between" style="margin-bottom:4px;">
         <span>${c.label} <span class="muted small">(+${Math.round(c.demandBonus * 100)}% demand, ${c.turns} turn(s), ${fmtMoney(c.cost)})</span></span>
-        ${locked ? `<span class="muted small">Unlocks at ${c.unlockRank}</span>` : `<button class="btn-small" onclick="actionLaunchMarketing('${product}', '${c.id}')">Launch</button>`}
+        ${locked ? `<span class="muted small">Unlocks at ${fmtMoney(c.unlockCash)} Dirty Cash</span>` : `<button class="btn-small" onclick="actionLaunchMarketing('${product}', '${c.id}')">Launch</button>`}
       </div>
     `;
   }).join('');
@@ -607,8 +614,8 @@ function renderFarmSubtab(product) {
   return `
     <div class="card">
       <h2>${def.icon} ${def.label}</h2>
-      <p class="muted small">Each plot matures into a batch worth ${fmtMoney(def.batchValuePerPlot)} (before equipment bonus) every ${def.growTurns} turns. Distributors then sell off the matured batch value over subsequent turns based on your set price.</p>
-      <div class="muted small">Rank ${GAME.player.rank} allows up to ${limits.maxPlotsPerDistrict} plot(s)/district, equipment tier ${limits.maxEquipmentTier}, and ${limits.maxDistributors} distributor(s) total (shared across products). Rank up to expand further.</div>
+      <p class="muted small">Build up your facility tier by tier (Terrace Grow &rarr; Rented Grow House &rarr; Garage Setup &rarr; Small Field &rarr; Mega Field). Each tier you own adds to your batch value and may speed up the grow cycle. Distributors then sell off the matured batch value over subsequent turns based on your set price.</p>
+      <div class="muted small">Your current Dirty Cash tier allows up to ${limits.maxPlotsPerDistrict} facility tier(s)/district, equipment tier ${limits.maxEquipmentTier}, and ${limits.maxDistributors} distributor(s) total (shared across products). Earn more Dirty Cash to expand further.</div>
       <div class="grid">
         <div>
           <h3>Facilities / Equipment</h3>
@@ -619,7 +626,7 @@ function renderFarmSubtab(product) {
                 <button class="btn-small" onclick="actionBuyEquipment('${product}')">Upgrade</button>
               </div>`
             : equipNext
-              ? `<div class="small muted" style="margin-top:6px;">Further upgrades unlock at a higher rank.</div>`
+              ? `<div class="small muted" style="margin-top:6px;">Further upgrades unlock at a higher Dirty Cash tier.</div>`
               : `<div class="small muted" style="margin-top:6px;">Maximum equipment tier reached.</div>`
           }
         </div>

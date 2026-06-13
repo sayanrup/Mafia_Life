@@ -36,24 +36,44 @@ function initPlayerOperations(state) {
 
 /* ---------------- Plots / Farms ---------------- */
 
+// Returns the cost of the next facility tier, or null if already maxed out.
 function getFarmPlotCost(state, districtId, product) {
   const def = FARM_TYPES[product];
   const plots = state.districts[districtId].farms[product].plots;
-  return def.plotBaseCost + plots * def.plotCostStep;
+  const tier = def.facilityTiers[plots];
+  return tier ? tier.cost : null;
+}
+
+// How many turns a grow cycle takes, based on the highest facility tier owned.
+function getFarmGrowTurns(state, districtId, product) {
+  const def = FARM_TYPES[product];
+  const farm = state.districts[districtId].farms[product];
+  if (farm.plots <= 0) return def.growTurns;
+  return def.facilityTiers[farm.plots - 1].growTurns;
+}
+
+// Sum of batch values for every facility tier owned so far.
+function getFarmBatchValue(state, districtId, product) {
+  const def = FARM_TYPES[product];
+  const farm = state.districts[districtId].farms[product];
+  let total = 0;
+  for (let i = 0; i < farm.plots; i++) total += def.facilityTiers[i].batchValue;
+  return total;
 }
 
 function buyFarmPlot(state, districtId, product) {
-  if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
   const limits = getOpsLimits(state);
-  if (!limits.unlockedProducts.includes(product)) return { ok: false, reason: `${FARM_TYPES[product].label} operations unlock at a higher rank.` };
+  if (!limits.unlockedProducts.includes(product)) return { ok: false, reason: `${FARM_TYPES[product].label} operations unlock once you've earned more Dirty Cash.` };
   const farm = state.districts[districtId].farms[product];
-  if (farm.plots >= limits.maxPlotsPerDistrict) return { ok: false, reason: `Your rank limits you to ${limits.maxPlotsPerDistrict} ${FARM_TYPES[product].label.toLowerCase()} plot(s) per district. Rank up to expand.` };
+  if (farm.plots >= limits.maxPlotsPerDistrict) return { ok: false, reason: `Your current limit is ${limits.maxPlotsPerDistrict} ${FARM_TYPES[product].label.toLowerCase()} facility tier(s) per district. Earn more Dirty Cash to expand.` };
   const cost = getFarmPlotCost(state, districtId, product);
+  if (cost == null) return { ok: false, reason: 'Already at the maximum facility tier.' };
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} in Dirty Cash.` };
   state.player.cash.dirty -= cost;
   state.districts[districtId].farms[product].plots++;
+  const tierName = FARM_TYPES[product].facilityTiers[farm.plots - 1].name;
   const district = state.districts[districtId];
-  state.eventLog.push(logEntry(state, `You acquire a new ${FARM_TYPES[product].label} plot in ${district.name} for ${fmtMoney(cost)}.`, 'operations'));
+  state.eventLog.push(logEntry(state, `You build a ${tierName} for your ${FARM_TYPES[product].label.toLowerCase()} operation in ${district.name} for ${fmtMoney(cost)}.`, 'operations'));
   return { ok: true };
 }
 
@@ -74,14 +94,13 @@ function productDistributorCount(state, product) {
 }
 
 function hireDistributors(state, product, typeId, count) {
-  if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
   const type = DISTRIBUTOR_TYPES.find(t => t.id === typeId);
   if (!type) return { ok: false, reason: 'Unknown distributor type.' };
-  if (!isUnlockedForRank(state, type.unlockRank)) return { ok: false, reason: `${type.label} unlocks at rank ${type.unlockRank}.` };
+  if (!isUnlockedForCash(state, type.unlockCash)) return { ok: false, reason: `${type.label} unlocks once you've earned ${fmtMoney(type.unlockCash)} Dirty Cash.` };
   const limits = getOpsLimits(state);
   count = Math.max(1, Math.floor(count) || 0);
   const room = limits.maxDistributors - totalDistributors(state);
-  if (room <= 0) return { ok: false, reason: `Your rank limits you to ${limits.maxDistributors} distributor(s) total. Rank up to hire more.` };
+  if (room <= 0) return { ok: false, reason: `Your current limit is ${limits.maxDistributors} distributor(s) total. Earn more Dirty Cash to hire more.` };
   count = Math.min(count, room);
   const cost = type.hireCost * count;
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} in Dirty Cash.` };
@@ -94,7 +113,6 @@ function hireDistributors(state, product, typeId, count) {
 /* ---------------- Pricing ---------------- */
 
 function setOperationPrice(state, product, priceMult) {
-  if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
   const clamped = clamp(Number(priceMult) || 1, OPS_ECONOMY.priceMinMult, OPS_ECONOMY.priceMaxMult);
   state.player.operations.prices[product] = clamped;
   state.eventLog.push(logEntry(state, `You set the street markup for ${FARM_TYPES[product].label.toLowerCase()} to ${Math.round(clamped * 100)}% of base value.`, 'operations'));
@@ -104,10 +122,9 @@ function setOperationPrice(state, product, priceMult) {
 /* ---------------- Equipment ---------------- */
 
 function buyEquipment(state, product) {
-  if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
   const limits = getOpsLimits(state);
   const tier = state.player.operations.equipment[product];
-  if (tier >= limits.maxEquipmentTier) return { ok: false, reason: `Equipment upgrades are capped at your current rank. Rank up to unlock further upgrades.` };
+  if (tier >= limits.maxEquipmentTier) return { ok: false, reason: `Equipment upgrades are capped at your current Dirty Cash tier. Earn more Dirty Cash to unlock further upgrades.` };
   const next = EQUIPMENT_TIERS[tier + 1];
   if (!next) return { ok: false, reason: 'Already at maximum equipment tier.' };
   if (state.player.cash.dirty < next.cost) return { ok: false, reason: `Requires ${fmtMoney(next.cost)} in Dirty Cash.` };
@@ -120,7 +137,6 @@ function buyEquipment(state, product) {
 /* ---------------- Operation Protection ---------------- */
 
 function bribeOpProtection(state, districtId, amount) {
-  if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
   amount = Math.max(0, Math.floor(amount) || 0);
   if (amount <= 0) return { ok: false, reason: 'Enter a bribe amount.' };
   if (state.player.cash.dirty < amount) return { ok: false, reason: `Requires ${fmtMoney(amount)} in Dirty Cash.` };
@@ -142,10 +158,9 @@ function hireSecurityDetail(state, districtId, tierId) {
 /* ---------------- Marketing Campaigns (temporary demand boosts) ---------------- */
 
 function launchMarketingCampaign(state, product, campaignId) {
-  if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
   const campaign = MARKETING_CAMPAIGNS.find(c => c.id === campaignId);
   if (!campaign) return { ok: false, reason: 'Unknown campaign.' };
-  if (!isUnlockedForRank(state, campaign.unlockRank)) return { ok: false, reason: `${campaign.label} unlocks at rank ${campaign.unlockRank}.` };
+  if (!isUnlockedForCash(state, campaign.unlockCash)) return { ok: false, reason: `${campaign.label} unlocks once you've earned ${fmtMoney(campaign.unlockCash)} Dirty Cash.` };
   if (state.player.cash.dirty < campaign.cost) return { ok: false, reason: `Requires ${fmtMoney(campaign.cost)} in Dirty Cash.` };
   state.player.cash.dirty -= campaign.cost;
   state.player.operations.marketing[product] = { campaignId: campaign.id, turnsLeft: campaign.turns };
@@ -191,8 +206,8 @@ function farmTick(state) {
       district.heat = clamp(district.heat + farm.plots, 0, 100);
       addHeat(state, 'pd', Math.max(0, Math.round(farm.plots / 2) - Math.floor((district.opProtection || 0) / 20)));
 
-      if (farm.growTurn >= def.growTurns) {
-        const batchValue = Math.round(farm.plots * def.batchValuePerPlot * equipMult);
+      if (farm.growTurn >= getFarmGrowTurns(state, district.id, product)) {
+        const batchValue = Math.round(getFarmBatchValue(state, district.id, product) * equipMult);
         farm.pendingValue += batchValue;
         farm.growTurn = 0;
         narrate(state, 'farm_maturity', { vars: { district: district.name, product: def.label, amount: fmtMoney(batchValue) } });
