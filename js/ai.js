@@ -1,13 +1,17 @@
 /* ============================================================
    UNDERWORLD - AI Narrative Integration (optional)
-   Uses the Anthropic API directly from the browser if a key is
-   configured in Settings. Falls back silently on any failure.
+   Uses OpenRouter (OpenAI-compatible) from the browser if a key
+   is configured in Settings. Falls back silently on any failure.
    All numeric outcomes are deterministic and computed elsewhere -
    this module only supplies flavor text.
    ============================================================ */
 
-const AI_MODEL = 'claude-sonnet-4-6';
-const AI_ENDPOINT = 'https://api.anthropic.com/v1/messages';
+const AI_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+
+function getAIModel(settings) {
+  if (settings.aiModel === 'custom') return (settings.aiCustomModel || '').trim();
+  return settings.aiModel || 'openrouter/auto:free';
+}
 
 function buildStateSummary(state) {
   const era = state.meta.era === 'custom' ? state.meta.customEraText : (ERAS[state.meta.era] ? ERAS[state.meta.era].label : state.meta.era);
@@ -33,14 +37,36 @@ function recentLogLines(state, n) {
   return state.eventLog.slice(-n).map(e => e.text);
 }
 
+/* ---------------- Token Usage / Cost Tracking ---------------- */
+
+function recordAIUsage(settings, usage) {
+  if (!usage) return;
+  if (!settings.aiUsage) settings.aiUsage = { inputTokens: 0, outputTokens: 0 };
+  settings.aiUsage.inputTokens += usage.prompt_tokens || 0;
+  settings.aiUsage.outputTokens += usage.completion_tokens || 0;
+  saveSettings(settings);
+}
+
+function estimateAICost(settings) {
+  const usage = settings.aiUsage || { inputTokens: 0, outputTokens: 0 };
+  const def = AI_MODEL_OPTIONS.find(m => m.id === settings.aiModel);
+  if (!def || def.inputCost === null || def.outputCost === null) return null;
+  const cost = (usage.inputTokens / 1e6) * def.inputCost + (usage.outputTokens / 1e6) * def.outputCost;
+  return { cost, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens };
+}
+
 /**
- * Requests a short narrative/dialogue snippet from the Anthropic API.
+ * Requests a short narrative/dialogue snippet from OpenRouter.
  * callback(text|null) is always called - null on missing key, network
  * failure, or malformed response so callers can fall back gracefully.
  */
 function requestAINarrative(state, category, extra, callback) {
-  const apiKey = state.settings.apiKey;
+  const settings = state.settings;
+  const apiKey = settings.apiKey;
   if (!apiKey) { callback(null); return; }
+
+  const model = getAIModel(settings);
+  if (!model) { callback(null); return; }
 
   const summary = buildStateSummary(state);
   const recent = recentLogLines(state, 5);
@@ -61,15 +87,15 @@ function requestAINarrative(state, category, extra, callback) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
+      'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: AI_MODEL,
+      model,
       max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }]
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
     })
   })
     .then(res => {
@@ -77,20 +103,24 @@ function requestAINarrative(state, category, extra, callback) {
       return res.json();
     })
     .then(data => {
-      const block = data && data.content && data.content[0];
-      if (!block || !block.text) { callback(null); return; }
+      recordAIUsage(settings, data && data.usage);
+      const message = data && data.choices && data.choices[0] && data.choices[0].message;
+      const text = message && message.content;
+      if (!text) { callback(null); return; }
       let parsed;
       try {
-        parsed = JSON.parse(block.text);
+        parsed = JSON.parse(text);
       } catch (e) {
         // Model may wrap JSON in prose; try to extract the first {...} block
-        const match = block.text.match(/\{[\s\S]*\}/);
+        const match = text.match(/\{[\s\S]*\}/);
         if (match) {
           try { parsed = JSON.parse(match[0]); } catch (e2) { parsed = null; }
         }
       }
       if (parsed && typeof parsed.text === 'string' && parsed.text.trim()) {
         callback(parsed.text.trim());
+      } else if (typeof text === 'string' && text.trim()) {
+        callback(text.trim());
       } else {
         callback(null);
       }
@@ -98,21 +128,20 @@ function requestAINarrative(state, category, extra, callback) {
     .catch(() => callback(null));
 }
 
-function testAPIKey(apiKey, callback) {
+function testAPIKey(apiKey, modelId, callback) {
   fetch(AI_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
+      'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: AI_MODEL,
+      model: modelId,
       max_tokens: 16,
       messages: [{ role: 'user', content: 'Reply with the single word: OK' }]
     })
   })
-    .then(res => callback(res.ok, res.status))
-    .catch(() => callback(false, 0));
+    .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
+    .then(({ ok, status, data }) => callback(ok, status, data && data.usage))
+    .catch(() => callback(false, 0, null));
 }

@@ -14,7 +14,7 @@ function doMugging(state) {
   if (result.result === 'success') {
     const gain = Math.round((60 + Math.random() * 100) * hustlerBonus);
     addCash(state, gain, 0);
-    addRep(state, 'street', state.player.originId === 'hustler' ? 2 : 1.5);
+    addRep(state, 'street', state.player.originId === 'hustler' ? 3.5 : 3);
     narrate(state, 'post_crime_success');
     state.eventLog.push(logEntry(state, `Mugging in ${district.name}: +${fmtMoney(gain)} dirty cash.`, 'activity'));
   } else if (result.result === 'partial') {
@@ -32,9 +32,48 @@ function doMugging(state) {
   }
 }
 
+/* ---------------- Generic Street Crimes (data-driven, STREET_CRIMES) ---------------- */
+
+function doStreetCrime(state, crimeId) {
+  const def = STREET_CRIMES.find(c => c.id === crimeId);
+  if (!def) return { ok: false, reason: 'Unknown crime.' };
+  if (!isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${def.label} unlocks at rank ${def.unlockRank}.` };
+
+  const district = state.districts[state.player.currentDistrict];
+  const result = resolveScuffle(state, def.difficulty);
+  const hustlerBonus = state.player.originId === 'hustler' ? 1.2 : 1.0;
+  const span = def.cashMax - def.cashMin;
+  const heatSpan = def.heatMax - def.heatMin;
+
+  if (result.result === 'success') {
+    const gain = Math.round((def.cashMin + Math.random() * span) * hustlerBonus);
+    addCash(state, gain, 0);
+    addRep(state, 'street', def.repGain * (state.player.originId === 'hustler' ? 1.2 : 1));
+    const heat = Math.round(def.heatMin + Math.random() * heatSpan * 0.5);
+    if (heat > 0) addHeat(state, 'pd', heat);
+    narrate(state, 'post_crime_success');
+    state.eventLog.push(logEntry(state, `${def.label} in ${district.name}: +${fmtMoney(gain)} dirty cash${heat > 0 ? ` (PD Heat +${heat})` : ''}.`, 'activity'));
+  } else if (result.result === 'partial') {
+    const gain = Math.round((def.cashMin + Math.random() * span) * 0.4 * hustlerBonus);
+    addCash(state, gain, 0);
+    const heat = Math.round(def.heatMin + Math.random() * heatSpan);
+    addHeat(state, 'pd', heat);
+    narrate(state, 'post_crime_partial');
+    state.eventLog.push(logEntry(state, `${def.label} in ${district.name}: +${fmtMoney(gain)} dirty cash, but it drew attention (PD Heat +${heat}).`, 'activity'));
+  } else {
+    addHeat(state, 'pd', def.heatMax);
+    applyInjury(state, 'minor');
+    addRep(state, 'street', -1);
+    narrate(state, 'post_crime_fail');
+    state.eventLog.push(logEntry(state, `${def.label} in ${district.name} went wrong. PD Heat +${def.heatMax}.`, 'activity'));
+  }
+  return { ok: true };
+}
+
 /* ---------------- Heists ---------------- */
 
 function doHeist(state) {
+  if (!isUnlockedForRank(state, HEIST_UNLOCK_RANK)) return { ok: false, reason: `Heists unlock at rank ${HEIST_UNLOCK_RANK}.` };
   const district = state.districts[state.player.currentDistrict];
   const difficulty = 25 + Math.round(district.heat / 2);
   const result = resolveScuffle(state, difficulty);
@@ -42,7 +81,8 @@ function doHeist(state) {
   if (result.result === 'success') {
     const gain = Math.round(1200 + Math.random() * 2800 + state.player.crew.size * 100);
     addCash(state, gain, 0);
-    addRep(state, 'street', 4);
+    addRep(state, 'street', 6);
+    addRep(state, 'gang', 10);
     addHeat(state, 'pd', 6);
     narrate(state, 'post_crime_success');
     state.eventLog.push(logEntry(state, `Heist in ${district.name}: +${fmtMoney(gain)} dirty cash. PD Heat +6.`, 'activity'));
@@ -82,8 +122,8 @@ function doHit(state, targetGangId) {
     } else {
       const other = Object.keys(district.control).find(g => g !== targetGangId);
       if (other) taken = shiftControl(state, district.id, targetGangId, other, shift);
-      addRep(state, 'gang', 3);
     }
+    addRep(state, 'gang', 5);
     target.relationToPlayer = clamp(target.relationToPlayer - 10, -100, 100);
     addHeat(state, 'gangs', 4);
     narrate(state, 'post_combat_win');
@@ -100,6 +140,41 @@ function doHit(state, targetGangId) {
     addHeat(state, 'gangs', 10);
     narrate(state, 'post_combat_loss');
     state.eventLog.push(logEntry(state, `The hit on the ${target.name} backfires badly. Gang Heat +10.`, 'activity'));
+  }
+  return { ok: true };
+}
+
+/* ---------------- Help a Gang (gig work, no membership required) ---------------- */
+
+function doGangGig(state, gigId) {
+  const def = GANG_GIGS.find(g => g.id === gigId);
+  if (!def) return { ok: false, reason: 'Unknown job.' };
+  if (!isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${def.label} unlocks at rank ${def.unlockRank}.` };
+
+  const district = state.districts[state.player.currentDistrict];
+  const gangsHere = Object.entries(district.control).map(([gid]) => state.gangs[gid]).filter(g => !g.isPlayerGang);
+  if (!gangsHere.length) return { ok: false, reason: 'No gang here to work for.' };
+  const gang = gangsHere[Math.floor(Math.random() * gangsHere.length)];
+
+  const result = resolveScuffle(state, def.difficulty);
+  const span = def.cashMax - def.cashMin;
+  const heatSpan = def.heatMax - def.heatMin;
+
+  if (result.result !== 'fail') {
+    const mult = result.result === 'success' ? 1 : 0.5;
+    const gain = Math.round((def.cashMin + Math.random() * span) * mult);
+    addCash(state, gain, 0);
+    addRep(state, 'gang', def.gangRepGain * mult);
+    gang.relationToPlayer = clamp(gang.relationToPlayer + def.relationGain * mult, -100, 100);
+    const heat = Math.round(def.heatMin + Math.random() * heatSpan * 0.5);
+    if (heat > 0) addHeat(state, 'pd', heat);
+    narrate(state, 'post_crime_success');
+    state.eventLog.push(logEntry(state, `${def.label} for the ${gang.name} in ${district.name}: +${fmtMoney(gain)} cash.${heat > 0 ? ` (PD Heat +${heat})` : ''}`, 'gang'));
+  } else {
+    addHeat(state, 'pd', def.heatMax);
+    gang.relationToPlayer = clamp(gang.relationToPlayer - 2, -100, 100);
+    narrate(state, 'post_crime_fail');
+    state.eventLog.push(logEntry(state, `${def.label} for the ${gang.name} went wrong. PD Heat +${def.heatMax}.`, 'gang'));
   }
   return { ok: true };
 }
@@ -131,7 +206,7 @@ function startExtortion(state) {
     return { ok: true };
   }
   state.player.extortionRackets.push({ districtId, level: 1 });
-  addRep(state, 'street', 2);
+  addRep(state, 'street', 3);
   narrate(state, 'post_crime_success');
   state.eventLog.push(logEntry(state, `You've set up an extortion racket in ${state.districts[districtId].name}.`, 'activity'));
   return { ok: true };

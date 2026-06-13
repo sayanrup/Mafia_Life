@@ -25,6 +25,20 @@ function buyWeapons(state, tier, quantity) {
   return { ok: true };
 }
 
+function sellWeapons(state, tier, quantity) {
+  const t = WEAPON_TIERS[tier];
+  if (!t || quantity <= 0) return { ok: false, reason: 'Invalid request.' };
+  const owned = state.player.armory[tier] || 0;
+  const actual = Math.min(quantity, owned);
+  if (actual <= 0) return { ok: false, reason: `You don't own any ${t.label}.` };
+  const refund = Math.round(t.unitCost * WEAPON_SELL_MULT * actual);
+  state.player.armory[tier] -= actual;
+  state.player.cash.dirty += refund;
+  recalcEquippedWeaponTier(state);
+  state.eventLog.push(logEntry(state, `Sold ${actual}x ${t.label} for ${fmtMoney(refund)}.`, 'armory'));
+  return { ok: true };
+}
+
 function recalcEquippedWeaponTier(state) {
   let best = 0;
   for (let tier = WEAPON_TIERS.length - 1; tier >= 0; tier--) {
@@ -58,6 +72,43 @@ function degradeArmory(state, severity) {
   recalcEquippedWeaponTier(state);
 }
 
+/* ---------------- Vehicles (Distribution Fleet) ---------------- */
+
+function totalVehicleCapacity(state) {
+  return (state.player.vehicles || []).reduce((sum, v) => {
+    const def = VEHICLE_TYPES.find(t => t.id === v.typeId);
+    return sum + (def ? def.cargoCapacity : 0);
+  }, 0);
+}
+
+function totalVehicleUpkeep(state) {
+  return (state.player.vehicles || []).reduce((sum, v) => {
+    const def = VEHICLE_TYPES.find(t => t.id === v.typeId);
+    return sum + (def ? def.upkeep : 0);
+  }, 0);
+}
+
+function buyVehicle(state, typeId) {
+  const def = VEHICLE_TYPES.find(v => v.id === typeId);
+  if (!def) return { ok: false, reason: 'Unknown vehicle.' };
+  if (state.player.cash.dirty < def.cost) return { ok: false, reason: `Requires ${fmtMoney(def.cost)} in Dirty Cash.` };
+  state.player.cash.dirty -= def.cost;
+  state.player.vehicles.push({ id: 'veh_' + Math.random().toString(36).slice(2, 8), typeId: def.id });
+  state.eventLog.push(logEntry(state, `Picked up a ${def.label} for ${fmtMoney(def.cost)} to help move product.`, 'crew'));
+  return { ok: true };
+}
+
+function sellVehicle(state, vehicleId) {
+  const idx = state.player.vehicles.findIndex(v => v.id === vehicleId);
+  if (idx === -1) return { ok: false, reason: 'Vehicle not found.' };
+  const def = VEHICLE_TYPES.find(t => t.id === state.player.vehicles[idx].typeId);
+  const refund = Math.round(def.cost * def.resaleMult);
+  state.player.vehicles.splice(idx, 1);
+  state.player.cash.dirty += refund;
+  state.eventLog.push(logEntry(state, `Sold a ${def.label} for ${fmtMoney(refund)}.`, 'crew'));
+  return { ok: true };
+}
+
 /* ---------------- Recruiting & Upkeep ---------------- */
 
 function recruitCrew(state, count) {
@@ -75,7 +126,7 @@ function recruitCrew(state, count) {
 }
 
 function totalUpkeepCost(state) {
-  return state.player.crew.size * UPKEEP_PER_MEMBER;
+  return state.player.crew.size * UPKEEP_PER_MEMBER + totalVehicleUpkeep(state);
 }
 
 function payUpkeep(state, pay) {
@@ -114,6 +165,7 @@ function loyaltyTurnTick(state) {
 }
 
 function triggerCrewBetrayal(state) {
+  narrate(state, 'loyalty_betrayal');
   const roll = Math.random();
   if (roll < 0.34) {
     const stolen = Math.round(state.player.cash.dirty * (0.05 + Math.random() * 0.15));
@@ -166,6 +218,7 @@ function assignLieutenant(state, ltId, assignment) {
 }
 
 function triggerLieutenantBetrayal(state, lt) {
+  narrate(state, 'loyalty_betrayal');
   const roll = Math.random();
   lt.assignment = null;
   const idx = state.player.lieutenants.findIndex(l => l.id === lt.id);
@@ -192,8 +245,12 @@ function applyLieutenantBonuses(state) {
     const effectiveness = lt.loyalty / 100;
     if (lt.assignment.type === 'district') {
       const d = state.districts[lt.assignment.districtId];
-      if (d && d.operations.lab.tier > 0 && !d.operations.lab.raided) {
-        addCash(state, Math.round(OPERATION_DEFS.lab.tiers[d.operations.lab.tier].income * 0.15 * effectiveness), 0);
+      if (d) {
+        const routeTier = d.operations.route.tier;
+        if (routeTier > 0 && !d.operations.route.raided) {
+          const throughput = OPERATION_DEFS.route.tiers[routeTier].throughput;
+          addCash(state, Math.round(throughput * 3 * effectiveness), 0);
+        }
       }
     } else if (lt.assignment.type === 'smuggling') {
       const cap = getStashCapacity(state);

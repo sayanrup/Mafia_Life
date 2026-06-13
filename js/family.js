@@ -36,6 +36,20 @@ function initFamily(state) {
   });
 }
 
+/* ---------------- Family Reveal ----------------
+   The family/cousins don't show up until the player has either
+   reached Capo+ rank or joined/founded a gang. */
+function checkFamilyReveal(state) {
+  if (state.meta.familyRevealed) return;
+  if (state.family && state.family.length > 0) { state.meta.familyRevealed = true; return; }
+  const inGang = state.player.affiliation && state.player.affiliation.type !== 'solo';
+  if (rankIndex(state.player.rank) >= rankIndex('Capo') || inGang) {
+    initFamily(state);
+    state.meta.familyRevealed = true;
+    state.eventLog.push(logEntry(state, `Word reaches your relatives that you've made a name for yourself. Family starts showing up around ${state.meta.cityName}.`, 'family'));
+  }
+}
+
 function familyMembersAlive(state) {
   return state.family.filter(f => f.alive);
 }

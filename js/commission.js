@@ -7,7 +7,7 @@ function canAccessCommission(state) {
 }
 
 function getCouncilGangs(state) {
-  return Object.values(state.gangs).filter(g => !g.isPlayerGang);
+  return Object.values(state.gangs).filter(g => !g.isPlayerGang && !g.eliminated);
 }
 
 function acceptanceThreshold(personality, action) {

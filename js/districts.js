@@ -48,7 +48,6 @@ function initWorld(state) {
       control,
       heat: 0,
       operations: {
-        lab: { tier: 0, raided: false },
         stash: { tier: 0, raided: false },
         route: { tier: 0, raided: false }
       },
@@ -124,7 +123,7 @@ function joinGang(state, gangId) {
 }
 
 function canFoundGang(state) {
-  return state.player.reputation.gang >= 50 && state.player.affiliation.type === 'solo';
+  return state.player.reputation.gang >= 30 && state.player.affiliation.type === 'solo';
 }
 
 function foundGang(state, gangName) {

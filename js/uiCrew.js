@@ -8,6 +8,7 @@ function renderCrew() {
     ${renderCrewStatsCard()}
     ${renderLieutenantsCard()}
     ${renderArmoryCard()}
+    ${renderVehiclesCard()}
   `;
 }
 
@@ -29,12 +30,12 @@ function renderAffiliationCard() {
       <h3>Join an Existing Gang (requires Gang Rep 15+)</h3>
       ${gangRows}
       <hr class="sep" />
-      <h3>Found Your Own Gang (requires Gang Rep 50+)</h3>
+      <h3>Found Your Own Gang (requires Gang Rep 30+)</h3>
       <div class="row">
         <input type="text" id="found-gang-name" placeholder="Gang name" />
         <button onclick="actionFoundGang()" ${canFoundGang(GAME) ? '' : 'disabled'}>Found Gang</button>
       </div>
-      ${!canFoundGang(GAME) ? `<p class="small muted">Current Gang Rep: ${Math.round(p.reputation.gang)} / 50</p>` : ''}
+      ${!canFoundGang(GAME) ? `<p class="small muted">Current Gang Rep: ${Math.round(p.reputation.gang)} / 30</p>` : ''}
     `;
   } else {
     const gang = GAME.gangs[p.affiliation.gangId];
@@ -118,10 +119,54 @@ function renderArmoryCard() {
         <input type="number" id="buy-weapon-${t.id}" value="1" min="1" style="width:80px;" />
         <button onclick="actionBuyWeapons(${t.id})">Buy @ ${fmtMoney(t.unitCost)} each</button>
       </div>
+      <div class="row" style="margin-top:6px;">
+        <input type="number" id="armory-sell-${t.id}" value="1" min="1" style="width:80px;" />
+        <button class="btn-small" onclick="actionSellWeapons(${t.id})" ${GAME.player.armory[t.id] > 0 ? '' : 'disabled'}>Sell @ ${fmtMoney(Math.round(t.unitCost * WEAPON_SELL_MULT))} each</button>
+      </div>
     </div>
   `).join('');
 
   return `<div class="card"><h2>Armory</h2><p class="muted small">Equip your crew (size ${GAME.player.crew.size}) with enough units of a tier to raise your combat bonus.</p>${rows}</div>`;
+}
+
+function renderVehiclesCard() {
+  const owned = GAME.player.vehicles || [];
+  const totalCargo = totalVehicleCapacity(GAME);
+  const totalUpkeep = totalVehicleUpkeep(GAME);
+
+  const ownedRows = owned.length
+    ? owned.map(v => {
+        const def = VEHICLE_TYPES.find(t => t.id === v.typeId);
+        return `
+          <div class="row between" style="margin-bottom:4px;">
+            <span>${def.label} <span class="muted small">(${fmtMoney(def.cargoCapacity)} cargo, ${fmtMoney(def.upkeep)}/turn upkeep)</span></span>
+            <button class="btn-small" onclick="actionSellVehicle('${v.id}')">Sell @ ${fmtMoney(Math.round(def.cost * def.resaleMult))}</button>
+          </div>
+        `;
+      }).join('')
+    : '<p class="muted">No vehicles owned - distributors are limited to moving product on foot.</p>';
+
+  const buyRows = VEHICLE_TYPES.map(t => `
+    <div class="row between" style="margin-bottom:4px;">
+      <span>${t.label} <span class="muted small">(${fmtMoney(t.cargoCapacity)} cargo, ${t.crewCapacity} crew, ${fmtMoney(t.upkeep)}/turn upkeep)</span></span>
+      <button class="btn-small" onclick="actionBuyVehicle('${t.id}')" ${GAME.player.cash.dirty >= t.cost ? '' : 'disabled'}>Buy @ ${fmtMoney(t.cost)}</button>
+    </div>
+  `).join('');
+
+  return `
+    <div class="card">
+      <h2>Vehicles (Distribution Fleet)</h2>
+      <p class="muted small">Vehicles add cargo capacity that's shared across your distributors, letting them move far more product per turn than on foot.</p>
+      <div class="row between"><span>Total Cargo Capacity</span><span>${fmtMoney(totalCargo)}</span></div>
+      <div class="row between"><span>Total Vehicle Upkeep</span><span>${fmtMoney(totalUpkeep)}/turn</span></div>
+      <hr class="sep" />
+      <h3>Owned</h3>
+      ${ownedRows}
+      <hr class="sep" />
+      <h3>Buy</h3>
+      ${buyRows}
+    </div>
+  `;
 }
 
 /* ---------------- Action Handlers ---------------- */

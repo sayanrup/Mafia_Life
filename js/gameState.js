@@ -3,11 +3,9 @@
    Canonical state shape, new-game factory, persistence layer.
    ============================================================ */
 
-const ACTIONS_PER_TURN = 3;
-const SAVE_PREFIX = 'underworld_save_';
+const SAVE_KEY = 'underworld_save';
 const AUTOSAVE_KEY = 'underworld_autosave';
 const SETTINGS_KEY = 'underworld_settings';
-const SAVE_SLOTS = ['slot1', 'slot2', 'slot3'];
 
 let GAME = null; // the live game state, set by main.js
 
@@ -27,7 +25,8 @@ function createNewGame(charData) {
       customEraText: charData.era === 'custom' ? charData.customEra : '',
       cityName: cityName,
       gameOver: false,
-      gameOverReason: null
+      gameOverReason: null,
+      familyRevealed: false
     },
     player: {
       name: charData.name.trim() || 'Unnamed',
@@ -56,7 +55,9 @@ function createNewGame(charData) {
       extortionRackets: [], // {districtId, level}
       affiliation: { type: 'solo', gangId: null }, // 'solo' | 'member' | 'founder'
       currentDistrict: 0,
-      actionsRemaining: ACTIONS_PER_TURN
+      actionCounts: {}, // actionKey -> uses this turn (reset on endTurn)
+      vehicles: [], // {id, typeId} - distribution fleet
+      operations: null // set by initPlayerOperations below
     },
     districts: [],
     gangs: {},
@@ -66,12 +67,13 @@ function createNewGame(charData) {
     businessMarket: {}, // districtId -> [businesses available]
     ownedBusinesses: [], // {id, districtId, type, income, damaged, purchasePrice}
     commission: { unlocked: false, relations: {}, proposals: [], warTargets: [] },
+    criminalWorld: { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 },
     eventLog: [],
     settings: loadSettings()
   };
 
   initWorld(state);
-  initFamily(state);
+  initPlayerOperations(state);
   initLawEnforcement(state);
 
   state.eventLog.push(logEntry(state, `You arrive in ${cityName}. The ${ERAS[state.meta.era] ? ERAS[state.meta.era].label : state.meta.customEraText} city hums with opportunity and danger alike.`, 'system'));
@@ -85,12 +87,22 @@ function logEntry(state, text, category) {
 
 /* ---------------- Settings (separate from save slots) ---------------- */
 
+function defaultSettings() {
+  return {
+    apiKey: '',
+    aiModel: 'openrouter/auto:free',
+    aiCustomModel: '',
+    aiUsage: { inputTokens: 0, outputTokens: 0 },
+    autosaveEnabled: true
+  };
+}
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return Object.assign(defaultSettings(), JSON.parse(raw));
   } catch (e) { /* ignore */ }
-  return { apiKey: '', autosaveEnabled: true };
+  return defaultSettings();
 }
 
 function saveSettings(settings) {
@@ -115,12 +127,41 @@ function autosave(state) {
   }
 }
 
-function loadAutosave() {
-  const raw = localStorage.getItem(AUTOSAVE_KEY);
-  return raw ? deserializeState(raw) : null;
+/* ---------------- Save Migration ---------------- */
+// Brings older saves up to date with newer game data (new fields, rebalanced
+// business income/laundering values, etc.) so existing saves keep working.
+
+function migrateState(state) {
+  if (!state || !state.player) return state;
+
+  if (!Array.isArray(state.player.vehicles)) {
+    state.player.vehicles = [];
+  }
+
+  if (!state.criminalWorld) {
+    state.criminalWorld = { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 };
+  }
+
+  if (Array.isArray(state.ownedBusinesses)) {
+    for (const b of state.ownedBusinesses) {
+      const def = BUSINESS_TYPES.find(t => t.type === b.type);
+      if (def) {
+        b.baseIncome = def.baseIncome;
+        b.launderBonus = def.launderBonus;
+        b.heatReduction = def.heatReduction;
+      }
+    }
+  }
+
+  return state;
 }
 
-function saveToSlot(state, slotId) {
+function loadAutosave() {
+  const raw = localStorage.getItem(AUTOSAVE_KEY);
+  return raw ? migrateState(deserializeState(raw)) : null;
+}
+
+function saveGame(state) {
   const meta = {
     name: state.player.name,
     rank: state.player.rank,
@@ -129,48 +170,18 @@ function saveToSlot(state, slotId) {
     cash: state.player.cash.dirty + state.player.cash.clean,
     savedAt: Date.now()
   };
-  localStorage.setItem(SAVE_PREFIX + slotId, serializeState(state));
-  localStorage.setItem(SAVE_PREFIX + slotId + '_meta', JSON.stringify(meta));
+  localStorage.setItem(SAVE_KEY, serializeState(state));
+  localStorage.setItem(SAVE_KEY + '_meta', JSON.stringify(meta));
 }
 
-function loadFromSlot(slotId) {
-  const raw = localStorage.getItem(SAVE_PREFIX + slotId);
-  return raw ? deserializeState(raw) : null;
+function loadGame() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  return raw ? migrateState(deserializeState(raw)) : null;
 }
 
-function getSlotMeta(slotId) {
-  const raw = localStorage.getItem(SAVE_PREFIX + slotId + '_meta');
+function getSaveMeta() {
+  const raw = localStorage.getItem(SAVE_KEY + '_meta');
   return raw ? JSON.parse(raw) : null;
-}
-
-function deleteSlot(slotId) {
-  localStorage.removeItem(SAVE_PREFIX + slotId);
-  localStorage.removeItem(SAVE_PREFIX + slotId + '_meta');
-}
-
-function exportStateToFile(state) {
-  const blob = new Blob([serializeState(state)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `underworld_${state.player.name.replace(/\s+/g, '_')}_day${state.meta.day}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function importStateFromFile(file, callback) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const state = deserializeState(e.target.result);
-      callback(state, null);
-    } catch (err) {
-      callback(null, err);
-    }
-  };
-  reader.readAsText(file);
 }
 
 /* ---------------- Derived Helpers ---------------- */

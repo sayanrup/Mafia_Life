@@ -1,72 +1,76 @@
 /* ============================================================
-   UNDERWORLD - UI: Settings (API key, Saves, Export/Import, Reset)
+   UNDERWORLD - UI: Settings (AI Narrative, Save, Load, Exit, Reset)
    ============================================================ */
 
 function renderSettings() {
   const settings = GAME.settings;
+  const saveMeta = getSaveMeta();
+  const saveInfo = saveMeta
+    ? `${saveMeta.name} - ${saveMeta.rank} - Day ${saveMeta.day} - ${fmtMoney(saveMeta.cash)} - ${new Date(saveMeta.savedAt).toLocaleString()}`
+    : 'No save yet.';
 
-  const slotRows = SAVE_SLOTS.map(slot => {
-    const meta = getSlotMeta(slot);
-    const info = meta
-      ? `${meta.name} - ${meta.rank} - Day ${meta.day} - ${fmtMoney(meta.cash)} - ${new Date(meta.savedAt).toLocaleString()}`
-      : 'Empty';
-    return `
-      <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong>${slot.toUpperCase()}</strong><span class="muted small">${info}</span></div>
-        <div class="row" style="margin-top:6px;">
-          <button onclick="actionSaveToSlot('${slot}')">Save Here</button>
-          <button onclick="actionLoadFromSlot('${slot}')" ${meta ? '' : 'disabled'}>Load</button>
-          <button class="btn-danger" onclick="actionDeleteSlot('${slot}')" ${meta ? '' : 'disabled'}>Delete</button>
-        </div>
-      </div>
-    `;
-  }).join('');
+  const modelOptions = AI_MODEL_OPTIONS.map(m => `<option value="${m.id}" ${settings.aiModel === m.id ? 'selected' : ''}>${m.label}${m.inputCost !== null ? ` ($${m.inputCost.toFixed(2)}/M in, $${m.outputCost.toFixed(2)}/M out)` : ''}</option>`).join('');
+
+  const usage = settings.aiUsage || { inputTokens: 0, outputTokens: 0 };
+  const costEstimate = estimateAICost(settings);
+  const costLine = costEstimate
+    ? `Estimated spend: ~$${costEstimate.cost.toFixed(4)} (${usage.inputTokens.toLocaleString()} input / ${usage.outputTokens.toLocaleString()} output tokens)`
+    : `Tokens used so far: ${usage.inputTokens.toLocaleString()} input / ${usage.outputTokens.toLocaleString()} output (cost varies by model)`;
 
   return `
     <div class="card">
       <h2>AI Narrative (optional)</h2>
-      <p class="muted small">If set, Underworld will occasionally request short narrative flavor from the Anthropic API using model "claude-sonnet-4-6". Your key is stored only in this browser's localStorage and sent directly to api.anthropic.com. All game mechanics remain deterministic - this only affects flavor text. Leave blank to use the built-in offline narrative pool.</p>
+      <p class="muted small">If set, Underworld will occasionally request short narrative flavor from an AI model via OpenRouter. Your key is stored only in this browser's localStorage and sent directly to openrouter.ai. All game mechanics remain deterministic - this only affects flavor text. Leave the key blank to use the built-in offline narrative pool.</p>
       <div class="field">
-        <label>Anthropic API Key</label>
-        <input type="password" id="api-key-input" value="${settings.apiKey || ''}" placeholder="sk-ant-..." />
+        <label>OpenRouter API Key</label>
+        <input type="password" id="api-key-input" value="${settings.apiKey || ''}" placeholder="sk-or-..." />
       </div>
+      <div class="field">
+        <label>Model</label>
+        <select id="ai-model-select" onchange="actionAIModelChange()">${modelOptions}</select>
+      </div>
+      ${settings.aiModel === 'custom' ? `
+        <div class="field">
+          <label>Custom Model ID</label>
+          <input type="text" id="ai-custom-model" value="${settings.aiCustomModel || ''}" placeholder="e.g. anthropic/claude-3.5-haiku" />
+        </div>
+      ` : ''}
+      <div class="muted small" style="margin-bottom:8px;">${costLine}</div>
       <div class="row">
-        <button onclick="actionSaveApiKey()">Save Key</button>
+        <button onclick="actionSaveApiKey()">Save Settings</button>
         <button onclick="actionTestApiKey()">Test Key</button>
         <button class="btn-danger" onclick="actionClearApiKey()">Clear Key</button>
       </div>
     </div>
 
     <div class="card">
-      <h2>Save Slots</h2>
-      ${slotRows}
-    </div>
-
-    <div class="card">
-      <h2>Export / Import</h2>
+      <h2>Game</h2>
+      <p class="muted small">Last save: ${saveInfo}</p>
       <div class="row">
-        <button onclick="exportStateToFile(GAME)">Export Save (.json)</button>
-        <label class="btn" style="cursor:pointer;">
-          Import Save (.json)
-          <input type="file" accept=".json,application/json" style="display:none;" onchange="actionImportFile(this)" />
-        </label>
+        <button onclick="actionSaveGame()">Save</button>
+        <button onclick="actionLoadGame()" ${saveMeta ? '' : 'disabled'}>Load</button>
+        <button onclick="actionExitGame()">Exit</button>
+        <button class="btn-danger" onclick="actionResetGame()">Reset</button>
       </div>
     </div>
-
-    <div class="card">
-      <h2>Reset</h2>
-      <p class="muted small">This permanently deletes your current run (autosave). Manual save slots are unaffected.</p>
-      <button class="btn-danger" onclick="actionResetGame()">Abandon Run &amp; Start New Game</button>
-    </div>
   `;
+}
+
+function actionAIModelChange() {
+  const select = document.getElementById('ai-model-select');
+  GAME.settings.aiModel = select.value;
+  saveSettings(GAME.settings);
+  renderApp();
 }
 
 function actionSaveApiKey() {
   const input = document.getElementById('api-key-input');
   GAME.settings.apiKey = input.value.trim();
+  const customInput = document.getElementById('ai-custom-model');
+  if (customInput) GAME.settings.aiCustomModel = customInput.value.trim();
   saveSettings(GAME.settings);
   autosave(GAME);
-  showMsg('Settings', 'API key saved.');
+  showMsg('Settings', 'AI settings saved.');
 }
 
 function actionClearApiKey() {
@@ -80,43 +84,41 @@ function actionTestApiKey() {
   const input = document.getElementById('api-key-input');
   const key = input.value.trim();
   if (!key) { showMsg('Settings', 'Enter an API key first.'); return; }
+  const customInput = document.getElementById('ai-custom-model');
+  const settingsCopy = Object.assign({}, GAME.settings, { aiCustomModel: customInput ? customInput.value.trim() : GAME.settings.aiCustomModel });
+  const model = getAIModel(settingsCopy);
+  if (!model) { showMsg('Settings', 'Enter a custom model ID first.'); return; }
   showMsg('Settings', 'Testing key...');
-  testAPIKey(key, (ok, status) => {
+  testAPIKey(key, model, (ok, status) => {
     showMsg('Settings', ok ? 'Key works! AI narrative is enabled.' : `Key test failed (status ${status}). Falling back to offline narrative.`);
   });
 }
 
-function actionSaveToSlot(slot) {
-  saveToSlot(GAME, slot);
-  renderApp();
+/* ---------------- Save / Load / Exit / Reset ---------------- */
+
+function actionSaveGame() {
+  saveGame(GAME);
+  showMsg('Settings', 'Game saved.');
 }
 
-function actionLoadFromSlot(slot) {
-  const loaded = loadFromSlot(slot);
-  if (!loaded) return;
+function actionLoadGame() {
+  const loaded = loadGame();
+  if (!loaded) { showMsg('Settings', 'No save found.'); return; }
   GAME = loaded;
   autosave(GAME);
   setActiveTab('home');
 }
 
-function actionDeleteSlot(slot) {
-  deleteSlot(slot);
+function actionExitGame() {
+  if (!confirm('Exit to the title screen? Unsaved progress since your last Save will be kept in autosave on this device.')) return;
+  autosave(GAME);
+  GAME = null;
+  CC = { name: '', era: 'modern', customEra: '', cityName: '', originId: 'hustler' };
   renderApp();
 }
 
-function actionImportFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  importStateFromFile(file, (state, err) => {
-    if (err || !state || !state.player) { showMsg('Import', 'Could not read save file.'); return; }
-    GAME = state;
-    autosave(GAME);
-    setActiveTab('home');
-  });
-}
-
 function actionResetGame() {
-  if (!confirm('Abandon your current run and start a new game? Manual save slots are kept.')) return;
+  if (!confirm('Abandon your current run and start a new game? Your manual save is kept.')) return;
   localStorage.removeItem(AUTOSAVE_KEY);
   GAME = null;
   CC = { name: '', era: 'modern', customEra: '', cityName: '', originId: 'hustler' };
