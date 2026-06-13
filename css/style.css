@@ -41,6 +41,11 @@ html, body {
   box-shadow: 0 0 40px var(--shadow);
 }
 
+::selection {
+  background: var(--accent-dim);
+  color: #0c0d10;
+}
+
 /* ---------------- Header / Top Bar ---------------- */
 
 .topbar {
@@ -75,14 +80,20 @@ html, body {
 }
 
 .stat-chip {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel-light) 0%, var(--panel) 100%);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 4px 8px;
+  border-radius: 5px;
+  padding: 5px 8px;
   font-size: 0.78em;
   flex: 1 1 auto;
   min-width: 80px;
   text-align: center;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.stat-chip:hover {
+  border-color: var(--accent-dim);
+  transform: translateY(-1px);
 }
 
 .stat-chip .label {
@@ -162,11 +173,16 @@ html, body {
   white-space: nowrap;
 }
 
-.tab-btn:hover { color: var(--text); }
+.tab-btn {
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
 
 .tab-btn.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
+  text-shadow: 0 0 8px rgba(201,162,39,0.35);
 }
 
 /* ---------------- Content ---------------- */
@@ -178,11 +194,18 @@ html, body {
 }
 
 .card {
-  background: var(--panel);
+  background: linear-gradient(180deg, var(--panel-light) 0%, var(--panel) 100%);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 14px;
   margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: var(--accent-dim);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
 }
 
 .card h2, .card h3 {
@@ -190,6 +213,12 @@ html, body {
   color: var(--accent);
   font-weight: normal;
   letter-spacing: 1px;
+}
+
+.card h2 {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .card h2 { font-size: 1.1em; text-transform: uppercase; }
@@ -216,19 +245,24 @@ html, body {
 
 button, .btn {
   font-family: inherit;
-  background: var(--panel-light);
+  background: linear-gradient(180deg, var(--panel-light) 0%, var(--panel) 100%);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 5px;
   padding: 8px 12px;
   cursor: pointer;
   font-size: 0.85em;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 
 button:hover:not(:disabled), .btn:hover:not(.disabled) {
   border-color: var(--accent);
   color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(201,162,39,0.15);
+}
+
+button:active:not(:disabled), .btn:active:not(.disabled) {
+  transform: translateY(1px);
 }
 
 button:disabled, .btn.disabled {
@@ -237,15 +271,17 @@ button:disabled, .btn.disabled {
 }
 
 .btn-primary {
-  background: var(--accent-dim);
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dim) 100%);
   border-color: var(--accent);
-  color: #0c0d10;
+  color: #1a1408;
   font-weight: bold;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent);
-  color: #0c0d10;
+  background: linear-gradient(180deg, #ddb939 0%, var(--accent) 100%);
+  color: #1a1408;
+  box-shadow: 0 0 10px rgba(201,162,39,0.45);
 }
 
 .btn-danger {
@@ -253,8 +289,9 @@ button:disabled, .btn.disabled {
   color: var(--red-bright);
 }
 .btn-danger:hover:not(:disabled) {
-  background: var(--red);
+  background: linear-gradient(180deg, var(--red-bright) 0%, var(--red) 100%);
   color: #fff;
+  box-shadow: 0 0 10px rgba(209,75,75,0.4);
 }
 
 .btn-small { padding: 4px 8px; font-size: 0.75em; }
@@ -268,6 +305,13 @@ input, select, textarea {
   padding: 6px 8px;
   font-size: 0.9em;
   width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 2px rgba(201,162,39,0.15);
 }
 
 label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom: 4px; }
@@ -341,6 +385,10 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .log-entry.cat-bribe, .log-entry.cat-lawenforcement { color: #6fa8d1; }
 .log-entry.cat-empire { color: var(--accent); }
 .log-entry.cat-gang { color: #d99a3c; }
+.log-entry.cat-criminalworld { color: #b388eb; }
+
+.council-decision { border-color: #b388eb; box-shadow: 0 0 12px rgba(179, 136, 235, 0.25); }
+.council-decision h2 { color: #b388eb; border-bottom-color: #b388eb; }
 
 /* ---------------- Action Update ---------------- */
 
@@ -370,17 +418,20 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
   gap: 10px;
   width: 100%;
   text-align: left;
-  background: var(--panel-light);
+  background: linear-gradient(180deg, var(--panel-light) 0%, var(--panel) 100%);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px 12px;
   cursor: pointer;
   font-family: inherit;
   color: var(--text);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
 .crime-menu-item:hover {
   border-color: var(--accent);
+  transform: translateX(2px);
+  box-shadow: 0 0 10px rgba(201,162,39,0.15);
 }
 
 .crime-item-icon {
@@ -482,14 +533,19 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
   padding: 10px;
   cursor: pointer;
   background: var(--panel);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
-.option-card:hover { border-color: var(--accent-dim); }
+.option-card:hover {
+  border-color: var(--accent-dim);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
 
 .option-card.selected {
   border-color: var(--accent);
   background: var(--panel-light);
+  box-shadow: 0 0 10px rgba(201,162,39,0.2);
 }
 
 .option-card h3 { margin: 0 0 4px 0; color: var(--accent); font-size: 1em; }

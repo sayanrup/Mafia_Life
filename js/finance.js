@@ -2,6 +2,21 @@
    UNDERWORLD - Money Laundering & Legit Business Fronts
    ============================================================ */
 
+/* ---------------- Laundering via Rival Gangs (no shell needed) ---------------- */
+
+function launderViaGangs(state, amount) {
+  amount = Math.max(0, Math.floor(amount) || 0);
+  if (amount <= 0) return { ok: false, reason: 'Enter an amount to launder.' };
+  if (state.player.cash.dirty < amount) return { ok: false, reason: `Requires ${fmtMoney(amount)} in Dirty Cash.` };
+  const fee = amount * GANG_LAUNDER_CUT;
+  const cleaned = Math.round(amount - fee);
+  state.player.cash.dirty -= amount;
+  state.player.cash.clean += cleaned;
+  addHeat(state, 'gangs', 1);
+  state.eventLog.push(logEntry(state, `A rival crew laundered ${fmtMoney(amount)} for you, taking a ${Math.round(GANG_LAUNDER_CUT * 100)}% cut. You netted ${fmtMoney(cleaned)} clean.`, 'finance'));
+  return { ok: true, cleaned };
+}
+
 /* ---------------- Shell Companies ---------------- */
 
 function establishShellCompany(state, name) {
@@ -123,9 +138,10 @@ function resaleValue(state, businessId) {
   const myGangId = playerGangId(state);
   const controlPct = myGangId ? (district.control[myGangId] || 0) : 50;
   const repFactor = (state.player.reputation.street + state.player.reputation.gang) / 200; // 0-1
-  let value = business.purchasePrice * (0.5 + controlPct / 200 + repFactor * 0.3);
+  const heatFactor = 1 - district.heat / 250; // high district heat erodes resale value
+  let value = business.purchasePrice * (0.4 + controlPct / 200 + repFactor * 0.2) * heatFactor + business.baseIncome * 8;
   if (business.damaged) value *= 0.6;
-  return Math.round(value);
+  return Math.round(Math.max(0, value));
 }
 
 function sellBusiness(state, businessId) {
