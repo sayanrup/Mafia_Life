@@ -45,10 +45,11 @@ function createNewGame(charData) {
         loyalty: start.crewLoyalty,
         weaponTier: 0,
         upkeepPaid: true,
-        autoPayUpkeep: true
+        autoPayUpkeep: true,
+        trainingCompleted: []
       },
-      armory: { 0: 0, 1: 0, 2: 0, 3: 0 },
-      lieutenants: [], // {id, name, loyalty, assignment: null|{type:'district'|'smuggling', districtId}}
+      armory: freshArmory(),
+      lieutenants: [], // {id, name, loyalty, assignment: null|{type: one of LIEUTENANT_ASSIGNMENTS ids, districtId}}
       inventory: {
         product: { weed: 0, pills: 0, powder: 0, arms: 0, contraband: 0 }
       },
@@ -140,6 +141,16 @@ function migrateState(state) {
 
   if (!state.criminalWorld) {
     state.criminalWorld = { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 };
+  }
+
+  if (state.player.armory) {
+    for (const t of WEAPON_TIERS) {
+      if (!(t.id in state.player.armory)) state.player.armory[t.id] = 0;
+    }
+  }
+
+  if (!Array.isArray(state.player.crew.trainingCompleted)) {
+    state.player.crew.trainingCompleted = [];
   }
 
   if (state.player.operations) {

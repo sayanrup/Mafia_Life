@@ -6,6 +6,7 @@ function renderCrew() {
   return `
     ${renderAffiliationCard()}
     ${renderCrewStatsCard()}
+    ${renderTrainingCard()}
     ${renderLieutenantsCard()}
     ${renderArmoryCard()}
     ${renderVehiclesCard()}
@@ -79,22 +80,23 @@ function renderCrewStatsCard() {
 
 function renderLieutenantsCard() {
   const lts = GAME.player.lieutenants;
-  const districtOptions = GAME.districts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
 
   const rows = lts.map(lt => {
-    const current = lt.assignment ? `${lt.assignment.type === 'district' ? 'Running ops in' : 'Smuggling via'} ${GAME.districts[lt.assignment.districtId].name}` : 'Unassigned';
+    const assignmentDef = lt.assignment ? LIEUTENANT_ASSIGNMENTS.find(a => a.id === lt.assignment.type) : null;
+    const current = assignmentDef ? `${assignmentDef.label} - ${GAME.districts[lt.assignment.districtId].name}` : 'Unassigned';
+    const currentValue = lt.assignment ? `${lt.assignment.type}:${lt.assignment.districtId}` : 'none';
     return `
       <div class="card" style="margin-bottom:6px;">
         <div class="row between"><strong>${lt.name}</strong><span class="muted small">${current}</span></div>
         ${statBar('Loyalty', lt.loyalty, 100, 'loyalty')}
         <div class="row" style="margin-top:6px;">
           <select id="lt-assign-${lt.id}">
-            <option value="none">No Assignment</option>
-            ${GAME.districts.map(d => `<option value="district:${d.id}">Run Operations - ${d.name}</option>`).join('')}
-            ${GAME.districts.map(d => `<option value="smuggling:${d.id}">Lead Smuggling - ${d.name}</option>`).join('')}
+            <option value="none" ${currentValue === 'none' ? 'selected' : ''}>No Assignment</option>
+            ${LIEUTENANT_ASSIGNMENTS.map(a => GAME.districts.map(d => `<option value="${a.id}:${d.id}" ${currentValue === `${a.id}:${d.id}` ? 'selected' : ''}>${a.label} - ${d.name}</option>`).join('')).join('')}
           </select>
           <button onclick="actionAssignLieutenant('${lt.id}')">Assign</button>
         </div>
+        ${assignmentDef ? `<p class="muted small" style="margin-top:4px;">${assignmentDef.desc}</p>` : ''}
       </div>
     `;
   }).join('');
@@ -109,12 +111,15 @@ function renderLieutenantsCard() {
 }
 
 function renderArmoryCard() {
-  const rows = WEAPON_TIERS.map(t => `
+  const rows = WEAPON_TIERS.map(t => {
+    const locked = !isUnlockedForRank(GAME, t.unlockRank);
+    return `
     <div class="card" style="margin-bottom:6px;">
       <div class="row between">
         <strong>${t.label}</strong>
         <span class="muted small">Owned: ${GAME.player.armory[t.id]} &middot; Combat Bonus: +${t.combatBonus}</span>
       </div>
+      ${locked ? `<p class="muted small">Unlocks at ${t.unlockRank}</p>` : `
       <div class="row" style="margin-top:6px;">
         <input type="number" id="buy-weapon-${t.id}" value="1" min="1" style="width:80px;" />
         <button onclick="actionBuyWeapons(${t.id})">Buy @ ${fmtMoney(t.unitCost)} each</button>
@@ -122,11 +127,42 @@ function renderArmoryCard() {
       <div class="row" style="margin-top:6px;">
         <input type="number" id="armory-sell-${t.id}" value="1" min="1" style="width:80px;" />
         <button class="btn-small" onclick="actionSellWeapons(${t.id})" ${GAME.player.armory[t.id] > 0 ? '' : 'disabled'}>Sell @ ${fmtMoney(Math.round(t.unitCost * WEAPON_SELL_MULT))} each</button>
-      </div>
+      </div>`}
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   return `<div class="card"><h2>Armory</h2><p class="muted small">Equip your crew (size ${GAME.player.crew.size}) with enough units of a tier to raise your combat bonus.</p>${rows}</div>`;
+}
+
+function renderTrainingCard() {
+  const completed = GAME.player.crew.trainingCompleted || [];
+  const rows = TRAINING_PROGRAMS.map(p => {
+    const done = completed.includes(p.id);
+    const locked = !isUnlockedForRank(GAME, p.unlockRank);
+    let actionHtml;
+    if (done) {
+      actionHtml = '<span class="tag clean">Completed</span>';
+    } else if (locked) {
+      actionHtml = `<span class="muted small">Unlocks at ${p.unlockRank}</span>`;
+    } else {
+      actionHtml = `<button class="btn-small" onclick="actionTrainCrew('${p.id}')" ${GAME.player.cash.dirty >= p.cost ? '' : 'disabled'}>Train @ ${fmtMoney(p.cost)}</button>`;
+    }
+    return `
+      <div class="row between" style="margin-bottom:4px;">
+        <span>${p.label} <span class="muted small">(${p.desc} - Quality +${p.qualityGain.toFixed(1)})</span></span>
+        ${actionHtml}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="card">
+      <h2>Crew Training</h2>
+      <p class="muted small">Permanent crew quality upgrades. Quality: ${GAME.player.crew.quality.toFixed(1)}</p>
+      ${rows}
+    </div>
+  `;
 }
 
 function renderVehiclesCard() {
@@ -205,6 +241,12 @@ function actionBuyWeapons(tier) {
   const qty = Math.max(1, parseInt(input.value, 10) || 1);
   const res = buyWeapons(GAME, tier, qty);
   if (!res.ok) showMsg('Armory', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionTrainCrew(programId) {
+  const res = trainCrew(GAME, programId);
+  if (!res.ok) showMsg('Training', res.reason);
   else { autosave(GAME); renderApp(); }
 }
 

@@ -81,10 +81,33 @@ function rankIndex(rankId) {
 }
 
 const WEAPON_TIERS = [
-  { id: 0, label: 'Improvised',        unitCost: 50,   combatBonus: 0,  qualityFloor: 1 },
-  { id: 1, label: 'Pistols',           unitCost: 250,  combatBonus: 3,  qualityFloor: 2 },
-  { id: 2, label: 'SMGs / Rifles',     unitCost: 900,  combatBonus: 7,  qualityFloor: 3 },
-  { id: 3, label: 'Heavy / Military Grade', unitCost: 3000, combatBonus: 13, qualityFloor: 4 }
+  { id: 0, label: 'Improvised',           unitCost: 50,    combatBonus: 0,  qualityFloor: 1, unlockRank: 'Associate' },
+  { id: 1, label: 'Pistols',              unitCost: 250,   combatBonus: 3,  qualityFloor: 2, unlockRank: 'Associate' },
+  { id: 2, label: 'Shotguns',             unitCost: 600,   combatBonus: 5,  qualityFloor: 2, unlockRank: 'Associate' },
+  { id: 3, label: 'SMGs',                 unitCost: 1200,  combatBonus: 8,  qualityFloor: 3, unlockRank: 'Soldier' },
+  { id: 4, label: 'Assault Rifles',       unitCost: 2200,  combatBonus: 11, qualityFloor: 3, unlockRank: 'Soldier' },
+  { id: 5, label: 'Heavy / Military Grade', unitCost: 3500, combatBonus: 14, qualityFloor: 4, unlockRank: 'Capo' },
+  { id: 6, label: 'Explosives & Demolition', unitCost: 6000, combatBonus: 18, qualityFloor: 4, unlockRank: 'Underboss' },
+  { id: 7, label: 'Tactical / SF Grade',  unitCost: 10000, combatBonus: 24, qualityFloor: 5, unlockRank: 'Boss' }
+];
+
+const LIEUTENANT_ASSIGNMENTS = [
+  { id: 'district',  label: 'Run District Operations', desc: 'Boosts smuggling route income in the assigned district.' },
+  { id: 'smuggling', label: 'Lead Smuggling Run',       desc: 'Funnels contraband into your stash every turn.' },
+  { id: 'security',  label: 'Oversee Security Detail',  desc: 'Keeps police attention down in the assigned district.' },
+  { id: 'recruit',   label: 'Run Recruitment Drive',    desc: 'Periodically brings in new crew members for free.' },
+  { id: 'enforcer',  label: 'Command Enforcers',        desc: 'Keeps the crew in line, reducing betrayal risk.' },
+  { id: 'diplomat',  label: 'Handle Gang Diplomacy',    desc: 'Improves relations with the gang controlling the assigned district.' }
+];
+
+const TRAINING_PROGRAMS = [
+  { id: 'basic',      label: 'Basic Drills',          desc: 'Fundamentals of working as a crew.', cost: 5000,   qualityGain: 0.2, unlockRank: 'Associate' },
+  { id: 'weapons',    label: 'Weapons Handling',      desc: 'Safer, faster, more accurate gunplay.', cost: 12000,  qualityGain: 0.3, unlockRank: 'Associate' },
+  { id: 'tactical',   label: 'Tactical Training',     desc: 'Coordinated movement and cover use.', cost: 25000,  qualityGain: 0.4, unlockRank: 'Soldier' },
+  { id: 'survival',   label: 'Survival Training',     desc: 'Patch up and keep fighting.', cost: 40000,  qualityGain: 0.4, unlockRank: 'Soldier' },
+  { id: 'elite',      label: 'Elite Conditioning',    desc: 'Hardened veterans lead by example.', cost: 75000,  qualityGain: 0.6, unlockRank: 'Capo' },
+  { id: 'specialist', label: 'Specialist Ops Course', desc: 'Demolitions, infiltration, wheelwork.', cost: 130000, qualityGain: 0.7, unlockRank: 'Underboss' },
+  { id: 'legendary',  label: 'Legendary Crew Forging', desc: 'The kind of outfit people tell stories about.', cost: 250000, qualityGain: 1.0, unlockRank: 'Boss' }
 ];
 
 const PRODUCT_TYPES = {
