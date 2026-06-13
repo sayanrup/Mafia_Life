@@ -185,7 +185,7 @@ function pickEvent(category) {
 // offline pool already.
 const MAJOR_NARRATION_CATEGORIES = new Set([
   'post_crime_success', 'post_crime_fail', 'post_combat_win', 'post_combat_loss',
-  'operation_raid', 'commission', 'loyalty_betrayal', 'family', 'lawenforcement'
+  'operation_raid', 'commission', 'loyalty_betrayal', 'family', 'lawenforcement', 'dilemma'
 ]);
 
 let _narrationFlushScheduled = false;

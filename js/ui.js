@@ -61,6 +61,8 @@ function renderApp() {
   }
   window.scrollTo(0, scrollY);
 
+  if (GAME.player.pendingDilemma && !MODAL) MODAL = { type: 'dilemma' };
+
   const existingModal = document.getElementById('modal-root');
   if (existingModal) existingModal.remove();
   if (MODAL) {
@@ -171,6 +173,16 @@ function renderActionUpdate() {
 
 /* ---------------- Home Tab ---------------- */
 
+function renderObjectives() {
+  const objectives = computeObjectives(GAME);
+  return objectives.map(o => `
+    <div>
+      ${statBar(o.label, o.current, o.max, 'rep-street', `${o.current}/${o.max}`)}
+      <div class="muted small">${o.detail}</div>
+    </div>
+  `).join('');
+}
+
 function renderHome() {
   const p = GAME.player;
   const district = GAME.districts[p.currentDistrict];
@@ -195,6 +207,11 @@ function renderHome() {
   ).join(' ');
 
   return `
+    <div class="card">
+      <h2>Objectives</h2>
+      ${renderObjectives()}
+    </div>
+
     <div class="card">
       <h2>${district.name}</h2>
       <div class="control-bar">${controlBar}</div>
@@ -841,6 +858,20 @@ function renderGameOver() {
   `;
 }
 
+/* ---------------- Street Dilemma Modal ---------------- */
+
+function renderDilemmaModal() {
+  const d = GAME.player.pendingDilemma;
+  if (!d) return '<h2>Nothing to decide</h2>' + closeButtonRow();
+  return `
+    <h2>${d.title}</h2>
+    <p>${d.description}</p>
+    <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">
+      ${d.options.map(o => `<button onclick="actionResolveDilemma('${o.id}')">${o.label}</button>`).join('')}
+    </div>
+  `;
+}
+
 /* ---------------- Modal Dispatch ---------------- */
 
 function renderModal() {
@@ -851,6 +882,7 @@ function renderModal() {
   else if (MODAL.type === 'crime') body = renderCrimeModal(MODAL.category);
   else if (MODAL.type === 'deals') body = renderDealsModal();
   else if (MODAL.type === 'bribes') body = renderBribesModal();
+  else if (MODAL.type === 'dilemma') body = renderDilemmaModal();
   return `<div class="modal-overlay" id="modal-root"><div class="modal">${body}</div></div>`;
 }
 
