@@ -129,6 +129,196 @@ function genWeaponsDealDilemma(state) {
   };
 }
 
+function genLieutenantKidnapDilemma(state) {
+  if (!state.player.lieutenants.length) return null;
+  const lt = state.player.lieutenants[Math.floor(Math.random() * state.player.lieutenants.length)];
+  return {
+    type: 'lieutenant_kidnap',
+    title: `${lt.name}'s Family Taken`,
+    description: `${lt.name} corners you, shaken - someone snatched their family off the street last night and is holding them as leverage against you both. ${lt.name} wants to know what you're going to do about it.`,
+    context: { ltId: lt.id, ltName: lt.name },
+    options: [
+      { id: 'rescue', label: `Hit the safehouse and pull them out (risk to your crew, big loyalty boost from ${lt.name} if it works)` },
+      { id: 'demote', label: `Tell ${lt.name} it's not the family's problem and strip the rank (${lt.name} demoted, Crew Loyalty -10)` },
+      { id: 'side_kidnappers', label: `Quietly let the kidnappers keep them and walk away (Gang Heat +10, ${lt.name} leaves for good)` }
+    ]
+  };
+}
+
+function genGangInformantDilemma(state) {
+  const candidates = Object.values(state.gangs).filter(g => !g.isPlayerGang && !g.eliminated);
+  if (!candidates.length) return null;
+  const gang = candidates[Math.floor(Math.random() * candidates.length)];
+  const cost = 1000 + Math.floor(Math.random() * 2000);
+  const payout = cost + 1500 + Math.floor(Math.random() * 3000);
+  return {
+    type: 'gang_informant',
+    title: 'A Defector Knocks',
+    description: `A nervous ${gang.name} runner slides into the booth across from you. He knows where they keep a stash, he says, and he wants out of the family before anyone notices he's gone.`,
+    context: { gangId: gang.id, gangName: gang.name, cost, payout },
+    options: [
+      { id: 'pay', label: `Pay him ${fmtMoney(cost)} for the tip (chance at ${fmtMoney(payout)}, ${gang.name} relations -10)` },
+      { id: 'recruit', label: `Take him into your crew instead (Crew +1, ${gang.name} relations -15, Gang Heat +5)` },
+      { id: 'turn_away', label: `Send him back before this gets you both killed` }
+    ]
+  };
+}
+
+function genFedSubpoenaDilemma(state) {
+  return {
+    type: 'fed_subpoena',
+    title: 'A Subpoena With Your Name On It',
+    description: `A federal agent is waiting by your car with a folder under his arm. A grand jury has gotten "curious" about your finances - and he's offering to lose the paperwork, for a price.`,
+    context: {},
+    options: [
+      { id: 'bribe', label: `Slip him ${fmtMoney(5000)} dirty cash to lose the file (Fed Heat -15)` },
+      { id: 'lawyer', label: `Call your lawyer and stonewall (${fmtMoney(2000)} clean cash, Fed Heat -5)` },
+      { id: 'ignore', label: `Ignore it and hope it blows over (Fed Heat +10)` }
+    ]
+  };
+}
+
+function genCrewDebtDilemma(state) {
+  if (state.player.crew.size < 2) return null;
+  const debt = 1500 + Math.floor(Math.random() * 2500);
+  return {
+    type: 'crew_debt',
+    title: 'A Marker Comes Due',
+    description: `One of your crew ran up a debt at a card game backed by people who don't offer payment plans. They're leaning on him hard, and it's starting to spook the rest of the crew.`,
+    context: { debt },
+    options: [
+      { id: 'cover', label: `Cover his marker (${fmtMoney(debt)} dirty cash, Crew Loyalty +8)` },
+      { id: 'leverage', label: `Pay it off and remind him who he answers to now (${fmtMoney(debt)} dirty cash, Crew Loyalty +3, Street Rep +2)` },
+      { id: 'let_handle', label: `Let him handle it himself (Crew Loyalty -5, risk of losing him)` }
+    ]
+  };
+}
+
+function genReporterDilemma(state) {
+  return {
+    type: 'reporter',
+    title: 'A Nosy Reporter',
+    description: `A local reporter has been asking pointed questions about "unusual cash flow" tied to your name. Nothing's printed yet, but she's persistent and getting closer.`,
+    context: {},
+    options: [
+      { id: 'feed_story', label: `Feed her a juicier story to chase instead (${fmtMoney(1500)} dirty cash, PD Heat -5)` },
+      { id: 'threaten', label: `Make it clear she should drop it (Street Rep -3, PD Heat -3, Fed Heat +5)` },
+      { id: 'ignore', label: `Ignore her - she probably has nothing concrete` }
+    ]
+  };
+}
+
+function genBusinessShakedownDilemma(state) {
+  const district = state.districts[state.player.currentDistrict];
+  const existing = state.player.extortionRackets.find(r => r.districtId === district.id);
+  return {
+    type: 'business_shakedown',
+    title: 'A Shop Owner Asks for Help',
+    description: `A shop owner in ${district.name} corners you after hours. A rival crew has been "taxing" her register every week, and she's heard you're someone who settles things like that.`,
+    context: { districtId: district.id },
+    options: [
+      existing
+        ? { id: 'take_over', label: `Tell the rival crew this storefront is yours now (your extortion racket in ${district.name} grows, Gang Heat +5)` }
+        : { id: 'take_over', label: `Take over the "tax" yourself (start an extortion racket in ${district.name}, Gang Heat +5)` },
+      { id: 'help_free', label: `Run the rival crew off for free (Street Rep +5, Gang Heat +3)` },
+      { id: 'refuse', label: `Tell her it's not your fight` }
+    ]
+  };
+}
+
+function genProductQualityDilemma(state) {
+  const products = ['weed', 'pills', 'powder'].filter(k => (state.player.inventory.product[k] || 0) > 0);
+  if (!products.length) return null;
+  const product = products[Math.floor(Math.random() * products.length)];
+  const label = FARM_TYPES[product].label;
+  return {
+    type: 'product_quality',
+    title: 'A Bad Batch',
+    description: `One of your distributors flags a batch of ${label.toLowerCase()} as off - cut wrong, or cut with something it shouldn't be. Sell it as-is and word travels fast on the street.`,
+    context: { product, label },
+    options: [
+      { id: 'destroy', label: `Destroy the batch (Street Rep +4, lose the product on hand)` },
+      { id: 'sell_anyway', label: `Sell it anyway and let buyers find out (cash now, Street Rep -8, PD Heat +3)` },
+      { id: 'blame_rival', label: `Spread word a rival gang's product is the bad batch (Street Rep +2, a rival gang's relations -10)` }
+    ]
+  };
+}
+
+function genOldDebtDilemma(state) {
+  const amount = 2000 + Math.floor(Math.random() * 3000);
+  return {
+    type: 'old_debt',
+    title: 'A Face From Before',
+    description: `Someone you owed money to years ago - before any of this - tracks you down. They say they "just want what's owed, with a little something for the wait."`,
+    context: { amount },
+    options: [
+      { id: 'pay_full', label: `Pay them in full, with interest (${fmtMoney(amount)} dirty cash, Street Rep +5)` },
+      { id: 'pay_half', label: `Offer half now and a promise (${fmtMoney(Math.round(amount / 2))} dirty cash, Street Rep +1)` },
+      { id: 'refuse', label: `Tell them that debt died a long time ago (Street Rep -5, PD Heat +2)` }
+    ]
+  };
+}
+
+function genLawyerRetainerDilemma(state) {
+  return {
+    type: 'lawyer_retainer',
+    title: 'A Lawyer With a Card',
+    description: `A sharply-dressed lawyer offers you a standing retainer - on call for arrests, raids, and "inconveniences," paid up front in clean cash.`,
+    context: {},
+    options: [
+      { id: 'hire', label: `Pay the retainer (${fmtMoney(4000)} clean cash, PD Heat -10, Fed Heat -5)` },
+      { id: 'pass', label: `Pass for now - you'll manage` }
+    ]
+  };
+}
+
+function genCrewProveThemselvesDilemma(state) {
+  if (state.player.crew.size < 2) return null;
+  return {
+    type: 'crew_prove',
+    title: 'Eager to Prove Themselves',
+    description: `One of the newer crew members keeps pushing to be put on something bigger - a job that matters. Give them a shot, and either they step up or they don't.`,
+    context: {},
+    options: [
+      { id: 'give_shot', label: `Put them on a real job (risk/reward - success raises Crew Loyalty and Street Rep, failure costs you both)` },
+      { id: 'make_wait', label: `Tell them to wait their turn (Crew Loyalty -3)` }
+    ]
+  };
+}
+
+function genRivalTruceOfferDilemma(state) {
+  const candidates = Object.values(state.gangs).filter(g => !g.isPlayerGang && !g.eliminated && g.relationToPlayer < 50);
+  if (!candidates.length) return null;
+  const gang = candidates[Math.floor(Math.random() * candidates.length)];
+  return {
+    type: 'rival_truce',
+    title: `A Message From the ${gang.name}`,
+    description: `A messenger from the ${gang.name} approaches, hands visibly empty. Their boss wants a sit-down - no crews, no guns, just a conversation about "easing tensions."`,
+    context: { gangId: gang.id, gangName: gang.name },
+    options: [
+      { id: 'meet', label: `Take the meeting (${gang.name} relations +15, Gang Heat -5)` },
+      { id: 'snub', label: `Send the messenger back empty-handed (${gang.name} relations -10)` },
+      { id: 'ambush', label: `Use the meeting as a setup (one-time cash grab, ${gang.name} relations -25, Gang Heat +15)` }
+    ]
+  };
+}
+
+function genSmugglerDetourDilemma(state) {
+  const cost = 1000 + Math.floor(Math.random() * 1500);
+  const gain = cost + 1000 + Math.floor(Math.random() * 2500);
+  return {
+    type: 'smuggler_detour',
+    title: 'A Detour Worth Taking',
+    description: `A smuggling contact has a truck rerouted through your territory tonight - no questions, but it needs a "toll" paid up front to keep moving quietly.`,
+    context: { cost, gain },
+    options: [
+      { id: 'pay_toll', label: `Pay the toll (${fmtMoney(cost)} dirty cash, chance at ${fmtMoney(gain)} cut)` },
+      { id: 'shake_down', label: `Take a bigger cut by force (${fmtMoney(gain)} now, Gang Heat +10, burns the contact)` },
+      { id: 'wave_through', label: `Wave it through for free (builds goodwill, no immediate payoff)` }
+    ]
+  };
+}
+
 const STREET_DILEMMA_GENERATORS = {
   snitch: genSnitchDilemma,
   old_favor: genOldFavorDilemma,
@@ -137,7 +327,19 @@ const STREET_DILEMMA_GENERATORS = {
   wounded_rival: genWoundedRivalDilemma,
   found_cash: genFoundCashDilemma,
   charity_request: genCharityRequestDilemma,
-  weapons_deal: genWeaponsDealDilemma
+  weapons_deal: genWeaponsDealDilemma,
+  lieutenant_kidnap: genLieutenantKidnapDilemma,
+  gang_informant: genGangInformantDilemma,
+  fed_subpoena: genFedSubpoenaDilemma,
+  crew_debt: genCrewDebtDilemma,
+  reporter: genReporterDilemma,
+  business_shakedown: genBusinessShakedownDilemma,
+  product_quality: genProductQualityDilemma,
+  old_debt: genOldDebtDilemma,
+  lawyer_retainer: genLawyerRetainerDilemma,
+  crew_prove: genCrewProveThemselvesDilemma,
+  rival_truce: genRivalTruceOfferDilemma,
+  smuggler_detour: genSmugglerDetourDilemma
 };
 
 function generateStreetDilemma(state) {
@@ -311,6 +513,298 @@ function applyDilemmaOption(state, dilemma, optionId) {
         }
       } else {
         text = 'You pass on the deal. Probably stolen anyway.';
+      }
+      break;
+    }
+
+    case 'lieutenant_kidnap': {
+      const lt = p.lieutenants.find(l => l.id === dilemma.context.ltId);
+      const ltName = dilemma.context.ltName;
+      if (optionId === 'rescue') {
+        const result = resolveScuffle(state, 35);
+        if (result.result === 'fail') {
+          if (lt) p.lieutenants = p.lieutenants.filter(l => l.id !== lt.id);
+          p.crew.loyalty = clamp(p.crew.loyalty - 15, 0, 100);
+          addHeat(state, 'gangs', 10);
+          text = `The hit goes bad. ${ltName} pulls out of the operation entirely to deal with the fallout, and the rest of the crew is rattled.`;
+        } else {
+          if (lt) lt.loyalty = clamp(lt.loyalty + 20, 0, 100);
+          addRep(state, 'street', 5);
+          text = result.result === 'success'
+            ? `Your crew hits the safehouse hard and gets ${ltName}'s family out clean. ${ltName} owes you everything now.`
+            : `It's messy, but you get ${ltName}'s family out alive. ${ltName} won't forget it.`;
+        }
+      } else if (optionId === 'demote') {
+        if (lt) p.lieutenants = p.lieutenants.filter(l => l.id !== lt.id);
+        p.crew.loyalty = clamp(p.crew.loyalty - 10, 0, 100);
+        text = `You tell ${ltName} this is a personal problem, not a family one, and strip the rank on the spot. The rest of the crew goes quiet for days.`;
+      } else {
+        if (lt) p.lieutenants = p.lieutenants.filter(l => l.id !== lt.id);
+        addHeat(state, 'gangs', 10);
+        p.crew.loyalty = clamp(p.crew.loyalty - 5, 0, 100);
+        text = `You pass word that you won't be coming. ${ltName} never finds out it was your call - but disappears from your operation within the week, and whispers about the family start circling your crew.`;
+      }
+      break;
+    }
+
+    case 'gang_informant': {
+      const gang = state.gangs[dilemma.context.gangId];
+      const { cost, payout, gangName } = dilemma.context;
+      if (optionId === 'pay') {
+        if (p.cash.dirty >= cost) {
+          p.cash.dirty -= cost;
+          if (gang) gang.relationToPlayer = clamp(gang.relationToPlayer - 10, -100, 100);
+          if (Math.random() < 0.6) {
+            addCash(state, payout, 0);
+            text = `The tip is good. You pay ${fmtMoney(cost)} and walk away with ${fmtMoney(payout)} from the ${gangName} stash he pointed out.`;
+          } else {
+            text = `You pay ${fmtMoney(cost)} for the tip, but the stash has already been moved. The ${gangName} will be looking for their leak soon.`;
+          }
+        } else {
+          text = `You can't spare ${fmtMoney(cost)} for the tip, and he's not interested in credit.`;
+        }
+      } else if (optionId === 'recruit') {
+        p.crew.size += 1;
+        if (gang) gang.relationToPlayer = clamp(gang.relationToPlayer - 15, -100, 100);
+        addHeat(state, 'gangs', 5);
+        text = `You bring him into the fold. One more body for the crew - and one more reason for the ${gangName} to hate you.`;
+      } else {
+        text = `You send him back the way he came. Whatever he's running from, it's not your problem.`;
+      }
+      break;
+    }
+
+    case 'fed_subpoena': {
+      if (optionId === 'bribe') {
+        if (p.cash.dirty >= 5000) {
+          p.cash.dirty -= 5000;
+          addHeat(state, 'feds', -15);
+          text = `You slip the agent ${fmtMoney(5000)} in an envelope. The folder never makes it back to the office.`;
+        } else {
+          text = `You don't have ${fmtMoney(5000)} in dirty cash on hand to make this go away.`;
+        }
+      } else if (optionId === 'lawyer') {
+        if (p.cash.clean >= 2000) {
+          p.cash.clean -= 2000;
+          addHeat(state, 'feds', -5);
+          text = `Your lawyer fires off a wall of paperwork. It buys time, for ${fmtMoney(2000)}.`;
+        } else {
+          text = `You don't have ${fmtMoney(2000)} in clean cash to put your lawyer on it.`;
+        }
+      } else {
+        addHeat(state, 'feds', 10);
+        text = `You brush it off. The subpoena lands on someone's desk anyway, and the file stays open.`;
+      }
+      break;
+    }
+
+    case 'crew_debt': {
+      const debt = dilemma.context.debt;
+      if (optionId === 'cover') {
+        if (p.cash.dirty >= debt) {
+          p.cash.dirty -= debt;
+          p.crew.loyalty = clamp(p.crew.loyalty + 8, 0, 100);
+          text = `You cover the marker without a word. He doesn't say much, but the crew notices.`;
+        } else {
+          text = `You want to help, but you can't cover ${fmtMoney(debt)} right now.`;
+        }
+      } else if (optionId === 'leverage') {
+        if (p.cash.dirty >= debt) {
+          p.cash.dirty -= debt;
+          p.crew.loyalty = clamp(p.crew.loyalty + 3, 0, 100);
+          addRep(state, 'street', 2);
+          text = `You pay off the marker yourself, then make it very clear he's working it off. The street takes note of how you handle your own.`;
+        } else {
+          text = `You can't cover ${fmtMoney(debt)} to make the play.`;
+        }
+      } else {
+        p.crew.loyalty = clamp(p.crew.loyalty - 5, 0, 100);
+        if (Math.random() < 0.3) {
+          p.crew.size = Math.max(1, p.crew.size - 1);
+          text = `You let him sort it out. He doesn't come back to work - and nobody's seen him since.`;
+        } else {
+          text = `You let him sort it out himself. He's rattled for a week, and the crew is rattled with him.`;
+        }
+      }
+      break;
+    }
+
+    case 'reporter': {
+      if (optionId === 'feed_story') {
+        if (p.cash.dirty >= 1500) {
+          p.cash.dirty -= 1500;
+          addHeat(state, 'pd', -5);
+          text = `You point her at a juicier story across town, with ${fmtMoney(1500)} to grease the tip line. She bites - and forgets about you.`;
+        } else {
+          text = `You don't have ${fmtMoney(1500)} spare to redirect her attention.`;
+        }
+      } else if (optionId === 'threaten') {
+        addRep(state, 'street', -3);
+        addHeat(state, 'pd', -3);
+        addHeat(state, 'feds', 5);
+        text = `Someone has a quiet word with her. The story dies - but a federal liaison hears about how it died.`;
+      } else {
+        addHeat(state, 'feds', 3);
+        text = `You ignore her. A week later, a "person familiar with the matter" is quoted in a story that names your street, if not your name.`;
+      }
+      break;
+    }
+
+    case 'business_shakedown': {
+      const district = state.districts[dilemma.context.districtId];
+      if (optionId === 'take_over') {
+        const existing = p.extortionRackets.find(r => r.districtId === district.id);
+        if (existing) {
+          existing.level = Math.min(3, existing.level + 1);
+          text = `You tell the rival crew the shop is under new management. Your racket in ${district.name} grows to level ${existing.level}.`;
+        } else {
+          p.extortionRackets.push({ districtId: district.id, level: 1 });
+          text = `You take over the "tax" yourself. You've got a new extortion racket running in ${district.name}.`;
+        }
+        addHeat(state, 'gangs', 5);
+      } else if (optionId === 'help_free') {
+        addRep(state, 'street', 5);
+        addHeat(state, 'gangs', 3);
+        text = `Your crew leans on the rival collectors until they find somewhere else to be. The shop owner won't forget it - and neither will the rival crew.`;
+      } else {
+        text = `You tell her it's not your fight. She nods like she expected as much and goes back inside.`;
+      }
+      break;
+    }
+
+    case 'product_quality': {
+      const { product, label } = dilemma.context;
+      if (optionId === 'destroy') {
+        p.inventory.product[product] = 0;
+        addRep(state, 'street', 4);
+        text = `You order the whole batch dumped. It costs you product, but the street knows your ${label.toLowerCase()} is clean.`;
+      } else if (optionId === 'sell_anyway') {
+        const amount = p.inventory.product[product];
+        const value = Math.round(amount * 40);
+        p.inventory.product[product] = 0;
+        addCash(state, value, 0);
+        addRep(state, 'street', -8);
+        addHeat(state, 'pd', 3);
+        text = `You move the bad batch anyway, clearing ${fmtMoney(value)}. By morning, complaints are already spreading.`;
+      } else {
+        addRep(state, 'street', 2);
+        const candidates = Object.values(state.gangs).filter(g => !g.isPlayerGang && !g.eliminated);
+        if (candidates.length) {
+          const gang = candidates[Math.floor(Math.random() * candidates.length)];
+          gang.relationToPlayer = clamp(gang.relationToPlayer - 10, -100, 100);
+          text = `You quietly spread word that the bad batch is the ${gang.name}'s product, not yours. Your reputation survives - theirs takes the hit.`;
+        } else {
+          text = `You quietly spread word that the bad batch isn't yours. Nobody's around to take the blame, but the rumor sticks anyway.`;
+        }
+      }
+      break;
+    }
+
+    case 'old_debt': {
+      const amount = dilemma.context.amount;
+      if (optionId === 'pay_full') {
+        if (p.cash.dirty >= amount) {
+          p.cash.dirty -= amount;
+          addRep(state, 'street', 5);
+          text = `You pay them in full, with interest. They leave satisfied, and word gets around that you settle your debts.`;
+        } else {
+          text = `You can't cover ${fmtMoney(amount)} to settle the old debt right now.`;
+        }
+      } else if (optionId === 'pay_half') {
+        const half = Math.round(amount / 2);
+        if (p.cash.dirty >= half) {
+          p.cash.dirty -= half;
+          addRep(state, 'street', 1);
+          text = `You hand over ${fmtMoney(half)} and promise the rest later. They're not thrilled, but they take it.`;
+        } else {
+          text = `You can't even spare ${fmtMoney(half)} right now, so you put them off with words instead.`;
+        }
+      } else {
+        addRep(state, 'street', -5);
+        addHeat(state, 'pd', 2);
+        text = `You tell them that debt died with the person you used to be. They don't take it well, and they don't leave quietly.`;
+      }
+      break;
+    }
+
+    case 'lawyer_retainer': {
+      if (optionId === 'hire') {
+        if (p.cash.clean >= 4000) {
+          p.cash.clean -= 4000;
+          addHeat(state, 'pd', -10);
+          addHeat(state, 'feds', -5);
+          text = `You pay the retainer. Within days, a couple of standing "concerns" with the PD and the Feds quietly evaporate.`;
+        } else {
+          text = `You don't have ${fmtMoney(4000)} in clean cash to put a lawyer on retainer right now.`;
+        }
+      } else {
+        text = `You pass on the offer. The lawyer shrugs and leaves a card, just in case.`;
+      }
+      break;
+    }
+
+    case 'crew_prove': {
+      if (optionId === 'give_shot') {
+        const result = resolveScuffle(state, 25);
+        if (result.result === 'fail') {
+          p.crew.loyalty = clamp(p.crew.loyalty - 8, 0, 100);
+          addHeat(state, 'pd', 4);
+          text = `The job goes sideways. They make it back, but barely - and the crew is shaken by how close it was.`;
+        } else {
+          const gain = result.result === 'success' ? 1200 + Math.floor(Math.random() * 1800) : 400 + Math.floor(Math.random() * 600);
+          addCash(state, gain, 0);
+          p.crew.loyalty = clamp(p.crew.loyalty + 6, 0, 100);
+          addRep(state, 'street', 3);
+          text = `They come through, bringing back ${fmtMoney(gain)} and a story the crew won't stop telling for a week.`;
+        }
+      } else {
+        p.crew.loyalty = clamp(p.crew.loyalty - 3, 0, 100);
+        text = `You tell them to wait their turn. They nod, but you can tell it stings.`;
+      }
+      break;
+    }
+
+    case 'rival_truce': {
+      const gang = state.gangs[dilemma.context.gangId];
+      const gangName = dilemma.context.gangName;
+      if (optionId === 'meet') {
+        if (gang) gang.relationToPlayer = clamp(gang.relationToPlayer + 15, -100, 100);
+        addHeat(state, 'gangs', -5);
+        text = `You take the meeting. It's tense, but both sides walk away with a little less reason to start something.`;
+      } else if (optionId === 'snub') {
+        if (gang) gang.relationToPlayer = clamp(gang.relationToPlayer - 10, -100, 100);
+        text = `You send the messenger back without a word. The message it sends is its own kind of answer.`;
+      } else {
+        const take = 2000 + Math.floor(Math.random() * 3000);
+        addCash(state, take, 0);
+        if (gang) gang.relationToPlayer = clamp(gang.relationToPlayer - 25, -100, 100);
+        addHeat(state, 'gangs', 15);
+        text = `You take the meeting - and take everything the messenger's carrying, ${fmtMoney(take)} worth. The ${gangName} will be coming for blood.`;
+      }
+      break;
+    }
+
+    case 'smuggler_detour': {
+      const { cost, gain } = dilemma.context;
+      if (optionId === 'pay_toll') {
+        if (p.cash.dirty >= cost) {
+          p.cash.dirty -= cost;
+          if (Math.random() < 0.65) {
+            addCash(state, gain, 0);
+            text = `You pay the toll, and the cut comes back bigger than expected - ${fmtMoney(gain)} for your trouble.`;
+          } else {
+            text = `You pay the toll, but the truck's "cut" turns out to be lighter than promised. Lesson learned.`;
+          }
+        } else {
+          text = `You can't cover the ${fmtMoney(cost)} toll, so the truck reroutes elsewhere.`;
+        }
+      } else if (optionId === 'shake_down') {
+        addCash(state, gain, 0);
+        addHeat(state, 'gangs', 10);
+        text = `You take a bigger cut than agreed, ${fmtMoney(gain)} worth. Word gets around fast that your territory isn't a safe detour anymore.`;
+      } else {
+        addRep(state, 'street', 3);
+        text = `You wave the truck through without taking a cut. The contact remembers favors like that.`;
       }
       break;
     }

@@ -255,11 +255,24 @@ function migrateState(state) {
   }
 
   // Top up older saves whose business marketplace listings predate the
-  // 10-per-district expansion.
+  // 10-per-district expansion. Gated by businessMarketExpanded so this only
+  // ever runs once per save - otherwise it would re-trigger every time the
+  // player bought a listing dropped the market below 10, handing out new
+  // listings whose `${d.id}_${idx}` ids collided with still-listed entries
+  // and made the "last" listings' Buy buttons act on the wrong business.
   if (state.businessMarket && Array.isArray(state.districts)) {
     for (const d of state.districts) {
       const market = state.businessMarket[d.id] || (state.businessMarket[d.id] = []);
-      if (market.length >= 10) continue;
+
+      // Fix any duplicate listing ids left over from that bug so Buy always
+      // targets the listing the player actually clicked.
+      const seenIds = new Set();
+      for (const b of market) {
+        while (seenIds.has(b.id)) b.id = `${b.id}_${Math.random().toString(36).slice(2, 6)}`;
+        seenIds.add(b.id);
+      }
+
+      if (market.length >= 10 || state.meta.businessMarketExpanded) continue;
       const usedTypes = new Set(market.map(b => b.type));
       for (const biz of (state.ownedBusinesses || [])) {
         if (biz.districtId === d.id) usedTypes.add(biz.type);
@@ -270,21 +283,20 @@ function migrateState(state) {
         }
       }
       const candidates = BUSINESS_TYPES.filter(b => !usedTypes.has(b.type)).sort(() => Math.random() - 0.5);
-      let idx = market.length;
       while (market.length < 10 && candidates.length) {
         const b = candidates.shift();
         const variance = 0.85 + Math.random() * 0.3;
         market.push({
-          id: `${d.id}_${idx}`,
+          id: `${d.id}_topup_${Math.random().toString(36).slice(2, 8)}`,
           type: b.type,
           price: Math.round(b.basePrice * variance),
           baseIncome: Math.round(b.baseIncome * variance),
           launderBonus: b.launderBonus,
           heatReduction: b.heatReduction
         });
-        idx++;
       }
     }
+    state.meta.businessMarketExpanded = true;
   }
 
   if (Array.isArray(state.ownedBusinesses)) {
