@@ -144,15 +144,55 @@ const FARM_TYPES = {
 };
 
 const EQUIPMENT_TIERS = [
-  { tier: 0, name: 'Basic Setup',          cost: 0,      yieldMult: 1.0 },
-  { tier: 1, name: 'Upgraded Equipment',   cost: 40000,  yieldMult: 1.3 },
-  { tier: 2, name: 'Industrial Gear',      cost: 120000, yieldMult: 1.7 },
-  { tier: 3, name: 'State-of-the-Art Rig', cost: 300000, yieldMult: 2.5 }
+  { tier: 0, name: 'Basic Setup',            cost: 0,      yieldMult: 1.0 },
+  { tier: 1, name: 'Upgraded Tools',         cost: 25000,  yieldMult: 1.2 },
+  { tier: 2, name: 'Upgraded Equipment',     cost: 60000,  yieldMult: 1.4 },
+  { tier: 3, name: 'Industrial Gear',        cost: 130000, yieldMult: 1.7 },
+  { tier: 4, name: 'Advanced Lab Setup',     cost: 240000, yieldMult: 2.1 },
+  { tier: 5, name: 'State-of-the-Art Rig',   cost: 400000, yieldMult: 2.6 },
+  { tier: 6, name: 'Cartel-Grade Operation', cost: 650000, yieldMult: 3.3 }
 ];
 
-const DISTRIBUTOR_HIRE_COST = 5000;
-const DISTRIBUTOR_UPKEEP = 400;
-const DISTRIBUTOR_BASE_CAPACITY = 2000; // cash value a distributor can move per turn on foot/unaided
+/* ---------------- Distributors (5 hireable tiers per product) ---------------- */
+
+const DISTRIBUTOR_TYPES = [
+  { id: 'street',    label: 'Street Runner',     hireCost: 5000,   upkeep: 400,  capacity: 2000,  unlockRank: 'Associate' },
+  { id: 'van',       label: 'Van Crew',          hireCost: 15000,  upkeep: 900,  capacity: 5000,  unlockRank: 'Soldier' },
+  { id: 'wholesale', label: 'Wholesale Broker',  hireCost: 35000,  upkeep: 1800, capacity: 11000, unlockRank: 'Capo' },
+  { id: 'cartel',    label: 'Cartel Liaison',    hireCost: 70000,  upkeep: 3200, capacity: 22000, unlockRank: 'Underboss' },
+  { id: 'syndicate', label: 'Syndicate Fixer',   hireCost: 120000, upkeep: 5000, capacity: 38000, unlockRank: 'Boss' }
+];
+
+/* ---------------- Security Details (preset operation-protection payoffs) ---------------- */
+
+const SECURITY_TIERS = [
+  { id: 'patrol',   label: 'Light Patrol Payoff', amount: 1000,  desc: 'Slip the beat cops walking your blocks a little something.' },
+  { id: 'beatcop',  label: 'Beat Cop Retainer',   amount: 2500,  desc: 'Put a local officer on a standing payoff.' },
+  { id: 'detective',label: 'Detective on Payroll', amount: 5000, desc: 'A detective looks the other way on your operation.' },
+  { id: 'captain',  label: "Captain's Cut",       amount: 10000, desc: 'The precinct captain keeps raids off your block.' },
+  { id: 'federal',  label: 'Federal Contact',     amount: 20000, desc: 'A fed makes sure your operation stays off the radar entirely.' }
+];
+
+/* ---------------- Marketing Campaigns (temporary demand boosts) ---------------- */
+
+const MARKETING_CAMPAIGNS = [
+  { id: 'flyers',       label: 'Street Flyers',           desc: 'Cheap word-of-mouth push around the block.',          cost: 2000,  demandBonus: 0.10, turns: 2, unlockRank: 'Associate' },
+  { id: 'wordofmouth',  label: 'Word of Mouth Push',       desc: 'Get your regulars talking up the product.',           cost: 5000,  demandBonus: 0.18, turns: 3, unlockRank: 'Associate' },
+  { id: 'radio',        label: 'Pirate Radio Spot',        desc: 'A coded shoutout on the underground airwaves.',       cost: 12000, demandBonus: 0.28, turns: 3, unlockRank: 'Soldier' },
+  { id: 'influencer',   label: 'Influencer Push',          desc: 'Pay a local influencer to vouch for your supply.',    cost: 25000, demandBonus: 0.40, turns: 4, unlockRank: 'Capo' },
+  { id: 'cartelpromo',  label: 'Cartel-Backed Promotion',  desc: 'Tap the cartel marketing machine for a major spike.', cost: 60000, demandBonus: 0.60, turns: 5, unlockRank: 'Underboss' }
+];
+
+/* ---------------- Street Price Presets ---------------- */
+
+const PRICE_PRESETS = [
+  { id: 'bargain',     label: 'Bargain',          mult: 0.6 },
+  { id: 'discount',    label: 'Discount',         mult: 0.8 },
+  { id: 'standard',    label: 'Standard',         mult: 1.0 },
+  { id: 'premium',     label: 'Premium',          mult: 1.3 },
+  { id: 'luxury',      label: 'Luxury',           mult: 1.6 },
+  { id: 'blackmarket', label: 'Black Market Max', mult: 2.0 }
+];
 
 const OPS_ECONOMY = {
   unlockRank: 'Associate',
@@ -170,10 +210,10 @@ const OPS_ECONOMY = {
 
 const OPS_RANK_LIMITS = {
   Associate: { unlockedProducts: ['weed'], maxPlotsPerDistrict: 1, maxEquipmentTier: 0, maxDistributors: 1 },
-  Soldier:   { unlockedProducts: ['weed', 'pills'], maxPlotsPerDistrict: 2, maxEquipmentTier: 1, maxDistributors: 3 },
-  Capo:      { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 4, maxEquipmentTier: 2, maxDistributors: 6 },
-  Underboss: { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 6, maxEquipmentTier: 3, maxDistributors: 10 },
-  Boss:      { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 10, maxEquipmentTier: 3, maxDistributors: 20 }
+  Soldier:   { unlockedProducts: ['weed', 'pills'], maxPlotsPerDistrict: 2, maxEquipmentTier: 2, maxDistributors: 3 },
+  Capo:      { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 4, maxEquipmentTier: 4, maxDistributors: 6 },
+  Underboss: { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 6, maxEquipmentTier: 5, maxDistributors: 10 },
+  Boss:      { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 10, maxEquipmentTier: 6, maxDistributors: 20 }
 };
 
 function getOpsLimits(state) {

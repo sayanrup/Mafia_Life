@@ -149,10 +149,10 @@ function actionBuyFarmPlot(districtId, product) {
   renderApp();
 }
 
-function actionHireDistributors(product) {
-  const input = document.getElementById(`ops-distributors-${product}`);
+function actionHireDistributors(product, typeId) {
+  const input = document.getElementById(`ops-distributors-${product}-${typeId}`);
   const count = Math.max(1, parseInt(input.value, 10) || 1);
-  const res = hireDistributors(GAME, product, count);
+  const res = hireDistributors(GAME, product, typeId, count);
   if (!res.ok) { showMsg('Operations', res.reason); return; }
   autosave(GAME);
   renderApp();
@@ -162,6 +162,13 @@ function actionSetOperationPrice(product) {
   const input = document.getElementById(`ops-price-${product}`);
   const price = parseFloat(input.value);
   const res = setOperationPrice(GAME, product, price);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionSetOperationPricePreset(product, mult) {
+  const res = setOperationPrice(GAME, product, mult);
   if (!res.ok) { showMsg('Operations', res.reason); return; }
   autosave(GAME);
   renderApp();
@@ -178,6 +185,20 @@ function actionBribeOpProtection(districtId) {
   const input = document.getElementById(`ops-protection-bribe-${districtId}`);
   const amount = Math.max(0, parseInt(input.value, 10) || 0);
   const res = bribeOpProtection(GAME, districtId, amount);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionHireSecurityDetail(districtId, tierId) {
+  const res = hireSecurityDetail(GAME, districtId, tierId);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionLaunchMarketing(product, campaignId) {
+  const res = launchMarketingCampaign(GAME, product, campaignId);
   if (!res.ok) { showMsg('Operations', res.reason); return; }
   autosave(GAME);
   renderApp();

@@ -506,18 +506,22 @@ function renderFarmSubtab(product) {
   const equipCurrent = EQUIPMENT_TIERS[equipTier];
   const equipNext = EQUIPMENT_TIERS[equipTier + 1];
   const equipLocked = equipTier >= limits.maxEquipmentTier;
-  const distributors = ops.distributors[product];
+  const distCounts = ops.distributors[product];
+  const productDistTotal = productDistributorCount(GAME, product);
   const totalDist = totalDistributors(GAME);
   const price = ops.prices[product];
   const minPrice = OPS_ECONOMY.priceMinMult, maxPrice = OPS_ECONOMY.priceMaxMult;
   const vehicleCap = totalVehicleCapacity(GAME);
-  const myVehicleShare = totalDist > 0 ? Math.round(vehicleCap * (distributors / totalDist)) : 0;
+  const myVehicleShare = totalDist > 0 ? Math.round(vehicleCap * (productDistTotal / totalDist)) : 0;
+  const marketing = ops.marketing[product];
+  const activeCampaign = marketing && marketing.turnsLeft > 0 ? MARKETING_CAMPAIGNS.find(c => c.id === marketing.campaignId) : null;
 
   const districtCards = GAME.districts.map(d => {
     const farm = d.farms[product];
     const plotCost = getFarmPlotCost(GAME, d.id, product);
     const progressPct = clamp((farm.growTurn / def.growTurns) * 100, 0, 100);
     const atPlotCap = farm.plots >= limits.maxPlotsPerDistrict;
+    const securityButtons = SECURITY_TIERS.map(t => `<button class="btn-small" onclick="actionHireSecurityDetail(${d.id}, '${t.id}')" title="${t.desc}">${t.label} (${fmtMoney(t.amount)})</button>`).join('');
     return `
       <div class="card">
         <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
@@ -527,6 +531,33 @@ function renderFarmSubtab(product) {
           <div class="bar-track"><div class="bar-fill control" style="width:${progressPct}%"></div></div>
         ` : ''}
         <div class="muted small" style="margin-top:6px;">Pending batch value: ${fmtMoney(farm.pendingValue)}</div>
+        <div class="muted small" style="margin-top:6px;">Security/Protection: ${Math.round(d.opProtection || 0)}%</div>
+        <div class="row" style="flex-wrap:wrap; gap:4px; margin-top:4px;">${securityButtons}</div>
+      </div>
+    `;
+  }).join('');
+
+  const distributorRows = DISTRIBUTOR_TYPES.map(t => {
+    const locked = !isUnlockedForRank(GAME, t.unlockRank);
+    const owned = distCounts[t.id] || 0;
+    return `
+      <div class="row between" style="margin-bottom:4px;">
+        <span>${t.label} <span class="muted small">(owned ${owned} &middot; ${fmtMoney(t.capacity)} cap &middot; ${fmtMoney(t.upkeep)}/turn ea)</span></span>
+        ${locked
+          ? `<span class="muted small">Unlocks at ${t.unlockRank}</span>`
+          : `<span class="row"><input type="number" id="ops-distributors-${product}-${t.id}" value="1" min="1" style="width:60px;" /><button class="btn-small" onclick="actionHireDistributors('${product}', '${t.id}')">Hire (${fmtMoney(t.hireCost)} ea)</button></span>`}
+      </div>
+    `;
+  }).join('');
+
+  const pricePresetRow = PRICE_PRESETS.map(p => `<button class="btn-small" onclick="actionSetOperationPricePreset('${product}', ${p.mult})">${p.label} (x${p.mult.toFixed(2)})</button>`).join('');
+
+  const marketingRows = MARKETING_CAMPAIGNS.map(c => {
+    const locked = !isUnlockedForRank(GAME, c.unlockRank);
+    return `
+      <div class="row between" style="margin-bottom:4px;">
+        <span>${c.label} <span class="muted small">(+${Math.round(c.demandBonus * 100)}% demand, ${c.turns} turn(s), ${fmtMoney(c.cost)})</span></span>
+        ${locked ? `<span class="muted small">Unlocks at ${c.unlockRank}</span>` : `<button class="btn-small" onclick="actionLaunchMarketing('${product}', '${c.id}')">Launch</button>`}
       </div>
     `;
   }).join('');
@@ -538,7 +569,7 @@ function renderFarmSubtab(product) {
       <div class="muted small">Rank ${GAME.player.rank} allows up to ${limits.maxPlotsPerDistrict} plot(s)/district, equipment tier ${limits.maxEquipmentTier}, and ${limits.maxDistributors} distributor(s) total (shared across products). Rank up to expand further.</div>
       <div class="grid">
         <div>
-          <h3>Equipment</h3>
+          <h3>Facilities / Equipment</h3>
           <div class="muted small">Current: ${equipCurrent.name} (x${equipCurrent.yieldMult.toFixed(2)} yield)</div>
           ${equipNext && !equipLocked
             ? `<div class="row between" style="margin-top:6px;">
@@ -552,12 +583,8 @@ function renderFarmSubtab(product) {
         </div>
         <div>
           <h3>Distributors</h3>
-          <div class="muted small">Hired: ${distributors} &middot; Upkeep: ${fmtMoney(DISTRIBUTOR_UPKEEP)}/turn each</div>
-          <div class="muted small">Moves up to ${fmtMoney(DISTRIBUTOR_BASE_CAPACITY)} value/turn each on foot, plus a share of your vehicle fleet (currently +${fmtMoney(myVehicleShare)}/turn for this product). Buy vehicles in the Crew tab to move more product.</div>
-          <div class="row" style="margin-top:6px;">
-            <input type="number" id="ops-distributors-${product}" value="1" min="1" style="width:70px;" />
-            <button class="btn-small" onclick="actionHireDistributors('${product}')">Hire (${fmtMoney(DISTRIBUTOR_HIRE_COST)} ea)</button>
-          </div>
+          <div class="muted small">Hired: ${productDistTotal} total &middot; vehicle share +${fmtMoney(myVehicleShare)}/turn for this product. Buy vehicles in the Crew tab to move more product.</div>
+          <div style="margin-top:6px;">${distributorRows}</div>
         </div>
         <div>
           <h3>Street Price</h3>
@@ -566,6 +593,12 @@ function renderFarmSubtab(product) {
             <input type="number" id="ops-price-${product}" value="${price}" min="${minPrice}" max="${maxPrice}" step="0.05" style="width:90px;" />
             <button class="btn-small" onclick="actionSetOperationPrice('${product}')">Set (current x${price.toFixed(2)})</button>
           </div>
+          <div class="row" style="flex-wrap:wrap; gap:4px; margin-top:6px;">${pricePresetRow}</div>
+        </div>
+        <div>
+          <h3>Marketing Campaigns</h3>
+          <div class="muted small">${activeCampaign ? `Active: ${activeCampaign.label} (+${Math.round(activeCampaign.demandBonus * 100)}% demand, ${marketing.turnsLeft} turn(s) left)` : 'No active campaign for this product.'}</div>
+          <div style="margin-top:6px;">${marketingRows}</div>
         </div>
       </div>
     </div>
