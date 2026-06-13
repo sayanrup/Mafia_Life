@@ -13,7 +13,7 @@ function getCouncilGangs(state) {
 function acceptanceThreshold(personality, action) {
   // Lower threshold = more likely to accept (relation needed to accept)
   const base = { Aggressive: 55, Diplomatic: 20, Opportunistic: 35 };
-  const actionMod = { truce: 0, alliance: 20, trade: -10, peace: -15 };
+  const actionMod = { truce: 0, alliance: 20, trade: -10, peace: -15, tribute: 10 };
   return base[personality] + (actionMod[action] || 0);
 }
 
@@ -101,6 +101,59 @@ function offerPeace(state, gangId) {
   }
   state.eventLog.push(logEntry(state, `${gang.boss.name} refuses to stand down. The ${gang.name} remain at war with you.`, 'commission'));
   return { ok: true, accepted: false };
+}
+
+function sendGift(state, gangId, amount) {
+  const gang = state.gangs[gangId];
+  if (!gang) return { ok: false, reason: 'Unknown gang.' };
+  amount = Math.max(0, Math.floor(amount) || 0);
+  if (amount <= 0) return { ok: false, reason: 'Enter an amount to send.' };
+  if (state.player.cash.clean < amount) return { ok: false, reason: `Requires ${fmtMoney(amount)} Clean Cash.` };
+  state.player.cash.clean -= amount;
+  const gain = clamp(Math.round(amount / 500), 1, 20);
+  gang.relationToPlayer = clamp(gang.relationToPlayer + gain, -100, 100);
+  state.eventLog.push(logEntry(state, `You send ${gang.boss.name} a "gift" of ${fmtMoney(amount)}. Relations with the ${gang.name} improve.`, 'commission'));
+  return { ok: true, gain };
+}
+
+function demandTribute(state, gangId) {
+  const gang = state.gangs[gangId];
+  if (!gang) return { ok: false, reason: 'Unknown gang.' };
+  if (gang.atWarWithPlayer) return { ok: false, reason: 'The streets run on respect - they owe you nothing while at war.' };
+  const threshold = acceptanceThreshold(gang.boss.personality, 'tribute');
+  const score = gangTerritoryScore(state, gangId);
+  const amount = Math.round(500 + score * 50);
+  if (gang.relationToPlayer >= threshold) {
+    state.player.cash.dirty += amount;
+    gang.relationToPlayer = clamp(gang.relationToPlayer - 5, -100, 100);
+    state.eventLog.push(logEntry(state, `${gang.boss.name} begrudgingly pays ${fmtMoney(amount)} in tribute to keep the peace.`, 'commission'));
+    return { ok: true, accepted: true, amount };
+  } else {
+    gang.relationToPlayer = clamp(gang.relationToPlayer - 12, -100, 100);
+    state.eventLog.push(logEntry(state, `${gang.boss.name} refuses your demand for tribute. The ${gang.name} are insulted.`, 'commission'));
+    return { ok: true, accepted: false };
+  }
+}
+
+function requestReinforcements(state, gangId) {
+  const gang = state.gangs[gangId];
+  if (!gang) return { ok: false, reason: 'Unknown gang.' };
+  if (!gang.alliedWithPlayer) return { ok: false, reason: `The ${gang.name} aren't your allies.` };
+  if (gang.relationToPlayer < 30) return { ok: false, reason: `${gang.boss.name} doesn't trust you enough for this yet.` };
+  gang.relationToPlayer = clamp(gang.relationToPlayer - 10, -100, 100);
+  state.player.combatBonusTemp = (state.player.combatBonusTemp || 0) + 12;
+  state.player.combatBonusTurns = Math.max(state.player.combatBonusTurns || 0, 3);
+  state.eventLog.push(logEntry(state, `${gang.boss.name} loans you some muscle. +12 combat for your next 3 turns.`, 'commission'));
+  return { ok: true };
+}
+
+function scoutGang(state, gangId) {
+  const gang = state.gangs[gangId];
+  if (!gang) return { ok: false, reason: 'Unknown gang.' };
+  const score = gangTerritoryScore(state, gangId);
+  const districts = state.districts.filter(d => (d.control[gangId] || 0) > 0).map(d => `${d.name} (${Math.round(d.control[gangId])}%)`);
+  state.eventLog.push(logEntry(state, `Your scouts report on the ${gang.name}: ${gang.boss.name} (${gang.boss.personality}), holding ${districts.length} district(s) - ${districts.join(', ') || 'none'}. Total territory score: ${score}.`, 'commission'));
+  return { ok: true, score, districts };
 }
 
 function commissionTurnTick(state) {

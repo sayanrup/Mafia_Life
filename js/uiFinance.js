@@ -234,6 +234,15 @@ function renderCommission() {
             ? `<button onclick="actionOfferPeace('${g.id}')">Offer Peace</button>`
             : `<button class="btn-danger" onclick="actionDeclareWar('${g.id}')">Declare War</button>`}
         </div>
+        <div class="row" style="margin-top:6px;">
+          <button onclick="actionDemandTribute('${g.id}')" ${g.atWarWithPlayer ? 'disabled' : ''}>Demand Tribute</button>
+          <button onclick="actionRequestReinforcements('${g.id}')" ${g.alliedWithPlayer ? '' : 'disabled'}>Request Reinforcements</button>
+          <button onclick="actionScoutGang('${g.id}')">Scout Territory</button>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <input type="number" id="gift-amount-${g.id}" value="500" min="1" style="width:90px;" />
+          <button onclick="actionSendGift('${g.id}')">Send Gift</button>
+        </div>
         ${myDistricts.length && tradeTargets.length ? `
           <hr class="sep" />
           <div class="small muted">Propose Territory Trade</div>
@@ -255,6 +264,31 @@ function actionProposeTruce(gangId) { proposeTruce(GAME, gangId); autosave(GAME)
 function actionProposeAlliance(gangId) { proposeAlliance(GAME, gangId); autosave(GAME); renderApp(); }
 function actionDeclareWar(gangId) { declareWar(GAME, gangId); autosave(GAME); renderApp(); }
 function actionOfferPeace(gangId) { offerPeace(GAME, gangId); autosave(GAME); renderApp(); }
+
+function actionDemandTribute(gangId) {
+  const res = demandTribute(GAME, gangId);
+  if (!res.ok) showMsg('Commission', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionRequestReinforcements(gangId) {
+  const res = requestReinforcements(GAME, gangId);
+  if (!res.ok) showMsg('Commission', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionScoutGang(gangId) {
+  scoutGang(GAME, gangId);
+  autosave(GAME);
+  renderApp();
+}
+
+function actionSendGift(gangId) {
+  const amount = parseInt(document.getElementById(`gift-amount-${gangId}`).value, 10) || 0;
+  const res = sendGift(GAME, gangId, amount);
+  if (!res.ok) showMsg('Commission', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
 
 function actionProposeTrade(gangId) {
   const give = parseInt(document.getElementById(`trade-give-${gangId}`).value, 10);
