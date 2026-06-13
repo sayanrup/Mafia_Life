@@ -147,6 +147,44 @@ function foundGang(state, gangName) {
   state.eventLog.push(logEntry(state, `You've founded the ${gangName}. Word spreads fast - some respect it, others see a target.`, 'gang'));
 }
 
+function canLeaveGang(state) {
+  return state.player.affiliation.type !== 'solo';
+}
+
+function leaveGang(state) {
+  const aff = state.player.affiliation;
+  if (aff.type === 'solo') return { ok: false, reason: 'You are not in a gang.' };
+  const gang = state.gangs[aff.gangId];
+
+  if (aff.type === 'member') {
+    gang.relationToPlayer = clamp(gang.relationToPlayer - 30, -100, 100);
+    state.player.reputation.gang = clamp(state.player.reputation.gang - 10, 0, 100);
+    state.eventLog.push(logEntry(state, `You've left the ${gang.name}. ${gang.boss.name} won't forget it.`, 'gang'));
+  } else {
+    // Founder: disband the gang and carve up its territory among the remaining families.
+    for (const d of state.districts) {
+      const pct = d.control[gang.id];
+      if (!pct) continue;
+      delete d.control[gang.id];
+      const others = Object.keys(d.control).filter(gid => !state.gangs[gid].eliminated);
+      if (others.length > 0) {
+        const share = pct / others.length;
+        for (const gid of others) d.control[gid] = (d.control[gid] || 0) + share;
+      } else {
+        const dom = dominantGang(d);
+        if (dom) d.control[dom] = (d.control[dom] || 0) + pct;
+      }
+    }
+    gang.territory = [];
+    gang.eliminated = true;
+    state.player.reputation.gang = clamp(state.player.reputation.gang - 20, 0, 100);
+    state.eventLog.push(logEntry(state, `You've disbanded the ${gang.name} and gone solo. Your former territory is carved up among the remaining families.`, 'gang'));
+  }
+
+  state.player.affiliation = { type: 'solo', gangId: null };
+  return { ok: true };
+}
+
 /* ---------------- Rival Gang AI Turn ---------------- */
 
 function runRivalGangAI(state) {

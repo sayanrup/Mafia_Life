@@ -47,10 +47,13 @@ function renderAffiliationCard() {
   } else {
     const gang = GAME.gangs[p.affiliation.gangId];
     const territories = gang.territory.map(id => GAME.districts[id].name).join(', ') || 'none yet';
+    const leaveLabel = p.affiliation.type === 'founder' ? 'Disband Gang' : 'Leave Gang';
     body = `
       <p>You are ${p.affiliation.type === 'founder' ? 'the founder and boss of' : 'a member of'} <span class="tag" style="border-color:${gang.color}">${gang.name}</span>.</p>
       ${p.affiliation.type === 'member' ? `<p class="muted">Led by ${gang.boss.name} (${gang.boss.personality}).</p>` : ''}
       <p class="muted">Territory: ${territories}</p>
+      <button class="btn-danger" onclick="actionLeaveGang()">${leaveLabel}</button>
+      ${p.affiliation.type === 'founder' ? `<p class="small muted" style="margin-top:4px;">Disbanding hands your territory to the remaining families and costs you Gang Rep.</p>` : `<p class="small muted" style="margin-top:4px;">Leaving costs you Gang Rep and damages your standing with ${gang.name}.</p>`}
     `;
   }
 
@@ -232,6 +235,12 @@ function actionFoundGang() {
   foundGang(GAME, name);
   autosave(GAME);
   renderApp();
+}
+
+function actionLeaveGang() {
+  const res = leaveGang(GAME);
+  if (!res.ok) showMsg('Gang Affiliation', res.reason);
+  else { autosave(GAME); renderApp(); }
 }
 
 function actionRecruit() {
