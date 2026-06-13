@@ -50,7 +50,8 @@ function createNewGame(charData) {
         weaponTier: 0,
         upkeepPaid: true,
         autoPayUpkeep: true,
-        trainingCompleted: []
+        trainingCompleted: [],
+        imprisoned: 0
       },
       armory: freshArmory(),
       lieutenants: [], // {id, name, loyalty, assignment: null|{type: one of LIEUTENANT_ASSIGNMENTS ids, districtId}}
@@ -188,6 +189,10 @@ function migrateState(state) {
 
   if (!Array.isArray(state.player.crew.trainingCompleted)) {
     state.player.crew.trainingCompleted = [];
+  }
+
+  if (state.player.crew.imprisoned === undefined) {
+    state.player.crew.imprisoned = 0;
   }
 
   if (state.player.inventory && !state.player.inventory.consumables) {

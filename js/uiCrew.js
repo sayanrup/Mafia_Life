@@ -52,12 +52,28 @@ function renderAffiliationCard() {
       <p>You are ${p.affiliation.type === 'founder' ? 'the founder and boss of' : 'a member of'} <span class="tag" style="border-color:${gang.color}">${gang.name}</span>.</p>
       ${p.affiliation.type === 'member' ? `<p class="muted">Led by ${gang.boss.name} (${gang.boss.personality}).</p>` : ''}
       <p class="muted">Territory: ${territories}</p>
+      ${p.affiliation.type === 'founder' ? `<p class="small muted" style="margin-top:4px;">Crew now handles street crimes and heists for you - click an activity and one of your crew gets sent to do it.</p>` : ''}
       <button class="btn-danger" onclick="actionLeaveGang()">${leaveLabel}</button>
       ${p.affiliation.type === 'founder' ? `<p class="small muted" style="margin-top:4px;">Disbanding hands your territory to the remaining families and costs you Gang Rep.</p>` : `<p class="small muted" style="margin-top:4px;">Leaving costs you Gang Rep and damages your standing with ${gang.name}.</p>`}
+      ${p.affiliation.type === 'founder' ? renderImprisonedCrewSection(p) : ''}
     `;
   }
 
   return `<div class="card"><h2>Gang Affiliation</h2>${repBars}${body}</div>`;
+}
+
+function renderImprisonedCrewSection(p) {
+  const imprisoned = p.crew.imprisoned || 0;
+  if (imprisoned <= 0) return '';
+  return `
+    <hr class="sep" />
+    <h3>Imprisoned Crew (${imprisoned})</h3>
+    <p class="muted small">Some of your crew got picked up on the job and are sitting in lockup.</p>
+    <div class="row">
+      <button class="btn-small" onclick="actionHireCrewLawyer()">Hire a Lawyer (${fmtMoney(CREW_LAWYER_COST)})</button>
+      <button class="btn-danger btn-small" onclick="actionSilenceCrew()">Silence (Loyalty -8)</button>
+    </div>
+  `;
 }
 
 function renderCrewStatsCard() {
@@ -248,6 +264,18 @@ function actionRecruit() {
   const count = Math.max(1, parseInt(input.value, 10) || 1);
   const res = recruitCrew(GAME, count);
   if (!res.ok) showMsg('Recruiting', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionHireCrewLawyer() {
+  const res = hireCrewLawyer(GAME);
+  if (!res.ok) showMsg('Imprisoned Crew', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionSilenceCrew() {
+  const res = silenceCrewMember(GAME);
+  if (!res.ok) showMsg('Imprisoned Crew', res.reason);
   else { autosave(GAME); renderApp(); }
 }
 

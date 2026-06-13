@@ -167,6 +167,52 @@ function payUpkeep(state, pay) {
   }
 }
 
+/* ---------------- Crew Delegation & Imprisonment ---------------- */
+
+const CREW_FIRST_NAMES = ['Tony', 'Vinny', 'Sal', 'Joey', 'Frankie', 'Marco', 'Lou', 'Nico', 'Gino', 'Rocco', 'Dom', 'Carmine', 'Sonny', 'Paulie', 'Mikey'];
+
+const CREW_LAWYER_COST = 8000;
+
+// Once the player runs their own gang, street crimes/heists get handed off to a
+// crew member instead of done personally. Returns the delegate's name, or null
+// if the player has to do the job themselves.
+function delegateCrewMember(state) {
+  if (state.player.affiliation.type !== 'founder') return null;
+  if (state.player.crew.size <= 0) return null;
+  return CREW_FIRST_NAMES[Math.floor(Math.random() * CREW_FIRST_NAMES.length)];
+}
+
+// A delegated job gone wrong lands a crew member in prison instead of injuring the player.
+function imprisonCrewMember(state) {
+  state.player.crew.size = Math.max(0, state.player.crew.size - 1);
+  state.player.crew.imprisoned = (state.player.crew.imprisoned || 0) + 1;
+  recalcEquippedWeaponTier(state);
+}
+
+function hireCrewLawyer(state) {
+  if ((state.player.crew.imprisoned || 0) <= 0) return { ok: false, reason: 'No crew members are currently locked up.' };
+  const cost = CREW_LAWYER_COST;
+  if (state.player.cash.clean + state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} to post bail and cover lawyer fees.` };
+  let remaining = cost;
+  const fromClean = Math.min(state.player.cash.clean, remaining);
+  state.player.cash.clean -= fromClean;
+  remaining -= fromClean;
+  state.player.cash.dirty -= remaining;
+  state.player.crew.imprisoned -= 1;
+  state.player.crew.size += 1;
+  recalcEquippedWeaponTier(state);
+  state.eventLog.push(logEntry(state, `Your lawyer springs a crew member loose for ${fmtMoney(cost)}.`, 'crew'));
+  return { ok: true };
+}
+
+function silenceCrewMember(state) {
+  if ((state.player.crew.imprisoned || 0) <= 0) return { ok: false, reason: 'No crew members are currently locked up.' };
+  state.player.crew.imprisoned -= 1;
+  state.player.crew.loyalty = clamp(state.player.crew.loyalty - 8, 0, 100);
+  state.eventLog.push(logEntry(state, `You make sure a locked-up crew member never talks. The rest of the crew is rattled (Loyalty -8).`, 'crew'));
+  return { ok: true };
+}
+
 /* ---------------- Loyalty & Betrayal ---------------- */
 
 function loyaltyTurnTick(state) {
