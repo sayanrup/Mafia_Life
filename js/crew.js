@@ -23,7 +23,7 @@ function buyWeapons(state, tier, quantity) {
   const t = WEAPON_TIERS[tier];
   if (!t || quantity <= 0) return { ok: false, reason: 'Invalid request.' };
   if (!isUnlockedForRank(state, t.unlockRank)) return { ok: false, reason: `${t.label} unlocks at rank ${t.unlockRank}.` };
-  const cost = t.unitCost * quantity;
+  const cost = Math.round(t.unitCost * quantity * familyQuartermasterDiscount(state));
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} Dirty Cash.` };
   state.player.cash.dirty -= cost;
   state.player.armory[tier] += quantity;
@@ -89,10 +89,11 @@ function totalVehicleCapacity(state) {
 }
 
 function totalVehicleUpkeep(state) {
-  return (state.player.vehicles || []).reduce((sum, v) => {
+  const raw = (state.player.vehicles || []).reduce((sum, v) => {
     const def = VEHICLE_TYPES.find(t => t.id === v.typeId);
     return sum + (def ? def.upkeep : 0);
   }, 0);
+  return Math.round(raw * familyVehicleUpkeepMultiplier(state));
 }
 
 function buyVehicle(state, typeId) {
@@ -124,7 +125,7 @@ function recruitCrew(state, count) {
   const room = cap - state.player.crew.size;
   if (room <= 0) return { ok: false, reason: `Crew is at capacity (${cap}) for your rank.` };
   const actual = Math.min(count, room);
-  const cost = RECRUIT_COST * actual;
+  const cost = Math.round(RECRUIT_COST * actual * familyQuartermasterDiscount(state));
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} Dirty Cash.` };
   state.player.cash.dirty -= cost;
   state.player.crew.size += actual;
