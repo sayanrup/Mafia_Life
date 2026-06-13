@@ -1046,7 +1046,8 @@ function renderModal() {
   else if (MODAL.type === 'bribes') body = renderBribesModal();
   else if (MODAL.type === 'dilemma') body = renderDilemmaModal();
   else if (MODAL.type === 'arrest') body = renderArrestModal();
-  return `<div class="modal-overlay" id="modal-root"><div class="modal">${body}</div></div>`;
+  const closeX = MODAL.type === 'gangwar' ? '' : `<button class="modal-close-x" onclick="closeModal()" aria-label="Close">&times;</button>`;
+  return `<div class="modal-overlay" id="modal-root"><div class="modal">${closeX}${body}</div></div>`;
 }
 
 function closeModal() {

@@ -11,20 +11,16 @@ let CC = {
 };
 
 function renderCharacterCreation() {
-  const eraCards = Object.values(ERAS).map(e => `
-    <div class="option-card ${CC.era === e.id ? 'selected' : ''}" onclick="ccSelectEra('${e.id}')">
-      <h3>${e.label}</h3>
-      <p>${e.id === 'custom' ? 'Define your own era - used to flavor the narrative.' : e.flavor}</p>
-    </div>
+  const eraOptions = Object.values(ERAS).map(e => `
+    <option value="${e.id}" ${CC.era === e.id ? 'selected' : ''}>${e.label}</option>
   `).join('');
 
-  const originCards = Object.values(ORIGINS).map(o => `
-    <div class="option-card ${CC.originId === o.id ? 'selected' : ''}" onclick="ccSelectOrigin('${o.id}')">
-      <h3>${o.label}</h3>
-      <p>${o.desc}</p>
-      <p class="small">${o.start.bonus}</p>
-    </div>
+  const originOptions = Object.values(ORIGINS).map(o => `
+    <option value="${o.id}" ${CC.originId === o.id ? 'selected' : ''}>${o.label}</option>
   `).join('');
+
+  const selectedEra = ERAS[CC.era];
+  const selectedOrigin = ORIGINS[CC.originId];
 
   const citySuggestions = CITY_SUGGESTIONS.map(c => `<option value="${c}">`).join('');
 
@@ -50,8 +46,18 @@ function renderCharacterCreation() {
       </div>
 
       <div class="card">
-        <h2>Choose Your Era</h2>
-        <div class="grid">${eraCards}</div>
+        <div class="row" style="gap:12px;">
+          <div class="field" style="flex:1; min-width:140px;">
+            <label>Era</label>
+            <select id="cc-era-select" onchange="ccSelectEra(this.value)">${eraOptions}</select>
+          </div>
+          <div class="field" style="flex:1; min-width:140px;">
+            <label>Origin</label>
+            <select id="cc-origin-select" onchange="ccSelectOrigin(this.value)">${originOptions}</select>
+          </div>
+        </div>
+        <p class="small muted">${selectedEra.id === 'custom' ? 'Define your own era - used to flavor the narrative.' : selectedEra.flavor}</p>
+        <p class="small muted">${selectedOrigin.desc} <strong>${selectedOrigin.start.bonus}</strong></p>
         ${CC.era === 'custom' ? `
           <div class="field" style="margin-top:10px;">
             <label>Describe your custom era (used in flavor text)</label>
@@ -60,15 +66,11 @@ function renderCharacterCreation() {
         ` : ''}
       </div>
 
-      <div class="card">
-        <h2>Your Origin</h2>
-        <div class="grid">${originCards}</div>
-      </div>
-
       <div class="row" style="justify-content:center; margin-top:10px;">
         <button class="btn-primary" onclick="ccSubmit()">Begin</button>
       </div>
       <p class="small muted" style="text-align:center;">Have a save already? Check the Settings tab after starting, or import a save file once in-game.</p>
+      <p class="cc-copyright">&copy; Sayan &mdash; AI Enthusiast &amp; Product Manager</p>
     </div>
   `;
 }
