@@ -51,7 +51,7 @@ function actionGangGig(gigId) {
 }
 
 function actionHeist() {
-  tryAction('heist', () => { doHeist(GAME); });
+  tryAction('heist', () => doHeist(GAME));
 }
 
 function actionExtortion() {
@@ -183,6 +183,40 @@ function actionBribeOpProtection(districtId) {
   renderApp();
 }
 
+/* ---------------- Vehicles / Armory Sales / Gang Laundering (no action cost) ---------------- */
+
+function actionBuyVehicle(typeId) {
+  const res = buyVehicle(GAME, typeId);
+  if (!res.ok) { showMsg('Vehicles', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionSellVehicle(vehicleId) {
+  const res = sellVehicle(GAME, vehicleId);
+  if (!res.ok) { showMsg('Vehicles', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionSellWeapons(tier) {
+  const input = document.getElementById(`armory-sell-${tier}`);
+  const qty = Math.max(1, parseInt(input.value, 10) || 1);
+  const res = sellWeapons(GAME, tier, qty);
+  if (!res.ok) { showMsg('Armory', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
+function actionLaunderViaGangs() {
+  const input = document.getElementById('launder-gang-amount');
+  const amount = Math.max(0, parseInt(input.value, 10) || 0);
+  const res = launderViaGangs(GAME, amount);
+  if (!res.ok) { showMsg('Laundering', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
 function travelTo(districtId) {
   GAME.player.currentDistrict = districtId;
   narrate(GAME, 'district_travel');
@@ -296,6 +330,7 @@ function continueAsFamilyMember(memberId) {
     affiliation: { type: 'solo', gangId: null },
     currentDistrict: 0,
     actionCounts: {},
+    vehicles: [],
     operations: freshPlayerOperations()
   };
 

@@ -37,6 +37,10 @@ function getFarmPlotCost(state, districtId, product) {
 
 function buyFarmPlot(state, districtId, product) {
   if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
+  const limits = getOpsLimits(state);
+  if (!limits.unlockedProducts.includes(product)) return { ok: false, reason: `${FARM_TYPES[product].label} operations unlock at a higher rank.` };
+  const farm = state.districts[districtId].farms[product];
+  if (farm.plots >= limits.maxPlotsPerDistrict) return { ok: false, reason: `Your rank limits you to ${limits.maxPlotsPerDistrict} ${FARM_TYPES[product].label.toLowerCase()} plot(s) per district. Rank up to expand.` };
   const cost = getFarmPlotCost(state, districtId, product);
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} in Dirty Cash.` };
   state.player.cash.dirty -= cost;
@@ -54,7 +58,11 @@ function totalDistributors(state) {
 
 function hireDistributors(state, product, count) {
   if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
+  const limits = getOpsLimits(state);
   count = Math.max(1, Math.floor(count) || 0);
+  const room = limits.maxDistributors - totalDistributors(state);
+  if (room <= 0) return { ok: false, reason: `Your rank limits you to ${limits.maxDistributors} distributor(s) total. Rank up to hire more.` };
+  count = Math.min(count, room);
   const cost = DISTRIBUTOR_HIRE_COST * count;
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} in Dirty Cash.` };
   state.player.cash.dirty -= cost;
@@ -77,7 +85,9 @@ function setOperationPrice(state, product, priceMult) {
 
 function buyEquipment(state, product) {
   if (!canAccessOperations(state)) return { ok: false, reason: `Only a ${OPS_ECONOMY.unlockRank} can build drug operations.` };
+  const limits = getOpsLimits(state);
   const tier = state.player.operations.equipment[product];
+  if (tier >= limits.maxEquipmentTier) return { ok: false, reason: `Equipment upgrades are capped at your current rank. Rank up to unlock further upgrades.` };
   const next = EQUIPMENT_TIERS[tier + 1];
   if (!next) return { ok: false, reason: 'Already at maximum equipment tier.' };
   if (state.player.cash.dirty < next.cost) return { ok: false, reason: `Requires ${fmtMoney(next.cost)} in Dirty Cash.` };
@@ -107,6 +117,7 @@ function farmTick(state) {
   if (!canAccessOperations(state)) return;
 
   const distributorCount = totalDistributors(state);
+  const vehicleCapacity = totalVehicleCapacity(state);
   if (distributorCount > 0) {
     const upkeep = distributorCount * DISTRIBUTOR_UPKEEP;
     if (state.player.cash.dirty >= upkeep) {
@@ -148,7 +159,10 @@ function farmTick(state) {
     }
 
     // Distribution: distributors sell from matured batches across all districts
-    let sellCapacity = state.player.operations.distributors[product] * DISTRIBUTOR_SELL_RATE;
+    let sellCapacity = state.player.operations.distributors[product] * DISTRIBUTOR_BASE_CAPACITY;
+    if (distributorCount > 0) {
+      sellCapacity += vehicleCapacity * (state.player.operations.distributors[product] / distributorCount);
+    }
     if (sellCapacity > 0) {
       const priceMult = state.player.operations.prices[product];
       const demandMult = clamp(2 - priceMult, 0.4, 1.5); // higher markup = slower sales
@@ -168,6 +182,41 @@ function farmTick(state) {
         addCash(state, totalRevenue, 0);
         narrate(state, 'distribution_sale', { vars: { product: def.label, amount: fmtMoney(totalRevenue) } });
         state.eventLog.push(logEntry(state, `Your distributors moved ${fmtMoney(totalRevenue)} worth of ${def.label.toLowerCase()}.`, 'operations'));
+      }
+    }
+  }
+
+  stashGoodsTick(state);
+}
+
+/* ---------------- Stash House Goods: Overflow & Rental Income ---------------- */
+
+function stashGoodsTick(state) {
+  for (const district of state.districts) {
+    const tier = district.operations.stash.tier;
+    const capacity = OPERATION_DEFS.stash.tiers[tier].goodsCapacity;
+    if (capacity <= 0) continue;
+
+    let used = 0;
+    for (const product of Object.keys(FARM_TYPES)) used += district.farms[product].pendingValue;
+
+    if (used > capacity) {
+      const excess = used - capacity;
+      for (const product of Object.keys(FARM_TYPES)) {
+        const farm = district.farms[product];
+        if (used > 0 && farm.pendingValue > 0) {
+          const share = farm.pendingValue / used;
+          farm.pendingValue = Math.max(0, farm.pendingValue - Math.round(excess * share));
+        }
+      }
+      addHeat(state, 'gangs', 2);
+      state.eventLog.push(logEntry(state, `Your stash in ${district.name} overflowed - rival crews helped themselves to ${fmtMoney(excess)} worth of product.`, 'operations'));
+    } else {
+      const free = capacity - used;
+      const rental = Math.round(free * OPS_ECONOMY.stashRentalRate);
+      if (rental > 0) {
+        addCash(state, rental, 0);
+        state.eventLog.push(logEntry(state, `Other crews paid ${fmtMoney(rental)} to use spare space in your ${district.name} stash house.`, 'operations'));
       }
     }
   }
@@ -192,6 +241,7 @@ function checkFarmRaid(state, district, product, farm) {
 function doKidnapJob(state, jobId) {
   const def = KIDNAP_JOBS.find(j => j.id === jobId);
   if (!def) return { ok: false, reason: 'Unknown job.' };
+  if (!isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${def.label} unlocks at rank ${def.unlockRank}.` };
   const result = resolveScuffle(state, def.difficulty);
   const span = def.cashMax - def.cashMin;
   const heatSpan = def.heatMax - def.heatMin;
@@ -200,7 +250,7 @@ function doKidnapJob(state, jobId) {
     const gain = Math.round(def.cashMin + Math.random() * span);
     addCash(state, gain, 0);
     addRep(state, 'street', def.repGain);
-    addRep(state, 'gang', Math.round(def.repGain / 2));
+    addRep(state, 'gang', def.repGain);
     const pdHeat = Math.round(def.heatMin + Math.random() * heatSpan * 0.6);
     const fedHeat = Math.round(pdHeat * 0.6);
     addHeat(state, 'pd', pdHeat);
