@@ -217,6 +217,15 @@ function actionLaunderViaGangs() {
   renderApp();
 }
 
+/* ---------------- Criminal World (Council Decisions) ---------------- */
+
+function actionResolveCouncilDecision(optionId) {
+  const res = resolveCouncilDecision(GAME, optionId);
+  if (!res.ok) { showMsg('Criminal World', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
 function travelTo(districtId) {
   GAME.player.currentDistrict = districtId;
   narrate(GAME, 'district_travel');
@@ -246,6 +255,8 @@ function endTurn() {
   weakenedGangsTick(state);
   runRivalGangAI(state);
   commissionTurnTick(state);
+  criminalWorldTick(state);
+  gangRelationsTick(state);
   tickInjuries(state);
 
   updateRank(state);

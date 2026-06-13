@@ -67,6 +67,7 @@ function createNewGame(charData) {
     businessMarket: {}, // districtId -> [businesses available]
     ownedBusinesses: [], // {id, districtId, type, income, damaged, purchasePrice}
     commission: { unlocked: false, relations: {}, proposals: [], warTargets: [] },
+    criminalWorld: { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 },
     eventLog: [],
     settings: loadSettings()
   };
@@ -135,6 +136,10 @@ function migrateState(state) {
 
   if (!Array.isArray(state.player.vehicles)) {
     state.player.vehicles = [];
+  }
+
+  if (!state.criminalWorld) {
+    state.criminalWorld = { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 };
   }
 
   if (Array.isArray(state.ownedBusinesses)) {

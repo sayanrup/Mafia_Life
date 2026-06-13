@@ -14,6 +14,7 @@ const TAB_DEFS = [
   { id: 'finance', label: 'Finance' },
   { id: 'family', label: 'Family' },
   { id: 'commission', label: 'Commission', requires: 'commission' },
+  { id: 'criminalworld', label: 'Criminal World', requires: 'criminalworld' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'events', label: 'Events' },
   { id: 'settings', label: 'Settings' }
@@ -86,7 +87,8 @@ function renderTopBar() {
 function renderTabBar() {
   return `<div class="tab-bar">
     ${TAB_DEFS.filter(t => !t.requires
-        || (t.requires === 'commission' && GAME.commission.unlocked))
+        || (t.requires === 'commission' && GAME.commission.unlocked)
+        || (t.requires === 'criminalworld' && GAME.criminalWorld.unlocked))
       .map(t => `<button class="tab-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">${t.label}</button>`)
       .join('')}
   </div>`;
@@ -101,6 +103,7 @@ function renderTabContent() {
     case 'finance': return renderFinance();
     case 'family': return renderFamily();
     case 'commission': return renderCommission();
+    case 'criminalworld': return renderCriminalWorld();
     case 'inventory': return renderInventory();
     case 'events': return renderEvents();
     case 'settings': return renderSettings();

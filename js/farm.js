@@ -164,6 +164,9 @@ function farmTick(state) {
       sellCapacity += vehicleCapacity * (state.player.operations.distributors[product] / distributorCount);
     }
     if (sellCapacity > 0) {
+      if (state.criminalWorld && state.criminalWorld.smugglingBonusTurns > 0) {
+        sellCapacity *= (1 + state.criminalWorld.smugglingBonusMult);
+      }
       const priceMult = state.player.operations.prices[product];
       const demandMult = clamp(2 - priceMult, 0.4, 1.5); // higher markup = slower sales
       sellCapacity *= demandMult;
