@@ -20,6 +20,22 @@ function launderViaMethod(state, methodId, amount) {
   return { ok: true, cleaned };
 }
 
+function reverseLaunderViaMethod(state, methodId, amount) {
+  const method = LAUNDERING_METHODS.find(m => m.id === methodId);
+  if (!method) return { ok: false, reason: 'Unknown laundering method.' };
+  if (!isUnlockedForRank(state, method.unlockRank)) return { ok: false, reason: `${method.label} unlocks at rank ${method.unlockRank}.` };
+  amount = Math.max(0, Math.floor(amount) || 0);
+  if (amount <= 0) return { ok: false, reason: 'Enter an amount to convert.' };
+  if (state.player.cash.clean < amount) return { ok: false, reason: `Requires ${fmtMoney(amount)} in Clean Cash.` };
+  const fee = amount * method.fee;
+  const dirtied = Math.round(amount - fee);
+  state.player.cash.clean -= amount;
+  state.player.cash.dirty += dirtied;
+  addHeat(state, method.heatTrack, method.heatAmount);
+  state.eventLog.push(logEntry(state, `You feed ${fmtMoney(amount)} of clean cash back through ${method.label.toLowerCase()} to get ${fmtMoney(dirtied)} dirty cash off the books, losing ${Math.round(method.fee * 100)}% to the cut.`, 'finance'));
+  return { ok: true, dirtied };
+}
+
 /* ---------------- Shell Companies ---------------- */
 
 function establishShellCompany(state, name) {

@@ -318,7 +318,7 @@ function gangAction(state, district, gang, gangIds) {
       const taken = shiftControl(state, district.id, target.id, gang.id, amount);
       if (taken > 0) {
         if (!gang.territory.includes(district.id)) gang.territory.push(district.id);
-        if (target.control[district.id] === undefined) target.territory = target.territory.filter(t => t !== district.id);
+        if (district.control[target.id] === undefined) target.territory = target.territory.filter(t => t !== district.id);
         district.lastEvents.unshift(`${gang.name} pushed into ${target.name} turf in ${district.name} (+${taken}%).`);
         if (target.id === playerGangId(state)) {
           target.relationToPlayer = clamp(target.relationToPlayer - 5, -100, 100);

@@ -72,7 +72,7 @@ function renderFinance() {
         <span>${m.label} <span class="muted small">(${m.desc} ${Math.round(m.fee * 100)}% fee, +${m.heatAmount} ${m.heatTrack} heat)</span></span>
         ${locked
           ? `<span class="muted small">Unlocks at ${m.unlockRank}</span>`
-          : `<span class="row" style="gap:6px;"><input type="number" id="launder-${m.id}-amount" placeholder="Amount ($)" min="0" style="width:120px;" /><button class="btn-small" onclick="actionLaunderViaMethod('${m.id}')" ${p.cash.dirty > 0 ? '' : 'disabled'}>Launder</button></span>`}
+          : `<span class="row" style="gap:6px;"><input type="number" id="launder-${m.id}-amount" placeholder="Amount ($)" min="0" style="width:120px;" /><button class="btn-small" onclick="actionLaunderViaMethod('${m.id}')" ${p.cash.dirty > 0 ? '' : 'disabled'}>Launder &rarr; Clean</button><button class="btn-small" onclick="actionReverseLaunderViaMethod('${m.id}')" ${p.cash.clean > 0 ? '' : 'disabled'}>Clean &rarr; Dirty</button></span>`}
       </div>
     `;
   }).join('');
@@ -181,6 +181,14 @@ function actionLaunderViaMethod(methodId) {
   const input = document.getElementById(`launder-${methodId}-amount`);
   const amount = Math.max(0, parseInt(input.value, 10) || 0);
   const res = launderViaMethod(GAME, methodId, amount);
+  if (!res.ok) showMsg('Laundering', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionReverseLaunderViaMethod(methodId) {
+  const input = document.getElementById(`launder-${methodId}-amount`);
+  const amount = Math.max(0, parseInt(input.value, 10) || 0);
+  const res = reverseLaunderViaMethod(GAME, methodId, amount);
   if (!res.ok) showMsg('Laundering', res.reason);
   else { autosave(GAME); renderApp(); }
 }
