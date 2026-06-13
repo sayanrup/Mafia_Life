@@ -385,6 +385,10 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .log-entry.cat-bribe, .log-entry.cat-lawenforcement { color: #6fa8d1; }
 .log-entry.cat-empire { color: var(--accent); }
 .log-entry.cat-gang { color: #d99a3c; }
+.log-entry.cat-criminalworld { color: #b388eb; }
+
+.council-decision { border-color: #b388eb; box-shadow: 0 0 12px rgba(179, 136, 235, 0.25); }
+.council-decision h2 { color: #b388eb; border-bottom-color: #b388eb; }
 
 /* ---------------- Action Update ---------------- */
 
