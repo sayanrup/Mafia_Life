@@ -287,6 +287,8 @@ function endTurn() {
 
   const totalCash = state.player.cash.dirty + state.player.cash.clean;
   state.meta.peakCash = Math.max(state.meta.peakCash || 0, totalCash);
+  state.meta.peakDirtyCash = Math.max(state.meta.peakDirtyCash || 0, state.player.cash.dirty);
+  state.meta.peakHeatPd = Math.max(state.meta.peakHeatPd || 0, state.player.heat.pd);
 
   state.meta.day++;
   state.meta.turn++;

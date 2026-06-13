@@ -26,7 +26,10 @@ function createNewGame(charData) {
       cityName: cityName,
       gameOver: false,
       gameOverReason: null,
-      familyRevealed: false
+      familyRevealed: false,
+      peakCash: start.cashDirty + start.cashClean,
+      peakDirtyCash: start.cashDirty,
+      peakHeatPd: start.heat.pd
     },
     player: {
       name: charData.name.trim() || 'Unnamed',
@@ -158,6 +161,17 @@ function migrateState(state) {
     state.player.pendingDilemma = null;
   }
 
+  // Non-punitive defaults for the new Dirty-Cash/PD-Heat progression tracks:
+  // grant existing saves at least what their current rank used to unlock.
+  if (state.meta.peakDirtyCash === undefined) {
+    const cashByRank = { Associate: 0, Soldier: 50000, Capo: 150000, Underboss: 400000, Boss: 400000 };
+    state.meta.peakDirtyCash = Math.max(state.player.cash.dirty, cashByRank[state.player.rank] || 0);
+  }
+  if (state.meta.peakHeatPd === undefined) {
+    const heatByRank = { Associate: 0, Soldier: 15, Capo: 35, Underboss: 60, Boss: 85 };
+    state.meta.peakHeatPd = Math.max(state.player.heat.pd, heatByRank[state.player.rank] || 0);
+  }
+
   if (!state.criminalWorld) {
     state.criminalWorld = { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 };
   }
@@ -195,6 +209,8 @@ function migrateState(state) {
 
   if (Array.isArray(state.ownedBusinesses)) {
     for (const b of state.ownedBusinesses) {
+      if (typeof b.level !== 'number') b.level = 1;
+      if (typeof b.protection !== 'number') b.protection = 0;
       const def = BUSINESS_TYPES.find(t => t.type === b.type);
       if (def) {
         b.baseIncome = def.baseIncome;
