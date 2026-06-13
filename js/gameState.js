@@ -59,7 +59,8 @@ function createNewGame(charData) {
       currentDistrict: 0,
       actionCounts: {}, // actionKey -> uses this turn (reset on endTurn)
       vehicles: [], // {id, typeId} - distribution fleet
-      operations: null // set by initPlayerOperations below
+      operations: null, // set by initPlayerOperations below
+      pendingDilemma: null // {type, title, description, context, options} - set by streetDilemmaTick
     },
     districts: [],
     gangs: {},
@@ -151,6 +152,10 @@ function migrateState(state) {
 
   if (!Array.isArray(state.player.vehicles)) {
     state.player.vehicles = [];
+  }
+
+  if (!('pendingDilemma' in state.player)) {
+    state.player.pendingDilemma = null;
   }
 
   if (!state.criminalWorld) {
@@ -274,6 +279,75 @@ function updateRank(state) {
 function getCrewCap(state) {
   const rank = RANKS.find(r => r.id === state.player.rank);
   return rank ? rank.crewCap : 4;
+}
+
+// Bankroll milestones shown on the Home tab's Objectives card.
+const CASH_MILESTONES = [5000, 25000, 100000, 500000, 1000000, 5000000];
+
+function getNextCashMilestone(state) {
+  const total = state.player.cash.dirty + state.player.cash.clean;
+  for (const m of CASH_MILESTONES) {
+    if (total < m) return m;
+  }
+  return null;
+}
+
+// Derived (non-persisted) list of milestone progress bars for the Home tab.
+function computeObjectives(state) {
+  const p = state.player;
+  const objectives = [];
+
+  const rankIdx = rankIndex(p.rank);
+  const nextRank = RANKS[rankIdx + 1];
+  if (nextRank) {
+    const curRank = RANKS[rankIdx];
+    const score = getRankScore(state);
+    objectives.push({
+      label: `Promotion to ${nextRank.id}`,
+      current: clamp(score - curRank.threshold, 0, nextRank.threshold - curRank.threshold),
+      max: nextRank.threshold - curRank.threshold,
+      detail: nextRank.perk
+    });
+  } else {
+    objectives.push({
+      label: 'Top of the Food Chain',
+      current: 1,
+      max: 1,
+      detail: "You've reached the rank of Boss."
+    });
+  }
+
+  const total = p.cash.dirty + p.cash.clean;
+  const nextMilestone = getNextCashMilestone(state);
+  if (nextMilestone) {
+    const milestoneIdx = CASH_MILESTONES.indexOf(nextMilestone);
+    const prevMilestone = milestoneIdx > 0 ? CASH_MILESTONES[milestoneIdx - 1] : 0;
+    objectives.push({
+      label: `Build a ${fmtMoney(nextMilestone)} Bankroll`,
+      current: clamp(total - prevMilestone, 0, nextMilestone - prevMilestone),
+      max: nextMilestone - prevMilestone,
+      detail: `Currently holding ${fmtMoney(total)}.`
+    });
+  } else {
+    objectives.push({
+      label: 'Bankroll',
+      current: 1,
+      max: 1,
+      detail: `Currently holding ${fmtMoney(total)}. You've outgrown every milestone.`
+    });
+  }
+
+  if (playerGangId(state)) {
+    const influence = computeTerritoryInfluence(state);
+    objectives.push({
+      label: 'Territory Control',
+      current: Math.round(influence),
+      max: 100,
+      detail: `Your gang controls ${Math.round(influence)}% of the city, on average.`
+    });
+  }
+
+  return objectives;
 }
 
 function clamp(val, min, max) {

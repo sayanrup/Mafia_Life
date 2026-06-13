@@ -238,6 +238,16 @@ function actionResolveCouncilDecision(optionId) {
   renderApp();
 }
 
+/* ---------------- Street Dilemmas ---------------- */
+
+function actionResolveDilemma(optionId) {
+  const res = resolveStreetDilemma(GAME, optionId);
+  if (!res.ok) { showMsg('Dilemma', res.reason); return; }
+  MODAL = null;
+  autosave(GAME);
+  renderApp();
+}
+
 function travelTo(districtId) {
   GAME.player.currentDistrict = districtId;
   narrate(GAME, 'district_travel');
@@ -270,6 +280,7 @@ function endTurn() {
   criminalWorldTick(state);
   gangRelationsTick(state);
   tickInjuries(state);
+  streetDilemmaTick(state);
 
   updateRank(state);
   checkFamilyReveal(state);
@@ -354,7 +365,8 @@ function continueAsFamilyMember(memberId) {
     currentDistrict: 0,
     actionCounts: {},
     vehicles: [],
-    operations: freshPlayerOperations()
+    operations: freshPlayerOperations(),
+    pendingDilemma: null
   };
 
   state.meta.gameOver = false;
