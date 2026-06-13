@@ -59,10 +59,10 @@ function initWorld(state) {
   state.gangs = {};
   for (const g of gangPool) state.gangs[g.id] = g;
 
-  // Business market: 3 random business types available per district
+  // Business market: a handful of random business types available per district
   state.businessMarket = {};
   for (const d of state.districts) {
-    const choices = [...BUSINESS_TYPES].sort(() => Math.random() - 0.5).slice(0, 3);
+    const choices = [...BUSINESS_TYPES].sort(() => Math.random() - 0.5).slice(0, 4);
     state.businessMarket[d.id] = choices.map((b, idx) => {
       const variance = 0.85 + Math.random() * 0.3;
       return {
