@@ -501,6 +501,7 @@ function renderDistrictsSubtab() {
     const farmLine = farmTotal > 0
       ? Object.entries(d.farms).filter(([, f]) => f.plots > 0).map(([p, f]) => `${FARM_TYPES[p].label}: ${f.plots} plot(s)`).join(' &middot; ')
       : '';
+    const activityRows = (d.lastEvents || []).map(e => `<div class="muted small">${e}</div>`).join('');
 
     return `
       <div class="card">
@@ -510,6 +511,7 @@ function renderDistrictsSubtab() {
         <div class="muted">District Heat: ${d.heat}/100</div>
         <div class="muted">${opsLine}</div>
         ${farmLine ? `<div class="muted">${farmLine}</div>` : ''}
+        ${activityRows ? `<div style="margin-top:6px;"><div class="muted small"><strong>Recent Activity</strong></div>${activityRows}</div>` : ''}
         ${d.id !== GAME.player.currentDistrict ? `<div class="row" style="margin-top:6px;"><button onclick="travelTo(${d.id})">Travel here</button></div>` : ''}
       </div>
     `;
@@ -694,7 +696,7 @@ function renderFarmSubtab(product) {
         <span>${t.label} <span class="muted small">(owned ${owned} &middot; ${fmtMoney(t.capacity)} cap &middot; ${fmtMoney(t.upkeep)}/turn wage ea)</span></span>
         ${locked
           ? `<span class="muted small">Unlocks at ${fmtMoney(t.unlockCash)} Dirty Cash</span>`
-          : `<span class="row"><input type="number" id="ops-distributors-${product}-${t.id}" value="1" min="1" style="width:60px;" /><button class="btn-small" onclick="actionHireDistributors('${product}', '${t.id}')">Hire (Free)</button></span>`}
+          : `<span class="row"><input type="number" id="ops-distributors-${product}-${t.id}" value="1" min="1" style="width:60px;" /><button class="btn-small" onclick="actionHireDistributors('${product}', '${t.id}')">Hire (Free)</button><button class="btn-small btn-danger" onclick="actionFireDistributors('${product}', '${t.id}')" ${owned > 0 ? '' : 'disabled'}>Fire</button></span>`}
       </div>
     `;
   }).join('');

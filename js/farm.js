@@ -130,6 +130,18 @@ function hireDistributors(state, product, typeId, count) {
   return { ok: true };
 }
 
+function fireDistributors(state, product, typeId, count) {
+  const type = DISTRIBUTOR_TYPES.find(t => t.id === typeId);
+  if (!type) return { ok: false, reason: 'Unknown distributor type.' };
+  const counts = state.player.operations.distributors[product];
+  const owned = counts[typeId] || 0;
+  if (owned <= 0) return { ok: false, reason: `You don't have any ${type.label}s moving ${FARM_TYPES[product].label.toLowerCase()}.` };
+  count = Math.min(owned, Math.max(1, Math.floor(count) || 0));
+  counts[typeId] -= count;
+  state.eventLog.push(logEntry(state, `You let go ${count}x ${type.label} who were moving ${FARM_TYPES[product].label.toLowerCase()}, freeing up ${fmtMoney(type.upkeep * count)}/turn in wages.`, 'operations'));
+  return { ok: true };
+}
+
 /* ---------------- Pricing ---------------- */
 
 function setOperationPrice(state, product, priceMult) {
