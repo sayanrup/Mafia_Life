@@ -146,12 +146,17 @@ function renderVehiclesCard() {
       }).join('')
     : '<p class="muted">No vehicles owned - distributors are limited to moving product on foot.</p>';
 
-  const buyRows = VEHICLE_TYPES.map(t => `
+  const buyRows = VEHICLE_TYPES.map(t => {
+    const locked = !isUnlockedForRank(GAME, t.unlockRank);
+    return `
     <div class="row between" style="margin-bottom:4px;">
       <span>${t.label} <span class="muted small">(${fmtMoney(t.cargoCapacity)} cargo, ${t.crewCapacity} crew, ${fmtMoney(t.upkeep)}/turn upkeep)</span></span>
-      <button class="btn-small" onclick="actionBuyVehicle('${t.id}')" ${GAME.player.cash.dirty >= t.cost ? '' : 'disabled'}>Buy @ ${fmtMoney(t.cost)}</button>
+      ${locked
+        ? `<span class="muted small">Unlocks at ${t.unlockRank}</span>`
+        : `<button class="btn-small" onclick="actionBuyVehicle('${t.id}')" ${GAME.player.cash.dirty >= t.cost ? '' : 'disabled'}>Buy @ ${fmtMoney(t.cost)}</button>`}
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   return `
     <div class="card">
