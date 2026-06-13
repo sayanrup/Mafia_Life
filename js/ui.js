@@ -215,6 +215,7 @@ function renderHome() {
       <h2>${district.name}</h2>
       <div class="control-bar">${controlBar}</div>
       ${bossLines}
+      <div class="muted small">Control shown is for this district only. Criminal World access depends on your average control across all districts (see Objectives).</div>
       <div class="muted">District Heat: ${district.heat}/100</div>
     </div>
 

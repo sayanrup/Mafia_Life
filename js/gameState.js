@@ -436,13 +436,13 @@ function computeObjectives(state) {
     });
   }
 
-  if (playerGangId(state)) {
+  if (playerGangId(state) && !state.criminalWorld.unlocked) {
     const influence = computeTerritoryInfluence(state);
     objectives.push({
-      label: 'Territory Control',
+      label: 'Criminal World Access',
       current: Math.round(influence),
-      max: 100,
-      detail: `Your gang controls ${Math.round(influence)}% of the city, on average.`
+      max: 50,
+      detail: `Your gang controls ${Math.round(influence)}% of the city, on average across all districts. Reach 50% average to earn a seat in the Criminal World.`
     });
   }
 
