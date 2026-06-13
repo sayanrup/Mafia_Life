@@ -249,6 +249,7 @@ const OPS_ECONOMY = {
   unlockRank: 'Associate',
   protectionPerDollar: 1 / 40,
   protectionDecay: 8,
+  protectionIncomeRate: 10, // $/turn kicked back per point of opProtection from generic bribes
   raidBaseRisk: 5,
   priceMinMult: 0.5,
   priceMaxMult: 2.0,

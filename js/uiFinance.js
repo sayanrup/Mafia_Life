@@ -16,6 +16,7 @@ function renderFinance() {
       <div class="card" style="margin-bottom:6px;">
         <div class="row between"><strong>${c.name}</strong><span class="muted small">Tier ${c.tier}${c.auditCooldown > 0 ? ' - <span class="tag dirty">Under Audit</span>' : ''}</span></div>
         <div class="muted small">Launders ${fmtMoney(def.launderPerTurn)}/turn at ${Math.round(def.fee * 100)}% fee, audit risk ${def.auditRisk}%</div>
+        <div class="muted small" style="margin-top:2px;">Outside clients pay this cover ${fmtMoney(Math.round(def.launderPerTurn * def.fee))}/turn to launder their own money. Last Turn Revenue: ${fmtMoney(c.lastRevenue || 0)} &middot; Expense: ${fmtMoney(c.lastExpense || 0)}</div>
         ${next
           ? (nextLocked
               ? `<div class="small muted" style="margin-top:4px;">Tier ${c.tier + 1} unlocks at ${next.unlockRank}</div>`
@@ -130,6 +131,10 @@ function renderFinancePL() {
 
   for (const racket of GAME.player.extortionRackets) {
     rows.push({ name: `Extortion Racket - ${GAME.districts[racket.districtId].name}`, revenue: racket.level * 60, expense: 0 });
+  }
+
+  for (const c of GAME.shellCompanies) {
+    rows.push({ name: `Shell Company - ${c.name}`, revenue: c.lastRevenue || 0, expense: c.lastExpense || 0 });
   }
 
   for (const b of GAME.ownedBusinesses) {
