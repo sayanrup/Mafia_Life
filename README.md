@@ -12,14 +12,17 @@ Every empire starts in the gutter. Create a character, pick an era (80s, 90s, 20
 
 - **Character creation** — name, era, city, and origin, each with its own starting stats and bonuses
 - **Territory map** — districts contested by rival gangs, each with a named boss and a distinct personality (Aggressive, Diplomatic, Opportunistic) driving their AI
-- **Drug operations** — buy plots and grow weed, pills, and powder across your districts, hire distributors to move product, set street prices, buy production equipment, and bribe local protection to keep raids down
-- **Activities** — mugging, heists, hits, extortion rackets, kidnapping jobs, smuggling runs, product deals, and bribes (PD, Feds, rival crews)
-- **Crew & lieutenants** — recruit muscle, manage loyalty and upkeep, promote lieutenants and assign them to districts or smuggling routes for passive bonuses
-- **Armory** — four tiers of weapons that boost your crew's combat power
+- **Drug operations with rank progression** — buy plots and grow weed, pills, and powder across your districts; the products you can run, plots per district, equipment tiers, and number of distributors you can hire all expand as you rank up from Associate to Boss
+- **Distribution fleet** — buy and sell sedans, vans, SUVs, box trucks, and armored trucks to add shared cargo capacity for your distributors, so high-output operations can actually move their product each turn
+- **Stash houses** — store unsold product; spare capacity rents out to other crews for passive income, while overflow gets raided by rivals
+- **Activities with rank-gated unlocks** — mugging and basic street crime are available from the start, while bigger jobs (heists, gang gigs, kidnapping) unlock as you climb the ranks, with "Unlocks at &lt;rank&gt;" shown in the crime menu until then
+- **Crew & lieutenants** — recruit muscle, manage loyalty and upkeep (including vehicle upkeep), promote lieutenants and assign them to districts or smuggling routes for passive bonuses
+- **Armory** — four tiers of weapons that boost your crew's combat power, with buy and sell options for surplus gear
 - **Law enforcement** — named detectives and federal agents with their own personalities, bribery, promotions, retirements, and informants (on you and on rival gangs)
-- **Finance** — shell companies for laundering dirty cash, plus a marketplace of legitimate business fronts that generate income, reduce heat, and add extra laundering capacity
+- **Finance** — launder dirty cash on the spot via street contacts (steep cut, always available), or establish shell companies and legitimate business fronts for better rates; businesses generate income, reduce heat, add laundering capacity, and can be repaired or sold for a resale value driven by district control, your reputation, and local heat
 - **Family council** — relatives who can be assigned roles, and who face kidnapping, betrayal, or worse as your heat rises
 - **The Commission** — once you reach Boss rank, negotiate truces, alliances, territory trades, and wars with rival gangs
+- **Criminal World council** — once your gang controls 50%+ of the city's territory, a new tab opens where every turn the council brings a decision (price fixing, hits on rival gangs, police bribes, joint smuggling pacts, tribute demands, territory mediation, informant purges, cartel shipments) that shifts your cash, heat, reputation, and relationships with every other family. Allies occasionally kick back cash from joint ventures; gangs at war periodically raid your businesses, stashes, or crew loyalty
 - **Combat** — quick dice-based scuffles plus a tactical turn-based gang war screen (Attack / Defend / Use Item / Special / Flee)
 - **Narrative** — a large pool of offline flavor text covering crime outcomes, drug operations, law enforcement, betrayals, and more, with optional AI-generated narration via OpenRouter (your own API key, stored locally, with a model picker and cost tracking)
 - **Persistence** — autosave every turn to a single save slot, plus JSON export/import
