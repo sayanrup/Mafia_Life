@@ -341,7 +341,13 @@ function checkGameOver() {
   const p = GAME.player;
   if (GAME.meta.gameOver) return;
 
-  if (p.heat.pd >= 100 || p.heat.feds >= 100) {
+  const myGangId = !GAME.meta.victoryAchieved ? playerGangId(GAME) : null;
+  if (myGangId && GAME.districts.length && GAME.districts.every(d => dominantGang(d) === myGangId)) {
+    GAME.meta.gameOver = true;
+    GAME.meta.gameOverReason = 'victory';
+    GAME.meta.victoryAchieved = true;
+    GAME.eventLog.push(logEntry(GAME, `Every district in ${GAME.meta.cityName} answers to the ${GAME.gangs[myGangId].name} now. The city is yours.`, 'system'));
+  } else if (p.heat.pd >= 100 || p.heat.feds >= 100) {
     if (!GAME.meta.pendingArrest) {
       GAME.meta.pendingArrest = true;
       GAME.eventLog.push(logEntry(GAME, `The walls close in. ${p.heat.feds >= 100 ? 'Federal agents' : 'Local police'} are moving in on ${p.name}.`, 'system'));
@@ -454,6 +460,15 @@ function continueAsFamilyMember(memberId) {
 
   state.eventLog.push(logEntry(state, `${member.name} steps up to carry on the family name in ${state.meta.cityName}. The old empire's ashes are still warm.`, 'system'));
 
+  autosave(state);
+  setActiveTab('home');
+}
+
+function continueAfterVictory() {
+  const state = GAME;
+  state.meta.gameOver = false;
+  state.meta.gameOverReason = null;
+  state.eventLog.push(logEntry(state, `The city is yours, but there's always another move to make.`, 'system'));
   autosave(state);
   setActiveTab('home');
 }
