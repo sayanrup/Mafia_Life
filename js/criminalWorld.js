@@ -179,6 +179,67 @@ function genCartelShipment(state) {
   };
 }
 
+function genWeaponsCache(state) {
+  const amount = 10 + Math.floor(Math.random() * 30);
+  return {
+    type: 'weapons_cache',
+    title: 'Recovered Weapons Cache',
+    description: `A shipment of arms was intercepted and now sits in a council-controlled warehouse, up for grabs.`,
+    context: { amount },
+    options: [
+      { id: 'claim', label: `Claim the cache (+${amount} Arms, PD Heat +4)` },
+      { id: 'handover', label: 'Hand it to the council (relations improve with every family)' }
+    ]
+  };
+}
+
+function genCharityGala(state) {
+  const cost = 5000 + Math.floor(Math.random() * 10000);
+  return {
+    type: 'charity_gala',
+    title: 'Council Charity Gala',
+    description: `The families are throwing a lavish charity gala to clean up their public image. A seat at the table costs plenty, but so does staying away.`,
+    context: { cost },
+    options: [
+      { id: 'attend', label: `Attend and donate ${fmtMoney(cost)} (Street Rep +6, PD Heat -5)` },
+      { id: 'skip', label: 'Skip it' }
+    ]
+  };
+}
+
+function genHostageNegotiation(state) {
+  const myGangId = playerGangId(state);
+  const candidates = getCouncilGangs(state).filter(g => !g.eliminated && g.id !== myGangId);
+  if (!candidates.length) return null;
+  const gang = candidates[Math.floor(Math.random() * candidates.length)];
+  const amount = 8000 + Math.floor(Math.random() * 12000);
+  return {
+    type: 'hostage_negotiation',
+    title: `Hostage Standoff - ${gang.name}`,
+    description: `A deal gone wrong has left two crews holding each other's people. ${gang.boss.name} wants you to broker the trade.`,
+    context: { gangId: gang.id, amount },
+    options: [
+      { id: 'broker', label: `Broker a fair trade (${gang.name} relations +10, Street Rep +3)` },
+      { id: 'exploit', label: `Tip the scales your way (${fmtMoney(amount)}, ${gang.name} relations -10)` },
+      { id: 'ignore', label: 'Stay out of it' }
+    ]
+  };
+}
+
+function genPoliticalFunding(state) {
+  const cost = 20000 + Math.floor(Math.random() * 30000);
+  return {
+    type: 'political_funding',
+    title: 'Funding a Friendly Candidate',
+    description: `The council wants to pool funds behind a city council candidate who's promised to keep certain precincts looking the other way.`,
+    context: { cost },
+    options: [
+      { id: 'fund', label: `Contribute ${fmtMoney(cost)} (PD Heat -8, Fed Heat -4)` },
+      { id: 'decline', label: 'Decline' }
+    ]
+  };
+}
+
 const COUNCIL_DECISION_GENERATORS = {
   price_fix: genPriceFix,
   eliminate_gang: genEliminateGang,
@@ -187,7 +248,11 @@ const COUNCIL_DECISION_GENERATORS = {
   tribute_demand: genTributeDemand,
   territory_dispute: genTerritoryDispute,
   informant_purge: genInformantPurge,
-  cartel_shipment: genCartelShipment
+  cartel_shipment: genCartelShipment,
+  weapons_cache: genWeaponsCache,
+  charity_gala: genCharityGala,
+  hostage_negotiation: genHostageNegotiation,
+  political_funding: genPoliticalFunding
 };
 
 function generateCouncilDecision(state) {
@@ -382,6 +447,77 @@ function applyCouncilOption(state, decision, optionId) {
       } else {
         addRep(state, 'cartel', 2);
         state.eventLog.push(logEntry(state, `You pass on the shipment. The cartel appreciates your discretion.`, 'criminalworld'));
+      }
+      break;
+    }
+
+    case 'weapons_cache': {
+      const amount = decision.context.amount;
+      if (optionId === 'claim') {
+        state.player.inventory.product.arms += amount;
+        addHeat(state, 'pd', 4);
+        state.eventLog.push(logEntry(state, `You claim the cache: +${amount} Arms added to your stash, but moving them drew attention. PD Heat +4.`, 'criminalworld'));
+      } else {
+        for (const g of getCouncilGangs(state)) {
+          if (!g.eliminated) g.relationToPlayer = clamp(g.relationToPlayer + 3, -100, 100);
+        }
+        state.eventLog.push(logEntry(state, `You hand the cache over to the council. Every family on the council thinks a little better of you.`, 'criminalworld'));
+      }
+      break;
+    }
+
+    case 'charity_gala': {
+      const cost = decision.context.cost;
+      if (optionId === 'attend') {
+        if (state.player.cash.clean >= cost) {
+          state.player.cash.clean -= cost;
+          addRep(state, 'street', 6);
+          addHeat(state, 'pd', -5);
+          state.eventLog.push(logEntry(state, `You attend the gala and donate ${fmtMoney(cost)}. Your name is spoken kindly in polite company, and PD Heat eases.`, 'criminalworld'));
+        } else {
+          state.eventLog.push(logEntry(state, `You can't cover the ${fmtMoney(cost)} donation, so you skip the gala.`, 'criminalworld'));
+        }
+      } else {
+        state.eventLog.push(logEntry(state, `You skip the charity gala. No one really expected you to show anyway.`, 'criminalworld'));
+      }
+      break;
+    }
+
+    case 'hostage_negotiation': {
+      const gang = state.gangs[decision.context.gangId];
+      const amount = decision.context.amount;
+      if (!gang) break;
+      if (optionId === 'broker') {
+        gang.relationToPlayer = clamp(gang.relationToPlayer + 10, -100, 100);
+        addRep(state, 'street', 3);
+        state.eventLog.push(logEntry(state, `You broker a clean trade. Both sides walk away whole, and the ${gang.name} owe you one.`, 'criminalworld'));
+      } else if (optionId === 'exploit') {
+        addCash(state, amount, 0);
+        gang.relationToPlayer = clamp(gang.relationToPlayer - 10, -100, 100);
+        state.eventLog.push(logEntry(state, `You tip the trade in your favor, walking away with ${fmtMoney(amount)}. The ${gang.name} won't forget it.`, 'criminalworld'));
+      } else {
+        state.eventLog.push(logEntry(state, `You stay out of the standoff and let the two crews sort it out themselves.`, 'criminalworld'));
+      }
+      break;
+    }
+
+    case 'political_funding': {
+      const cost = decision.context.cost;
+      if (optionId === 'fund') {
+        if (state.player.cash.dirty + state.player.cash.clean >= cost) {
+          let remaining = cost;
+          const dirtyUsed = Math.min(state.player.cash.dirty, remaining);
+          state.player.cash.dirty -= dirtyUsed;
+          remaining -= dirtyUsed;
+          state.player.cash.clean -= remaining;
+          addHeat(state, 'pd', -8);
+          addHeat(state, 'feds', -4);
+          state.eventLog.push(logEntry(state, `You chip in ${fmtMoney(cost)} for a friendly candidate. PD and Federal Heat both ease citywide.`, 'criminalworld'));
+        } else {
+          state.eventLog.push(logEntry(state, `You can't cover the ${fmtMoney(cost)} the council wants for the campaign.`, 'criminalworld'));
+        }
+      } else {
+        state.eventLog.push(logEntry(state, `You decline to fund the council's candidate.`, 'criminalworld'));
       }
       break;
     }
