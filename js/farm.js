@@ -26,11 +26,12 @@ function initPlayerOperations(state) {
   state.player.operations = freshPlayerOperations();
   for (const d of state.districts) {
     d.farms = {
-      weed: { plots: 0, growTurn: 0, pendingValue: 0 },
-      pills: { plots: 0, growTurn: 0, pendingValue: 0 },
-      powder: { plots: 0, growTurn: 0, pendingValue: 0 }
+      weed: { plots: 0, growTurn: 0, pendingValue: 0, invested: 0, lastRevenue: 0, lastExpense: 0 },
+      pills: { plots: 0, growTurn: 0, pendingValue: 0, invested: 0, lastRevenue: 0, lastExpense: 0 },
+      powder: { plots: 0, growTurn: 0, pendingValue: 0, invested: 0, lastRevenue: 0, lastExpense: 0 }
     };
     d.opProtection = 0;
+    d.protectionIncome = 0;
   }
 }
 
@@ -71,10 +72,32 @@ function buyFarmPlot(state, districtId, product) {
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} in Dirty Cash.` };
   state.player.cash.dirty -= cost;
   state.districts[districtId].farms[product].plots++;
+  state.districts[districtId].farms[product].invested = (state.districts[districtId].farms[product].invested || 0) + cost;
   const tierName = FARM_TYPES[product].facilityTiers[farm.plots - 1].name;
   const district = state.districts[districtId];
   state.eventLog.push(logEntry(state, `You build a ${tierName} for your ${FARM_TYPES[product].label.toLowerCase()} operation in ${district.name} for ${fmtMoney(cost)}.`, 'operations'));
   return { ok: true };
+}
+
+// Net worth of an operation = cumulative amount invested in its facility tiers.
+function getFarmNetWorth(state, districtId, product) {
+  return state.districts[districtId].farms[product].invested || 0;
+}
+
+function sellFarmOperation(state, districtId, product) {
+  const farm = state.districts[districtId].farms[product];
+  if (!farm || farm.plots <= 0) return { ok: false, reason: 'Nothing to sell.' };
+  const value = Math.round((farm.invested || 0) * 1.5);
+  state.player.cash.dirty += value;
+  farm.plots = 0;
+  farm.growTurn = 0;
+  farm.pendingValue = 0;
+  farm.invested = 0;
+  farm.lastRevenue = 0;
+  farm.lastExpense = 0;
+  const district = state.districts[districtId];
+  state.eventLog.push(logEntry(state, `You sell off your ${FARM_TYPES[product].label.toLowerCase()} operation in ${district.name} for ${fmtMoney(value)}.`, 'operations'));
+  return { ok: true, value };
 }
 
 /* ---------------- Distributors ---------------- */
@@ -152,7 +175,12 @@ function bribeOpProtection(state, districtId, amount) {
 function hireSecurityDetail(state, districtId, tierId) {
   const tier = SECURITY_TIERS.find(t => t.id === tierId);
   if (!tier) return { ok: false, reason: 'Unknown security detail.' };
-  return bribeOpProtection(state, districtId, tier.amount);
+  const result = bribeOpProtection(state, districtId, tier.amount);
+  if (result.ok) {
+    const district = state.districts[districtId];
+    district.protectionIncome = Math.max(district.protectionIncome || 0, tier.incomePerTurn);
+  }
+  return result;
 }
 
 /* ---------------- Marketing Campaigns (temporary demand boosts) ---------------- */
@@ -173,13 +201,30 @@ function launchMarketingCampaign(state, product, campaignId) {
 function farmTick(state) {
   if (!canAccessOperations(state)) return;
 
+  // Paid-off cops & feds kick back a cut of their own action while protection holds.
+  let protectionPayout = 0;
+  for (const district of state.districts) {
+    if ((district.opProtection || 0) > 0 && district.protectionIncome > 0) {
+      protectionPayout += district.protectionIncome;
+    } else {
+      district.protectionIncome = 0;
+    }
+  }
+  if (protectionPayout > 0) {
+    state.player.cash.dirty += protectionPayout;
+  }
+
   const distributorCount = totalDistributors(state);
   const vehicleCapacity = totalVehicleCapacity(state);
+  const upkeepByProduct = {};
   if (distributorCount > 0) {
     let upkeep = 0;
     for (const product of Object.keys(FARM_TYPES)) {
       const counts = state.player.operations.distributors[product];
-      for (const type of DISTRIBUTOR_TYPES) upkeep += (counts[type.id] || 0) * type.upkeep;
+      let productUpkeep = 0;
+      for (const type of DISTRIBUTOR_TYPES) productUpkeep += (counts[type.id] || 0) * type.upkeep;
+      upkeepByProduct[product] = productUpkeep;
+      upkeep += productUpkeep;
     }
     if (state.player.cash.dirty >= upkeep) {
       state.player.cash.dirty -= upkeep;
@@ -195,8 +240,14 @@ function farmTick(state) {
     const def = FARM_TYPES[product];
     const equipMult = EQUIPMENT_TIERS[state.player.operations.equipment[product]].yieldMult;
 
+    const activeFarms = state.districts.filter(d => d.farms[product] && d.farms[product].plots > 0);
+    const expensePerFarm = activeFarms.length > 0 ? (upkeepByProduct[product] || 0) / activeFarms.length : 0;
     for (const district of state.districts) {
       const farm = district.farms[product];
+      if (farm) {
+        farm.lastRevenue = 0;
+        farm.lastExpense = farm.plots > 0 ? Math.round(expensePerFarm) : 0;
+      }
       if (!farm || farm.plots <= 0) {
         if (farm) district.opProtection = clamp((district.opProtection || 0) - OPS_ECONOMY.protectionDecay, 0, 100);
         continue;
@@ -247,7 +298,9 @@ function farmTick(state) {
         const sold = Math.min(farm.pendingValue, sellCapacity);
         farm.pendingValue -= sold;
         sellCapacity -= sold;
-        totalRevenue += sold * priceMult;
+        const revenue = sold * priceMult;
+        farm.lastRevenue += revenue;
+        totalRevenue += revenue;
       }
       if (totalRevenue > 0) {
         addCash(state, totalRevenue, 0);

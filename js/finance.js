@@ -115,8 +115,6 @@ function buyBusiness(state, districtId, marketId) {
   const market = state.businessMarket[districtId];
   const listing = market.find(b => b.id === marketId);
   if (!listing) return { ok: false, reason: 'Listing not found.' };
-  const def = BUSINESS_TYPES.find(t => t.type === listing.type);
-  if (def && !isUnlockedForRank(state, def.unlockRank)) return { ok: false, reason: `${listing.type} unlocks at rank ${def.unlockRank}.` };
   const price = Math.round(listing.price * familyDiscountMultiplier(state));
   if (state.player.cash.clean < price) return { ok: false, reason: `Requires ${fmtMoney(price)} Clean Cash.` };
   state.player.cash.clean -= price;
@@ -130,7 +128,10 @@ function buyBusiness(state, districtId, marketId) {
     purchasePrice: price,
     damaged: false,
     level: 1,
-    protection: 0
+    protection: 0,
+    invested: price,
+    lastRevenue: 0,
+    lastExpense: 0
   };
   state.ownedBusinesses.push(business);
   state.businessMarket[districtId] = market.filter(b => b.id !== marketId);
@@ -157,8 +158,16 @@ function upgradeBusiness(state, businessId) {
   if (state.player.cash.clean < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} Clean Cash.` };
   state.player.cash.clean -= cost;
   business.level++;
+  business.invested = (business.invested || business.purchasePrice) + cost;
   state.eventLog.push(logEntry(state, `Upgraded ${business.type} in ${state.districts[business.districtId].name} to Level ${business.level} for ${fmtMoney(cost)}.`, 'finance'));
   return { ok: true };
+}
+
+// Net worth of a business = cumulative amount invested (purchase price + upgrades).
+function getBusinessNetWorth(state, businessId) {
+  const business = state.ownedBusinesses.find(b => b.id === businessId);
+  if (!business) return 0;
+  return business.invested || business.purchasePrice || 0;
 }
 
 function bribeBusinessProtection(state, businessId, amount) {
@@ -173,16 +182,11 @@ function bribeBusinessProtection(state, businessId, amount) {
   return { ok: true };
 }
 
+// Selling a business front refunds 1.5x its net worth (cumulative invested amount).
 function resaleValue(state, businessId) {
   const business = state.ownedBusinesses.find(b => b.id === businessId);
   if (!business) return 0;
-  const district = state.districts[business.districtId];
-  const myGangId = playerGangId(state);
-  const controlPct = myGangId ? (district.control[myGangId] || 0) : 50;
-  const repFactor = (state.player.reputation.street + state.player.reputation.gang) / 200; // 0-1
-  const heatFactor = 1 - district.heat / 250; // high district heat erodes resale value
-  let value = business.purchasePrice * (0.4 + controlPct / 200 + repFactor * 0.2) * heatFactor + business.baseIncome * 8;
-  value *= businessLevelMult(business);
+  let value = (business.invested || business.purchasePrice || 0) * 1.5;
   if (business.damaged) value *= 0.6;
   return Math.round(Math.max(0, value));
 }
@@ -216,7 +220,11 @@ function businessIncomeTick(state) {
     if (!b.damaged) {
       const income = Math.round(b.baseIncome * mult * businessLevelMult(b));
       total += income;
+      b.lastRevenue = income;
+    } else {
+      b.lastRevenue = 0;
     }
+    b.lastExpense = 0;
     districtCounts[b.districtId] = (districtCounts[b.districtId] || 0) + 1;
   }
   state.player.cash.clean += total;

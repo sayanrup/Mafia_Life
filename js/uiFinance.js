@@ -28,15 +28,11 @@ function renderFinance() {
   const currentDistrict = GAME.districts[GAME.player.currentDistrict];
   const currentListings = GAME.businessMarket[GAME.player.currentDistrict] || [];
   const marketCards = currentListings.length ? currentListings.map(b => {
-    const def = BUSINESS_TYPES.find(t => t.type === b.type);
-    const locked = def && !isUnlockedForRank(GAME, def.unlockRank);
     const nextUpgradeCost = businessUpgradeCost(b.price, 1);
     return `
       <div class="row between">
         <span>${b.type} <span class="muted small">(Buy: ${fmtMoney(b.price)} &middot; Lvl 2 upgrade: ${fmtMoney(nextUpgradeCost)})</span></span>
-        ${locked
-          ? `<span class="muted small">Unlocks at ${def.unlockRank}</span>`
-          : `<button onclick="actionBuyBusiness(${GAME.player.currentDistrict}, '${b.id}')" ${p.cash.clean >= b.price ? '' : 'disabled'}>Buy</button>`}
+        <button onclick="actionBuyBusiness(${GAME.player.currentDistrict}, '${b.id}')" ${p.cash.clean >= b.price ? '' : 'disabled'}>Buy</button>
       </div>
     `;
   }).join('') : '<p class="muted">No listings remaining here.</p>';
@@ -49,10 +45,13 @@ function renderFinance() {
     const d = GAME.districts[districtId];
     const rows = ownedByDistrict[districtId].map(b => {
       const upgradeCost = businessUpgradeCost(b.purchasePrice, b.level);
+      const netWorth = getBusinessNetWorth(GAME, b.id);
+      const lastProfit = (b.lastRevenue || 0) - (b.lastExpense || 0);
       return `
       <div class="card" style="margin-bottom:6px;">
         <div class="row between"><strong>${b.type}</strong><span class="muted small">Level ${b.level}${b.damaged ? ' - <span class="tag dirty">Damaged</span>' : ''}</span></div>
-        <div class="muted small">Income: ${fmtMoney(b.damaged ? 0 : Math.round(b.baseIncome * businessLevelMult(b)))}/turn &middot; Protection: ${Math.round(b.protection || 0)}% &middot; Resale: ${fmtMoney(resaleValue(GAME, b.id))}</div>
+        <div class="muted small">Income: ${fmtMoney(b.damaged ? 0 : Math.round(b.baseIncome * businessLevelMult(b)))}/turn &middot; Protection: ${Math.round(b.protection || 0)}% &middot; Sell: ${fmtMoney(resaleValue(GAME, b.id))}</div>
+        <div class="muted small" style="margin-top:2px;">Net Worth: ${fmtMoney(netWorth)} &middot; Last Turn Revenue: ${fmtMoney(b.lastRevenue || 0)} &middot; Expense: ${fmtMoney(b.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
         <div class="row" style="margin-top:4px; flex-wrap:wrap; gap:4px;">
           ${b.damaged ? `<button onclick="actionRepairBusiness('${b.id}')">Repair (${fmtMoney(Math.round(b.purchasePrice * 0.25))})</button>` : ''}
           ${upgradeCost != null ? `<button class="btn-small" onclick="actionUpgradeBusiness('${b.id}')">Upgrade to Lvl ${b.level + 1} (${fmtMoney(upgradeCost)})</button>` : '<span class="muted small">Max Level</span>'}
