@@ -12,18 +12,19 @@ function renderFinance() {
     const def = SHELL_TIERS[c.tier - 1];
     const next = SHELL_TIERS[c.tier];
     const nextLocked = next && !isUnlockedForRank(GAME, next.unlockRank);
-    return `
-      <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong>${c.name}</strong><span class="muted small">Tier ${c.tier}${c.auditCooldown > 0 ? ' - <span class="tag dirty">Under Audit</span>' : ''}</span></div>
-        <div class="muted small">Launders ${fmtMoney(def.launderPerTurn)}/turn at ${Math.round(def.fee * 100)}% fee, audit risk ${def.auditRisk}%</div>
-        <div class="muted small" style="margin-top:2px;">Outside clients pay this cover ${fmtMoney(Math.round(def.launderPerTurn * def.fee))}/turn to launder their own money. Last Turn Revenue: ${fmtMoney(c.lastRevenue || 0)} &middot; Expense: ${fmtMoney(c.lastExpense || 0)}</div>
-        ${next
-          ? (nextLocked
-              ? `<div class="small muted" style="margin-top:4px;">Tier ${c.tier + 1} unlocks at ${next.unlockRank}</div>`
-              : `<div class="row between" style="margin-top:4px;"><span class="small">Upgrade to Tier ${c.tier + 1}: ${fmtMoney(next.cost)} Clean Cash</span><button onclick="actionUpgradeShell('${c.id}')">Upgrade</button></div>`)
-          : `<div class="small muted" style="margin-top:4px;">Maximum cover tier.</div>`}
-      </div>
+    const summary = `
+      <div class="row between"><strong>${c.name}</strong><span class="muted small">Tier ${c.tier}${c.auditCooldown > 0 ? ' - <span class="tag dirty">Under Audit</span>' : ''}</span></div>
+      <div class="muted small">Launders ${fmtMoney(def.launderPerTurn)}/turn at ${Math.round(def.fee * 100)}% fee, audit risk ${def.auditRisk}%</div>
     `;
+    const body = `
+      <div class="muted small">Outside clients pay this cover ${fmtMoney(Math.round(def.launderPerTurn * def.fee))}/turn to launder their own money. Last Turn Revenue: ${fmtMoney(c.lastRevenue || 0)} &middot; Expense: ${fmtMoney(c.lastExpense || 0)}</div>
+      ${next
+        ? (nextLocked
+            ? `<div class="small muted" style="margin-top:4px;">Tier ${c.tier + 1} unlocks at ${next.unlockRank}</div>`
+            : `<div class="row between" style="margin-top:4px;"><span class="small">Upgrade to Tier ${c.tier + 1}: ${fmtMoney(next.cost)} Clean Cash</span><button onclick="actionUpgradeShell('${c.id}')">Upgrade</button></div>`)
+        : `<div class="small muted" style="margin-top:4px;">Maximum cover tier.</div>`}
+    `;
+    return collapsibleCard(`shell-${c.id}`, summary, body, 'margin-bottom:6px;');
   }).join('');
 
   const currentDistrict = GAME.districts[GAME.player.currentDistrict];
@@ -48,19 +49,20 @@ function renderFinance() {
       const upgradeCost = businessUpgradeCost(b.purchasePrice, b.level);
       const netWorth = getBusinessNetWorth(GAME, b.id);
       const lastProfit = (b.lastRevenue || 0) - (b.lastExpense || 0);
-      return `
-      <div class="card" style="margin-bottom:6px;">
+      const summary = `
         <div class="row between"><strong>${b.type}</strong><span class="muted small">Level ${b.level}${b.damaged ? ' - <span class="tag dirty">Damaged</span>' : ''}</span></div>
         <div class="muted small">Income: ${fmtMoney(b.damaged ? 0 : Math.round(b.baseIncome * businessLevelMult(b)))}/turn &middot; Protection: ${Math.round(b.protection || 0)}% &middot; Sell: ${fmtMoney(resaleValue(GAME, b.id))}</div>
-        <div class="muted small" style="margin-top:2px;">Net Worth: ${fmtMoney(netWorth)} &middot; Last Turn Revenue: ${fmtMoney(b.lastRevenue || 0)} &middot; Expense: ${fmtMoney(b.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
+      `;
+      const body = `
+        <div class="muted small">Net Worth: ${fmtMoney(netWorth)} &middot; Last Turn Revenue: ${fmtMoney(b.lastRevenue || 0)} &middot; Expense: ${fmtMoney(b.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
         <div class="row" style="margin-top:4px; flex-wrap:wrap; gap:4px;">
           ${b.damaged ? `<button onclick="actionRepairBusiness('${b.id}')">Repair (${fmtMoney(Math.round(b.purchasePrice * 0.25))})</button>` : ''}
           ${upgradeCost != null ? `<button class="btn-small" onclick="actionUpgradeBusiness('${b.id}')">Upgrade to Lvl ${b.level + 1} (${fmtMoney(upgradeCost)})</button>` : '<span class="muted small">Max Level</span>'}
           <span class="row" style="gap:4px;"><input type="number" id="bribe-${b.id}-amount" value="500" min="1" style="width:80px;" /><button class="btn-small" onclick="actionBribeBusiness('${b.id}')">Bribe (Protection)</button></span>
           <button class="btn-danger" onclick="actionSellBusiness('${b.id}')">Sell</button>
         </div>
-      </div>
-    `;
+      `;
+      return collapsibleCard(`biz-${b.id}`, summary, body, 'margin-bottom:6px;');
     }).join('');
     return `<div class="card" style="margin-bottom:6px;"><h3>${d.name}</h3>${rows}</div>`;
   }).join('');
@@ -260,17 +262,18 @@ function renderFamily() {
       `;
     }
 
-    return `
-      <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong>${m.name}</strong><span class="muted small">${m.relation} &middot; ${m.traits.join(', ')}</span></div>
-        ${statBar('Loyalty / Affection', m.loyalty, 100, 'loyalty')}
-        <div class="row" style="margin-top:6px;">
-          <select id="role-${m.id}" onchange="actionAssignFamilyRole('${m.id}')">${roleOptions}</select>
-        </div>
-        ${Object.values(FAMILY_ROLES).map(r => m.role === r.id ? `<div class="muted small" style="margin-top:4px;">${r.desc}</div>` : '').join('')}
-        ${captureBlock}
-      </div>
+    const summary = `
+      <div class="row between"><strong>${m.name}</strong><span class="muted small">${m.relation} &middot; ${m.traits.join(', ')}</span></div>
+      ${statBar('Loyalty / Affection', m.loyalty, 100, 'loyalty')}
     `;
+    const body = `
+      <div class="row">
+        <select id="role-${m.id}" onchange="actionAssignFamilyRole('${m.id}')">${roleOptions}</select>
+      </div>
+      ${Object.values(FAMILY_ROLES).map(r => m.role === r.id ? `<div class="muted small" style="margin-top:4px;">${r.desc}</div>` : '').join('')}
+      ${captureBlock}
+    `;
+    return collapsibleCard(`family-${m.id}`, summary, body, 'margin-bottom:6px;');
   }).join('');
 
   const roleList = Object.values(FAMILY_ROLES).map(r => `<li><strong>${r.label}</strong>: ${r.desc}</li>`).join('');
@@ -317,39 +320,40 @@ function renderCommission() {
     const status = g.atWarWithPlayer ? '<span class="tag dirty">AT WAR</span>' : (g.alliedWithPlayer ? '<span class="tag clean">ALLIED</span>' : '');
     const tradeTargets = GAME.districts.filter(d => (d.control[g.id] || 0) > 0);
 
-    return `
-      <div class="card" style="margin-bottom:6px;">
-        <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
-        <div class="muted small">Personality: ${g.boss.personality} (${PERSONALITY_DESC[g.boss.personality]})</div>
-        ${statBar('Relation', g.relationToPlayer + 100, 200, 'rep-gang', `${g.relationToPlayer}`)}
-        <div class="row" style="margin-top:6px;">
-          <button onclick="actionProposeTruce('${g.id}')">Propose Truce</button>
-          <button onclick="actionProposeAlliance('${g.id}')">Propose Alliance</button>
-          ${g.atWarWithPlayer
-            ? `<button onclick="actionOfferPeace('${g.id}')">Offer Peace</button>`
-            : `<button class="btn-danger" onclick="actionDeclareWar('${g.id}')">Declare War</button>`}
-        </div>
-        <div class="row" style="margin-top:6px;">
-          <button onclick="actionDemandTribute('${g.id}')" ${g.atWarWithPlayer ? 'disabled' : ''}>Demand Tribute</button>
-          <button onclick="actionRequestReinforcements('${g.id}')" ${g.alliedWithPlayer ? '' : 'disabled'}>Request Reinforcements</button>
-          <button onclick="actionScoutGang('${g.id}')">Scout Territory</button>
-        </div>
-        <div class="row" style="margin-top:6px;">
-          <input type="number" id="gift-amount-${g.id}" value="500" min="1" style="width:90px;" />
-          <button onclick="actionSendGift('${g.id}')">Send Gift</button>
-        </div>
-        ${myDistricts.length && tradeTargets.length ? `
-          <hr class="sep" />
-          <div class="small muted">Propose Territory Trade</div>
-          <div class="row" style="margin-top:4px;">
-            <select id="trade-give-${g.id}">${myDistricts.map(d => `<option value="${d.id}">Give: ${d.name} (${Math.round(d.control[myGangId])}%)</option>`).join('')}</select>
-            <select id="trade-take-${g.id}">${tradeTargets.map(d => `<option value="${d.id}">Take: ${d.name} (${Math.round(d.control[g.id])}%)</option>`).join('')}</select>
-            <input type="number" id="trade-pct-${g.id}" value="10" min="1" max="50" style="width:70px;" />
-            <button onclick="actionProposeTrade('${g.id}')">Propose</button>
-          </div>
-        ` : ''}
-      </div>
+    const summary = `
+      <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
+      <div class="muted small">Personality: ${g.boss.personality} (${PERSONALITY_DESC[g.boss.personality]})</div>
+      ${statBar('Relation', g.relationToPlayer + 100, 200, 'rep-gang', `${g.relationToPlayer}`)}
     `;
+    const body = `
+      <div class="row">
+        <button onclick="actionProposeTruce('${g.id}')">Propose Truce</button>
+        <button onclick="actionProposeAlliance('${g.id}')">Propose Alliance</button>
+        ${g.atWarWithPlayer
+          ? `<button onclick="actionOfferPeace('${g.id}')">Offer Peace</button>`
+          : `<button class="btn-danger" onclick="actionDeclareWar('${g.id}')">Declare War</button>`}
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <button onclick="actionDemandTribute('${g.id}')" ${g.atWarWithPlayer ? 'disabled' : ''}>Demand Tribute</button>
+        <button onclick="actionRequestReinforcements('${g.id}')" ${g.alliedWithPlayer ? '' : 'disabled'}>Request Reinforcements</button>
+        <button onclick="actionScoutGang('${g.id}')">Scout Territory</button>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <input type="number" id="gift-amount-${g.id}" value="500" min="1" style="width:90px;" />
+        <button onclick="actionSendGift('${g.id}')">Send Gift</button>
+      </div>
+      ${myDistricts.length && tradeTargets.length ? `
+        <hr class="sep" />
+        <div class="small muted">Propose Territory Trade</div>
+        <div class="row" style="margin-top:4px;">
+          <select id="trade-give-${g.id}">${myDistricts.map(d => `<option value="${d.id}">Give: ${d.name} (${Math.round(d.control[myGangId])}%)</option>`).join('')}</select>
+          <select id="trade-take-${g.id}">${tradeTargets.map(d => `<option value="${d.id}">Take: ${d.name} (${Math.round(d.control[g.id])}%)</option>`).join('')}</select>
+          <input type="number" id="trade-pct-${g.id}" value="10" min="1" max="50" style="width:70px;" />
+          <button onclick="actionProposeTrade('${g.id}')">Propose</button>
+        </div>
+      ` : ''}
+    `;
+    return collapsibleCard(`commission-${g.id}`, summary, body, 'margin-bottom:6px;');
   }).join('');
 
   return `<div class="card"><h2>The Commission</h2><p class="muted">A council of the city's bosses. Tread carefully.</p>${gangCards}</div>`;
