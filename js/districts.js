@@ -26,7 +26,12 @@ function initWorld(state) {
       },
       isPlayerGang: false,
       relationToPlayer: 0, // -100 hostile .. 100 allied
-      territory: []
+      territory: [],
+      treasury: 5000 + Math.floor(Math.random() * 15000),
+      crewSize: 10 + Math.floor(Math.random() * 15),
+      businesses: [], // {id, districtId, type, baseIncome, level}
+      operations: {}, // districtId -> {weed, pills, powder, arms, contraband} levels 0-5
+      rackets: [] // {districtId, level}
     });
   }
 
@@ -97,8 +102,78 @@ function shiftControl(state, districtId, fromGangId, toGangId, amount) {
   const actual = Math.min(amount, d.control[fromGangId]);
   d.control[fromGangId] -= actual;
   d.control[toGangId] = (d.control[toGangId] || 0) + actual;
-  if (d.control[fromGangId] <= 0) delete d.control[fromGangId];
+
+  const toGang = state.gangs[toGangId];
+  if (toGang && !toGang.territory.includes(districtId)) toGang.territory.push(districtId);
+
+  if (d.control[fromGangId] <= 0) {
+    delete d.control[fromGangId];
+    const fromGang = state.gangs[fromGangId];
+    if (fromGang) {
+      fromGang.territory = fromGang.territory.filter(t => t !== districtId);
+      transferDistrictAssets(state, districtId, fromGangId, toGangId);
+      checkGangElimination(state, fromGangId, toGangId);
+    }
+  }
   return actual;
+}
+
+// Move a gang's businesses, drug operations and rackets in a district to the
+// gang that just took full control of it (called when control drops to 0).
+function transferDistrictAssets(state, districtId, fromGangId, toGangId) {
+  const fromGang = state.gangs[fromGangId];
+  const toGang = state.gangs[toGangId];
+  if (!fromGang || !toGang) return;
+  const district = state.districts[districtId];
+
+  if (Array.isArray(fromGang.businesses)) {
+    const moving = fromGang.businesses.filter(b => b.districtId === districtId);
+    if (moving.length) {
+      fromGang.businesses = fromGang.businesses.filter(b => b.districtId !== districtId);
+      if (Array.isArray(toGang.businesses)) {
+        toGang.businesses.push(...moving);
+        district.lastEvents.unshift(`${toGang.name} seized ${moving.length} business front${moving.length > 1 ? 's' : ''} from ${fromGang.name} in ${district.name}.`);
+      }
+    }
+  }
+
+  if (fromGang.operations && fromGang.operations[districtId]) {
+    const ops = fromGang.operations[districtId];
+    delete fromGang.operations[districtId];
+    if (toGang.operations) {
+      const existing = toGang.operations[districtId] || { weed: 0, pills: 0, powder: 0, arms: 0, contraband: 0 };
+      for (const k of Object.keys(ops)) existing[k] = Math.max(existing[k] || 0, ops[k] || 0);
+      toGang.operations[districtId] = existing;
+    }
+  }
+
+  if (Array.isArray(fromGang.rackets)) {
+    const moving = fromGang.rackets.filter(r => r.districtId === districtId);
+    if (moving.length) {
+      fromGang.rackets = fromGang.rackets.filter(r => r.districtId !== districtId);
+      if (Array.isArray(toGang.rackets)) {
+        toGang.rackets.push(...moving);
+        district.lastEvents.unshift(`${toGang.name} took over protection rackets from ${fromGang.name} in ${district.name}.`);
+      }
+    }
+  }
+}
+
+// If a gang has lost all of its territory, mark it eliminated and hand its
+// remaining treasury to the gang that delivered the finishing blow.
+function checkGangElimination(state, gangId, toGangId) {
+  const gang = state.gangs[gangId];
+  if (!gang || gang.isPlayerGang || gang.eliminated) return;
+  if (gang.territory.length > 0) return;
+  gang.eliminated = true;
+  gang.atWarWithPlayer = false;
+  gang.alliedWithPlayer = false;
+  const toGang = state.gangs[toGangId];
+  if (toGang && !toGang.isPlayerGang && typeof gang.treasury === 'number' && typeof toGang.treasury === 'number') {
+    toGang.treasury += gang.treasury;
+    gang.treasury = 0;
+  }
+  state.eventLog.push(logEntry(state, `${gang.name} has been wiped out - their remaining assets and turf were carved up by ${toGang ? toGang.name : 'rival families'}.`, 'gang'));
 }
 
 function playerGangId(state) {
@@ -142,8 +217,7 @@ function foundGang(state, gangName) {
   // Player's gang carves out a small foothold in the current district
   const d = state.districts[state.player.currentDistrict];
   const dom = dominantGang(d);
-  const taken = shiftControl(state, d.id, dom, gid, Math.min(15, d.control[dom] || 0));
-  if (taken > 0) state.gangs[gid].territory.push(d.id);
+  shiftControl(state, d.id, dom, gid, Math.min(15, d.control[dom] || 0));
   state.eventLog.push(logEntry(state, `You've founded the ${gangName}. Word spreads fast - some respect it, others see a target.`, 'gang'));
 }
 
