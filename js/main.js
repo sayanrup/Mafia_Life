@@ -348,7 +348,7 @@ function continueAsFamilyMember(memberId) {
     crew: { size: 1, quality: 1, loyalty: 50, weaponTier: 0, upkeepPaid: true, autoPayUpkeep: true, trainingCompleted: [] },
     armory: freshArmory(),
     lieutenants: [],
-    inventory: { product: { weed: 0, pills: 0, powder: 0, arms: 0, contraband: 0 } },
+    inventory: { product: { weed: 0, pills: 0, powder: 0, arms: 0, contraband: 0 }, consumables: {} },
     extortionRackets: [],
     affiliation: { type: 'solo', gangId: null },
     currentDistrict: 0,
