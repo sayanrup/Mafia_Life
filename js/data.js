@@ -148,14 +148,21 @@ const OPERATION_DEFS = {
 };
 
 const BUSINESS_TYPES = [
-  { type: 'Diner', basePrice: 8000, baseIncome: 1000, launderBonus: 400, heatReduction: 0 },
-  { type: 'Laundromat', basePrice: 6000, baseIncome: 750, launderBonus: 800, heatReduction: 0 },
-  { type: 'Bar', basePrice: 12000, baseIncome: 1500, launderBonus: 600, heatReduction: 1 },
-  { type: 'Auto Repair Shop', basePrice: 15000, baseIncome: 1900, launderBonus: 700, heatReduction: 1 },
-  { type: 'Pawn Shop', basePrice: 10000, baseIncome: 1300, launderBonus: 900, heatReduction: 0 },
-  { type: 'Real Estate Office', basePrice: 25000, baseIncome: 3200, launderBonus: 1500, heatReduction: 2 },
-  { type: 'Nightclub', basePrice: 30000, baseIncome: 4000, launderBonus: 1800, heatReduction: 2 },
-  { type: 'Vending Route', basePrice: 4000, baseIncome: 500, launderBonus: 300, heatReduction: 0 }
+  { type: 'Vending Route', basePrice: 4000, baseIncome: 500, launderBonus: 300, heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Diner', basePrice: 8000, baseIncome: 1000, launderBonus: 400, heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Laundromat', basePrice: 6000, baseIncome: 750, launderBonus: 800, heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Pawn Shop', basePrice: 10000, baseIncome: 1300, launderBonus: 900, heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Tattoo Parlor', basePrice: 7000, baseIncome: 900, launderBonus: 500, heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Bar', basePrice: 12000, baseIncome: 1500, launderBonus: 600, heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Auto Repair Shop', basePrice: 15000, baseIncome: 1900, launderBonus: 700, heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Check Cashing Store', basePrice: 18000, baseIncome: 2300, launderBonus: 1700, heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Tow Yard', basePrice: 14000, baseIncome: 1700, launderBonus: 650, heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Real Estate Office', basePrice: 25000, baseIncome: 3200, launderBonus: 1500, heatReduction: 2, unlockRank: 'Capo' },
+  { type: 'Construction Firm', basePrice: 35000, baseIncome: 4200, launderBonus: 2200, heatReduction: 2, unlockRank: 'Capo' },
+  { type: 'Storage Facility', basePrice: 22000, baseIncome: 2600, launderBonus: 1300, heatReduction: 1, unlockRank: 'Capo' },
+  { type: 'Nightclub', basePrice: 30000, baseIncome: 4000, launderBonus: 1800, heatReduction: 2, unlockRank: 'Underboss' },
+  { type: 'Import/Export Co', basePrice: 50000, baseIncome: 6000, launderBonus: 3200, heatReduction: 2, unlockRank: 'Underboss' },
+  { type: 'Casino', basePrice: 120000, baseIncome: 15000, launderBonus: 8000, heatReduction: 3, unlockRank: 'Boss' }
 ];
 
 /* ---------------- Drug Operations (Boss-tier farms/labs) ---------------- */
@@ -268,9 +275,6 @@ const VEHICLE_TYPES = [
   { id: 'convoy',       label: 'Armored Convoy',      cost: 320000, cargoCapacity: 650000, crewCapacity: 8, upkeep: 2600, resaleMult: 0.5, unlockRank: 'Boss' }
 ];
 
-/* ---------------- Money Laundering via Rival Gangs ---------------- */
-
-const GANG_LAUNDER_CUT = 0.30; // cut taken by outside fixers before shell companies are available
 const WEAPON_SELL_MULT = 0.5; // fraction of unit cost recovered when selling armory weapons
 
 /* ---------------- Kidnapping Racket ---------------- */
@@ -337,9 +341,22 @@ const GANG_GIGS = [
 const HEIST_UNLOCK_RANK = 'Soldier';
 
 const SHELL_TIERS = [
-  { tier: 1, cost: 3000,  launderPerTurn: 600,  fee: 0.15, auditRisk: 6 },
-  { tier: 2, cost: 9000,  launderPerTurn: 1800, fee: 0.12, auditRisk: 9 },
-  { tier: 3, cost: 25000, launderPerTurn: 5000, fee: 0.08, auditRisk: 13 }
+  { tier: 1, cost: 3000,   launderPerTurn: 600,   fee: 0.15,  auditRisk: 6,  unlockRank: 'Associate' },
+  { tier: 2, cost: 9000,   launderPerTurn: 1800,  fee: 0.12,  auditRisk: 9,  unlockRank: 'Associate' },
+  { tier: 3, cost: 25000,  launderPerTurn: 5000,  fee: 0.08,  auditRisk: 13, unlockRank: 'Soldier' },
+  { tier: 4, cost: 60000,  launderPerTurn: 12000, fee: 0.06,  auditRisk: 16, unlockRank: 'Capo' },
+  { tier: 5, cost: 140000, launderPerTurn: 28000, fee: 0.045, auditRisk: 19, unlockRank: 'Underboss' },
+  { tier: 6, cost: 300000, launderPerTurn: 60000, fee: 0.03,  auditRisk: 22, unlockRank: 'Boss' }
+];
+
+const LAUNDERING_METHODS = [
+  { id: 'streetcontacts', label: 'Street Contacts',     desc: 'Outside fixers launder cash on the spot, steep cut.', fee: 0.30, heatTrack: 'gangs', heatAmount: 1, unlockRank: 'Associate' },
+  { id: 'pawnnetwork',    label: 'Pawn & Resale Network', desc: 'Move dirty cash through pawn shop resales.',          fee: 0.25, heatTrack: 'gangs', heatAmount: 1, unlockRank: 'Associate' },
+  { id: 'casinochips',    label: 'Casino Chip Exchange', desc: 'Buy in big, cash out "winnings".',                     fee: 0.18, heatTrack: 'pd',    heatAmount: 2, unlockRank: 'Soldier' },
+  { id: 'cryptomixer',    label: 'Crypto Mixer',         desc: 'Run cash through a chain of wallets.',                 fee: 0.15, heatTrack: 'feds',  heatAmount: 3, unlockRank: 'Soldier' },
+  { id: 'offshore',       label: 'Offshore Account',     desc: 'Wire it through a friendly island bank.',              fee: 0.10, heatTrack: 'feds',  heatAmount: 2, unlockRank: 'Capo' },
+  { id: 'artdealer',      label: 'Art & Antiques Dealer', desc: 'Overpay for "investment pieces", resell quietly.',    fee: 0.07, heatTrack: 'feds',  heatAmount: 1, unlockRank: 'Underboss' },
+  { id: 'cartelfinance',  label: 'Cartel Finance Network', desc: 'The cartel\'s own books absorb the cash for a fee.', fee: 0.05, heatTrack: 'gangs', heatAmount: 4, unlockRank: 'Boss' }
 ];
 
 /* ---------------- AI Narrative Model Options (via OpenRouter) ---------------- */

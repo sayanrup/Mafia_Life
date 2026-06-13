@@ -11,12 +11,15 @@ function renderFinance() {
   const shellRows = GAME.shellCompanies.map(c => {
     const def = SHELL_TIERS[c.tier - 1];
     const next = SHELL_TIERS[c.tier];
+    const nextLocked = next && !isUnlockedForRank(GAME, next.unlockRank);
     return `
       <div class="card" style="margin-bottom:6px;">
         <div class="row between"><strong>${c.name}</strong><span class="muted small">Tier ${c.tier}${c.auditCooldown > 0 ? ' - <span class="tag dirty">Under Audit</span>' : ''}</span></div>
         <div class="muted small">Launders ${fmtMoney(def.launderPerTurn)}/turn at ${Math.round(def.fee * 100)}% fee, audit risk ${def.auditRisk}%</div>
         ${next
-          ? `<div class="row between" style="margin-top:4px;"><span class="small">Upgrade to Tier ${c.tier + 1}: ${fmtMoney(next.cost)} Clean Cash</span><button onclick="actionUpgradeShell('${c.id}')">Upgrade</button></div>`
+          ? (nextLocked
+              ? `<div class="small muted" style="margin-top:4px;">Tier ${c.tier + 1} unlocks at ${next.unlockRank}</div>`
+              : `<div class="row between" style="margin-top:4px;"><span class="small">Upgrade to Tier ${c.tier + 1}: ${fmtMoney(next.cost)} Clean Cash</span><button onclick="actionUpgradeShell('${c.id}')">Upgrade</button></div>`)
           : `<div class="small muted" style="margin-top:4px;">Maximum cover tier.</div>`}
       </div>
     `;
@@ -25,12 +28,18 @@ function renderFinance() {
   const marketCards = GAME.districts.map(d => {
     const listings = GAME.businessMarket[d.id];
     if (!listings.length) return '';
-    const rows = listings.map(b => `
+    const rows = listings.map(b => {
+      const def = BUSINESS_TYPES.find(t => t.type === b.type);
+      const locked = def && !isUnlockedForRank(GAME, def.unlockRank);
+      return `
       <div class="row between">
         <span>${b.type} - ${fmtMoney(b.price)} <span class="muted small">(+${fmtMoney(b.baseIncome)}/turn, +${fmtMoney(b.launderBonus)} launder cap, -${b.heatReduction} heat)</span></span>
-        <button onclick="actionBuyBusiness(${d.id}, '${b.id}')" ${p.cash.clean >= b.price ? '' : 'disabled'}>Buy</button>
+        ${locked
+          ? `<span class="muted small">Unlocks at ${def.unlockRank}</span>`
+          : `<button onclick="actionBuyBusiness(${d.id}, '${b.id}')" ${p.cash.clean >= b.price ? '' : 'disabled'}>Buy</button>`}
       </div>
-    `).join('');
+    `;
+    }).join('');
     return `<div class="card" style="margin-bottom:6px;"><h3>${d.name}</h3>${rows}</div>`;
   }).join('');
 
@@ -48,6 +57,18 @@ function renderFinance() {
     `;
   }).join('');
 
+  const launderingMethodRows = LAUNDERING_METHODS.map(m => {
+    const locked = !isUnlockedForRank(GAME, m.unlockRank);
+    return `
+      <div class="row between" style="margin-bottom:4px;">
+        <span>${m.label} <span class="muted small">(${m.desc} ${Math.round(m.fee * 100)}% fee, +${m.heatAmount} ${m.heatTrack} heat)</span></span>
+        ${locked
+          ? `<span class="muted small">Unlocks at ${m.unlockRank}</span>`
+          : `<span class="row" style="gap:6px;"><input type="number" id="launder-${m.id}-amount" placeholder="Amount ($)" min="0" style="width:120px;" /><button class="btn-small" onclick="actionLaunderViaMethod('${m.id}')" ${p.cash.dirty > 0 ? '' : 'disabled'}>Launder</button></span>`}
+      </div>
+    `;
+  }).join('');
+
   return `
     <div class="card">
       <h2>Cash</h2>
@@ -57,12 +78,9 @@ function renderFinance() {
     </div>
 
     <div class="card">
-      <h2>Launder via Street Contacts</h2>
-      <p class="muted small">No shell company? Outside fixers will launder Dirty Cash for you on the spot, taking a steep ${Math.round(GANG_LAUNDER_CUT * 100)}% cut. Always available, but raises Gang Heat slightly. Shell companies and business fronts offer much better rates.</p>
-      <div class="row">
-        <input type="number" id="launder-gang-amount" placeholder="Amount ($)" min="0" style="width:140px;" />
-        <button onclick="actionLaunderViaGangs()" ${p.cash.dirty > 0 ? '' : 'disabled'}>Launder</button>
-      </div>
+      <h2>Laundering Methods</h2>
+      <p class="muted small">One-off launders for Dirty Cash. Higher-rank methods take a smaller cut but raise more heat on other tracks. Shell companies and business fronts launder automatically every turn on top of these.</p>
+      ${launderingMethodRows}
     </div>
 
     <div class="card">
@@ -84,6 +102,14 @@ function renderFinance() {
       ${ownedRows || '<p class="muted">You own no businesses yet.</p>'}
     </div>
   `;
+}
+
+function actionLaunderViaMethod(methodId) {
+  const input = document.getElementById(`launder-${methodId}-amount`);
+  const amount = Math.max(0, parseInt(input.value, 10) || 0);
+  const res = launderViaMethod(GAME, methodId, amount);
+  if (!res.ok) showMsg('Laundering', res.reason);
+  else { autosave(GAME); renderApp(); }
 }
 
 function actionEstablishShell() {
