@@ -26,6 +26,7 @@ function createNewGame(charData) {
       cityName: cityName,
       gameOver: false,
       gameOverReason: null,
+      pendingArrest: false,
       familyRevealed: false,
       peakCash: start.cashDirty + start.cashClean,
       peakDirtyCash: start.cashDirty,
@@ -171,6 +172,9 @@ function migrateState(state) {
     const heatByRank = { Associate: 0, Soldier: 15, Capo: 35, Underboss: 60, Boss: 85 };
     state.meta.peakHeatPd = Math.max(state.player.heat.pd, heatByRank[state.player.rank] || 0);
   }
+  if (state.meta.pendingArrest === undefined) {
+    state.meta.pendingArrest = false;
+  }
 
   if (!state.criminalWorld) {
     state.criminalWorld = { unlocked: false, decision: null, decisionHistory: [], smugglingBonusMult: 0, smugglingBonusTurns: 0 };
@@ -207,10 +211,32 @@ function migrateState(state) {
     }
   }
 
+  if (Array.isArray(state.districts)) {
+    for (const d of state.districts) {
+      if (typeof d.protectionIncome !== 'number') d.protectionIncome = 0;
+      if (d.farms) {
+        for (const product of Object.keys(d.farms)) {
+          const farm = d.farms[product];
+          if (typeof farm.invested !== 'number') {
+            const def = FARM_TYPES[product];
+            let invested = 0;
+            for (let i = 0; i < farm.plots; i++) invested += def.facilityTiers[i].cost;
+            farm.invested = invested;
+          }
+          if (typeof farm.lastRevenue !== 'number') farm.lastRevenue = 0;
+          if (typeof farm.lastExpense !== 'number') farm.lastExpense = 0;
+        }
+      }
+    }
+  }
+
   if (Array.isArray(state.ownedBusinesses)) {
     for (const b of state.ownedBusinesses) {
       if (typeof b.level !== 'number') b.level = 1;
       if (typeof b.protection !== 'number') b.protection = 0;
+      if (typeof b.invested !== 'number') b.invested = b.purchasePrice || 0;
+      if (typeof b.lastRevenue !== 'number') b.lastRevenue = 0;
+      if (typeof b.lastExpense !== 'number') b.lastExpense = 0;
       const def = BUSINESS_TYPES.find(t => t.type === b.type);
       if (def) {
         b.baseIncome = def.baseIncome;

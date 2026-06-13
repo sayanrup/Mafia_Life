@@ -149,6 +149,13 @@ function actionBuyFarmPlot(districtId, product) {
   renderApp();
 }
 
+function actionSellFarmOperation(districtId, product) {
+  const res = sellFarmOperation(GAME, districtId, product);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
 function actionHireDistributors(product, typeId) {
   const input = document.getElementById(`ops-distributors-${product}-${typeId}`);
   const count = Math.max(1, parseInt(input.value, 10) || 1);
@@ -290,6 +297,10 @@ function endTurn() {
   state.meta.peakDirtyCash = Math.max(state.meta.peakDirtyCash || 0, state.player.cash.dirty);
   state.meta.peakHeatPd = Math.max(state.meta.peakHeatPd || 0, state.player.heat.pd);
 
+  // Lying low pays off: no crimes committed this turn cools PD heat.
+  const committedCrime = Object.keys(state.player.actionCounts).length > 0;
+  if (!committedCrime) addHeat(state, 'pd', -25);
+
   state.meta.day++;
   state.meta.turn++;
   state.player.actionCounts = {};
@@ -308,9 +319,11 @@ function checkGameOver() {
   if (GAME.meta.gameOver) return;
 
   if (p.heat.pd >= 100 || p.heat.feds >= 100) {
-    GAME.meta.gameOver = true;
-    GAME.meta.gameOverReason = 'arrest';
-    GAME.eventLog.push(logEntry(GAME, `The walls close in. ${p.heat.feds >= 100 ? 'Federal agents' : 'Local police'} move in on ${p.name}.`, 'system'));
+    if (!GAME.meta.pendingArrest) {
+      GAME.meta.pendingArrest = true;
+      GAME.eventLog.push(logEntry(GAME, `The walls close in. ${p.heat.feds >= 100 ? 'Federal agents' : 'Local police'} are moving in on ${p.name}.`, 'system'));
+    }
+    return;
   } else if (p.heat.gangs >= 100) {
     GAME.meta.gameOver = true;
     GAME.meta.gameOverReason = 'gangs';
@@ -326,6 +339,47 @@ function checkGameOver() {
     GAME.meta.peakCash = Math.max(GAME.meta.peakCash || 0, totalCash);
     autosave(GAME);
   }
+}
+
+/* ---------------- Hire a Lawyer (avoid arrest) ---------------- */
+
+function lawyerCost(state) {
+  const p = state.player;
+  return Math.round(15000 + p.heat.pd * 300 + p.heat.feds * 600);
+}
+
+function actionHireLawyer() {
+  const p = GAME.player;
+  const cost = lawyerCost(GAME);
+  const totalCash = p.cash.dirty + p.cash.clean;
+  if (totalCash < cost) {
+    showMsg('Hire a Lawyer', `You can't cover the ${fmtMoney(cost)} retainer.`);
+    return;
+  }
+  let remaining = cost;
+  const fromClean = Math.min(p.cash.clean, remaining);
+  p.cash.clean -= fromClean;
+  remaining -= fromClean;
+  p.cash.dirty -= remaining;
+
+  p.heat.pd = clamp(Math.min(p.heat.pd, 60), 0, 100);
+  p.heat.feds = clamp(Math.min(p.heat.feds, 60), 0, 100);
+  GAME.meta.pendingArrest = false;
+  GAME.eventLog.push(logEntry(GAME, `Your lawyer makes the charges disappear for ${fmtMoney(cost)}. Heat cools off, but the city took notice.`, 'system'));
+  autosave(GAME);
+  renderApp();
+}
+
+function actionAcceptArrest() {
+  const p = GAME.player;
+  GAME.meta.pendingArrest = false;
+  GAME.meta.gameOver = true;
+  GAME.meta.gameOverReason = 'arrest';
+  GAME.eventLog.push(logEntry(GAME, `${p.heat.feds >= 100 ? 'Federal agents' : 'Local police'} take ${p.name} into custody.`, 'system'));
+  const totalCash = p.cash.dirty + p.cash.clean;
+  GAME.meta.peakCash = Math.max(GAME.meta.peakCash || 0, totalCash);
+  autosave(GAME);
+  renderApp();
 }
 
 function startOver() {

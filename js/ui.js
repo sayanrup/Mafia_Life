@@ -61,7 +61,8 @@ function renderApp() {
   }
   window.scrollTo(0, scrollY);
 
-  if (GAME.player.pendingDilemma && !MODAL) MODAL = { type: 'dilemma' };
+  if (GAME.meta.pendingArrest && !MODAL) MODAL = { type: 'arrest' };
+  else if (GAME.player.pendingDilemma && !MODAL) MODAL = { type: 'dilemma' };
 
   const existingModal = document.getElementById('modal-root');
   if (existingModal) existingModal.remove();
@@ -378,22 +379,32 @@ function renderCrimeModal(category) {
 function renderDealsModal() {
   const district = GAME.districts[GAME.player.currentDistrict];
   const p = GAME.player;
-  const productOptions = Object.keys(PRODUCT_TYPES).map(pt => {
+  const productTypes = Object.keys(PRODUCT_TYPES);
+  const productOptions = productTypes.map(pt => {
     const owned = p.inventory.product[pt];
     const price = getDealPrice(GAME, district.id, pt);
     return `<option value="${pt}">${PRODUCT_TYPES[pt].label} (have ${owned}, ${fmtMoney(price)}/u)</option>`;
   }).join('');
+  const defaultMax = Math.max(1, p.inventory.product[productTypes[0]] || 0);
 
   return `
     <h2>Deals</h2>
     <p class="muted small">Sell product from your inventory at the going rate in ${district.name}.</p>
     <div class="row">
-      <select id="deal-product">${productOptions}</select>
-      <input type="number" id="deal-qty" value="1" min="1" style="width:80px;" />
+      <select id="deal-product" onchange="updateDealMaxQty()">${productOptions}</select>
+      <input type="number" id="deal-qty" value="${defaultMax}" min="1" style="width:80px;" />
       <button class="btn-primary" onclick="actionSell()">Sell</button>
     </div>
     ${closeButtonRow()}
   `;
+}
+
+function updateDealMaxQty() {
+  const productSelect = document.getElementById('deal-product');
+  const qtyInput = document.getElementById('deal-qty');
+  if (!productSelect || !qtyInput) return;
+  const owned = GAME.player.inventory.product[productSelect.value] || 0;
+  qtyInput.value = Math.max(1, owned);
 }
 
 function renderBribesModal() {
@@ -571,6 +582,8 @@ function renderFarmSubtab(product) {
     else upgradeLabel = `Build ${nextTier.name} (${fmtMoney(plotCost)})`;
     const upgradeDisabled = atPlotCap || !nextTier || plotCost == null;
     const securityButtons = SECURITY_TIERS.map(t => `<button class="btn-small" onclick="actionHireSecurityDetail(${d.id}, '${t.id}')" title="${t.desc}">${t.label} (${fmtMoney(t.amount)})</button>`).join('');
+    const netWorth = getFarmNetWorth(GAME, d.id, product);
+    const lastProfit = (farm.lastRevenue || 0) - (farm.lastExpense || 0);
     return `
       <div class="card">
         <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
@@ -580,7 +593,13 @@ function renderFarmSubtab(product) {
           <div class="bar-track"><div class="bar-fill control" style="width:${progressPct}%"></div></div>
         ` : ''}
         <div class="muted small" style="margin-top:6px;">Pending batch value: ${fmtMoney(farm.pendingValue)}</div>
-        <div class="muted small" style="margin-top:6px;">Security/Protection: ${Math.round(d.opProtection || 0)}%</div>
+        <div class="muted small" style="margin-top:6px;">Security/Protection: ${Math.round(d.opProtection || 0)}%${(d.protectionIncome || 0) > 0 && (d.opProtection || 0) > 0 ? ` (kicking back ${fmtMoney(d.protectionIncome)}/turn)` : ''}</div>
+        ${farm.plots > 0 ? `
+          <div class="muted small" style="margin-top:6px;">Net Worth: ${fmtMoney(netWorth)} &middot; Last Turn Revenue: ${fmtMoney(farm.lastRevenue || 0)} &middot; Expense: ${fmtMoney(farm.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
+          <div class="row" style="margin-top:4px;">
+            <button class="btn-danger btn-small" onclick="actionSellFarmOperation(${d.id}, '${product}')">Sell Operation (${fmtMoney(Math.round(netWorth * 1.5))})</button>
+          </div>
+        ` : ''}
         <div class="row" style="flex-wrap:wrap; gap:4px; margin-top:4px;">${securityButtons}</div>
       </div>
     `;
@@ -719,6 +738,7 @@ function renderProtectionSubtab() {
           <hr class="sep" />
           <div class="muted small">Operation Protection (reduces drug-operation raid risk &amp; heat here)</div>
           ${statBar('Protection', opProtection, 100, 'control')}
+          ${(d.protectionIncome || 0) > 0 && opProtection > 0 ? `<div class="muted small" style="margin-top:4px;">Paid-off contacts kick back ${fmtMoney(d.protectionIncome)}/turn while protection holds.</div>` : ''}
           <div class="row between" style="margin-top:4px;">
             <input type="number" id="ops-protection-bribe-${d.id}" placeholder="Bribe amount ($)" min="0" style="width:140px;" />
             <button class="btn-small" onclick="actionBribeOpProtection(${d.id})">Bribe for Protection</button>
@@ -879,6 +899,26 @@ function renderDilemmaModal() {
   `;
 }
 
+/* ---------------- Busted / Hire a Lawyer Modal ---------------- */
+
+function renderArrestModal() {
+  const p = GAME.player;
+  const cost = lawyerCost(GAME);
+  const totalCash = p.cash.dirty + p.cash.clean;
+  const fedHeat = p.heat.feds >= 100;
+  return `
+    <h2>Busted!</h2>
+    <p>${fedHeat ? 'Federal agents have a warrant with your name on it.' : 'Local police have you dead to rights.'} ${p.name} is about to go away for a long time.</p>
+    <p class="muted small">A lawyer can make this disappear - for a price.</p>
+    <div class="row between"><span>Lawyer's Fee</span><span class="tag dirty">${fmtMoney(cost)}</span></div>
+    <div class="row between"><span>Your Cash</span><span>${fmtMoney(totalCash)}</span></div>
+    <div class="row" style="margin-top:10px; justify-content:flex-end; gap:8px;">
+      <button class="btn-danger" onclick="actionAcceptArrest()">Take the Fall</button>
+      <button class="btn-primary" onclick="actionHireLawyer()" ${totalCash >= cost ? '' : 'disabled'}>Hire a Lawyer (${fmtMoney(cost)})</button>
+    </div>
+  `;
+}
+
 /* ---------------- Modal Dispatch ---------------- */
 
 function renderModal() {
@@ -890,6 +930,7 @@ function renderModal() {
   else if (MODAL.type === 'deals') body = renderDealsModal();
   else if (MODAL.type === 'bribes') body = renderBribesModal();
   else if (MODAL.type === 'dilemma') body = renderDilemmaModal();
+  else if (MODAL.type === 'arrest') body = renderArrestModal();
   return `<div class="modal-overlay" id="modal-root"><div class="modal">${body}</div></div>`;
 }
 
