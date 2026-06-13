@@ -31,7 +31,9 @@ function establishShellCompany(state, name) {
     id: 'shell_' + Math.random().toString(36).slice(2, 8),
     name: name || `${NAME_POOLS.business[Math.floor(Math.random() * NAME_POOLS.business.length)]} Holdings`,
     tier: 1,
-    auditCooldown: 0
+    auditCooldown: 0,
+    lastRevenue: 0,
+    lastExpense: 0
   };
   state.shellCompanies.push(company);
   state.eventLog.push(logEntry(state, `Established shell company "${company.name}" for ${fmtMoney(cost)}.`, 'finance'));
@@ -69,6 +71,8 @@ function totalBusinessLaunderCapacity(state) {
 function launderingTick(state) {
   const businessMult = familyBusinessMultiplier(state);
   for (const c of state.shellCompanies) {
+    c.lastRevenue = 0;
+    c.lastExpense = 0;
     if (c.auditCooldown > 0) {
       c.auditCooldown--;
       continue;
@@ -81,12 +85,17 @@ function launderingTick(state) {
       state.player.cash.dirty -= amount;
       state.player.cash.clean += cleaned;
     }
+    // Outside clients also pay the shell company to launder their money - the cover takes its cut as clean income.
+    const outsideRevenue = Math.round(tierDef.launderPerTurn * tierDef.fee * businessMult);
+    state.player.cash.clean += outsideRevenue;
+    c.lastRevenue = outsideRevenue;
     // Audit risk
     if (Math.random() * 100 < tierDef.auditRisk) {
       const loss = Math.round(state.player.cash.clean * (0.1 + Math.random() * 0.2));
       state.player.cash.clean -= loss;
       addHeat(state, 'feds', 6 + Math.floor(Math.random() * 6));
       c.auditCooldown = 2;
+      c.lastExpense = loss;
       state.eventLog.push(logEntry(state, `Federal auditors descended on "${c.name}". Lost ${fmtMoney(loss)} and the books are frozen for 2 turns.`, 'finance_raid'));
     }
   }

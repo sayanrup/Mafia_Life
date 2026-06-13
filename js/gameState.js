@@ -235,6 +235,13 @@ function migrateState(state) {
     }
   }
 
+  if (Array.isArray(state.shellCompanies)) {
+    for (const c of state.shellCompanies) {
+      if (typeof c.lastRevenue !== 'number') c.lastRevenue = 0;
+      if (typeof c.lastExpense !== 'number') c.lastExpense = 0;
+    }
+  }
+
   if (Array.isArray(state.ownedBusinesses)) {
     for (const b of state.ownedBusinesses) {
       if (typeof b.level !== 'number') b.level = 1;

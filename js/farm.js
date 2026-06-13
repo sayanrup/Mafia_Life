@@ -163,6 +163,7 @@ function bribeOpProtection(state, districtId, amount) {
   state.player.cash.dirty -= amount;
   const district = state.districts[districtId];
   district.opProtection = clamp((district.opProtection || 0) + amount * OPS_ECONOMY.protectionPerDollar, 0, 100);
+  district.protectionIncome = Math.max(district.protectionIncome || 0, Math.round(district.opProtection * OPS_ECONOMY.protectionIncomeRate));
   state.eventLog.push(logEntry(state, `You spread ${fmtMoney(amount)} around ${district.name} to keep the law off your operations.`, 'operations'));
   return { ok: true };
 }
