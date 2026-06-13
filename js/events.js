@@ -179,28 +179,48 @@ function pickEvent(category) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// Fire an async AI flavor request for a category, appending the result as a
-// follow-up log entry. No-op if no API key is configured.
-function requestNarrativeAI(state, category, extra) {
+// Categories considered "major" for the 'major' AI narration frequency
+// setting - the dramatic beats worth spending AI tokens on, as opposed to
+// ambient flavor (turn ticks, travel, routine sales) covered by the
+// offline pool already.
+const MAJOR_NARRATION_CATEGORIES = new Set([
+  'post_crime_success', 'post_crime_fail', 'post_combat_win', 'post_combat_loss',
+  'operation_raid', 'commission', 'loyalty_betrayal', 'family', 'lawenforcement'
+]);
+
+let _narrationFlushScheduled = false;
+
+// Queue an event for AI flavor narration. Events are batched and sent to the
+// AI together (see flushNarrationQueue in ai.js) rather than one request per
+// event, to keep AI calls to roughly one per turn/action regardless of how
+// many narrate() calls happen along the way.
+function queueNarration(state, category, text) {
   if (!state.settings.apiKey) return;
-  requestAINarrative(state, category, extra, (aiText) => {
-    if (aiText) {
-      state.eventLog.push(logEntry(state, aiText, category + '_ai'));
-      if (typeof window !== 'undefined' && typeof window.onAINarrative === 'function') {
-        window.onAINarrative();
-      }
-    }
-  });
+  const freq = state.settings.aiNarrationFrequency || 'all';
+  if (freq === 'off') return;
+  if (freq === 'major' && !MAJOR_NARRATION_CATEGORIES.has(category)) return;
+
+  if (!state._narrationQueue) state._narrationQueue = [];
+  state._narrationQueue.push({ category, text });
+  if (state._narrationQueue.length > 6) state._narrationQueue.shift();
+
+  if (!_narrationFlushScheduled) {
+    _narrationFlushScheduled = true;
+    setTimeout(() => {
+      _narrationFlushScheduled = false;
+      flushNarrationQueue(state);
+    }, 0);
+  }
 }
 
 // Push a narrated event into the log. Offline text shows immediately;
-// if an API key is configured, an async AI flavor line may follow.
+// if an API key is configured, an AI flavor line may follow in a batch.
 function narrate(state, category, extra) {
   const evt = pickEvent(category);
   if (!evt) return;
   const text = fillTemplate(state, evt.text, extra);
   state.eventLog.push(logEntry(state, text, category));
-  requestNarrativeAI(state, category, extra);
+  queueNarration(state, category, text);
 }
 
 // Apply a generic minor effect for family story events (loyalty drift)
@@ -210,5 +230,5 @@ function applyEventOutcome(state, evt, extra) {
   if (extra && extra.familyMember) {
     extra.familyMember.loyalty = clamp(extra.familyMember.loyalty + (Math.random() < 0.5 ? 2 : -2), 0, 100);
   }
-  requestNarrativeAI(state, 'family', extra);
+  queueNarration(state, 'family', text);
 }

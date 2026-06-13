@@ -35,6 +35,15 @@ function renderSettings() {
           <input type="text" id="ai-custom-model" value="${settings.aiCustomModel || ''}" placeholder="e.g. anthropic/claude-3.5-haiku" />
         </div>
       ` : ''}
+      <div class="field">
+        <label>Narration Frequency</label>
+        <select id="ai-narration-frequency" onchange="actionNarrationFrequencyChange()">
+          <option value="all" ${settings.aiNarrationFrequency === 'all' || !settings.aiNarrationFrequency ? 'selected' : ''}>All events - most AI flavor, higher token usage</option>
+          <option value="major" ${settings.aiNarrationFrequency === 'major' ? 'selected' : ''}>Major events only - fights, jobs, raids, family, betrayal</option>
+          <option value="off" ${settings.aiNarrationFrequency === 'off' ? 'selected' : ''}>Off - offline narrative only</option>
+        </select>
+      </div>
+      <p class="muted small">Queued events are sent to the AI in a single batched request (at most one in flight at a time), so AI flavor arrives shortly after - not instantly - and costs roughly one call per turn regardless of how many things happened.</p>
       <div class="muted small" style="margin-bottom:8px;">${costLine}</div>
       <div class="row">
         <button onclick="actionSaveApiKey()">Save Settings</button>
@@ -61,6 +70,12 @@ function actionAIModelChange() {
   GAME.settings.aiModel = select.value;
   saveSettings(GAME.settings);
   renderApp();
+}
+
+function actionNarrationFrequencyChange() {
+  const select = document.getElementById('ai-narration-frequency');
+  GAME.settings.aiNarrationFrequency = select.value;
+  saveSettings(GAME.settings);
 }
 
 function actionSaveApiKey() {

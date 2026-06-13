@@ -55,15 +55,59 @@ function estimateAICost(settings) {
   return { cost, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens };
 }
 
+/* ---------------- Batched Narration ---------------- */
+
+const MAX_NARRATION_BATCH = 4;
+
+// True while a batch request is in flight. Prevents overlapping requests -
+// any narration queued while a request is pending waits for it to finish.
+let AI_REQUEST_IN_FLIGHT = false;
+
 /**
- * Requests a short narrative/dialogue snippet from OpenRouter.
- * callback(text|null) is always called - null on missing key, network
- * failure, or malformed response so callers can fall back gracefully.
+ * Sends ALL queued narration items in a single request and resolves the
+ * batch as one log update, then recurses to drain any remaining queue.
+ * This keeps AI calls to roughly one per turn/action even when several
+ * narrate() calls happened along the way.
  */
-function requestAINarrative(state, category, extra, callback) {
+function flushNarrationQueue(state) {
+  if (!state._narrationQueue || !state._narrationQueue.length) return;
+  if (AI_REQUEST_IN_FLIGHT) return;
+  if (!state.settings.apiKey) { state._narrationQueue = []; return; }
+
+  const items = state._narrationQueue.splice(0, MAX_NARRATION_BATCH);
+  AI_REQUEST_IN_FLIGHT = true;
+
+  requestAINarrativeBatch(state, items, (results) => {
+    AI_REQUEST_IN_FLIGHT = false;
+    let changed = false;
+    if (Array.isArray(results)) {
+      for (let i = 0; i < items.length; i++) {
+        const r = results[i];
+        const category = (r && typeof r.category === 'string' && r.category) || items[i].category;
+        const text = r && typeof r.text === 'string' ? r.text.trim() : '';
+        if (text) {
+          state.eventLog.push(logEntry(state, text, category + '_ai'));
+          changed = true;
+        }
+      }
+    }
+    if (changed && typeof window !== 'undefined' && typeof window.onAINarrative === 'function') {
+      window.onAINarrative();
+    }
+    flushNarrationQueue(state);
+  });
+}
+
+/**
+ * Requests short narrative/dialogue snippets for a batch of queued events
+ * from OpenRouter in a single call. callback(items|null) is always called -
+ * items is an array aligned with the input `items` array, or null on
+ * missing key, network failure, or malformed response.
+ */
+function requestAINarrativeBatch(state, items, callback) {
   const settings = state.settings;
   const apiKey = settings.apiKey;
-  if (!apiKey) { callback(null); return; }
+  if (!apiKey || !items || !items.length) { callback(null); return; }
 
   const model = getAIModel(settings);
   if (!model) { callback(null); return; }
@@ -72,16 +116,25 @@ function requestAINarrative(state, category, extra, callback) {
   const recent = recentLogLines(state, 5);
 
   const systemPrompt = 'You are a narrative generator for a gritty, noir crime-drama text RPG called Underworld. ' +
-    'Write ONE short paragraph (2-4 sentences) of atmospheric narrative or dialogue matching the requested event category. ' +
+    'You will receive a list of game events that just happened, each with a category and a short base description. ' +
+    'For EACH item, write ONE short paragraph (2-4 sentences) of atmospheric narrative or dialogue that expands on it. ' +
     'Tone: mature crime drama in the vein of Breaking Bad, Narcos, The Godfather, Peaky Blinders. ' +
     'No real-world brand names, no real public figures, no graphic gore - implied violence and noir atmosphere only. ' +
-    'Respond ONLY with strict JSON of the form {"text": "..."} and nothing else.';
+    `Respond ONLY with strict JSON of the form {"items":[{"category":"...","text":"..."}]} with exactly ${items.length} entries, ` +
+    'in the same order as the input items, and nothing else.';
 
   const userPrompt = JSON.stringify({
-    category,
     eventState: summary,
-    recentLog: recent
+    recentLog: recent,
+    items: items.map(i => ({ category: i.category, baseText: i.text }))
   });
+
+  // Anthropic models served via OpenRouter support prompt caching on the
+  // system message - the system prompt is identical on every call, so
+  // marking it cacheable cuts repeat input-token cost.
+  const systemMessage = model.indexOf('anthropic/') === 0
+    ? { role: 'system', content: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] }
+    : { role: 'system', content: systemPrompt };
 
   fetch(AI_ENDPOINT, {
     method: 'POST',
@@ -91,9 +144,9 @@ function requestAINarrative(state, category, extra, callback) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 300,
+      max_tokens: Math.min(120 * items.length + 100, 1000),
       messages: [
-        { role: 'system', content: systemPrompt },
+        systemMessage,
         { role: 'user', content: userPrompt }
       ]
     })
@@ -117,10 +170,8 @@ function requestAINarrative(state, category, extra, callback) {
           try { parsed = JSON.parse(match[0]); } catch (e2) { parsed = null; }
         }
       }
-      if (parsed && typeof parsed.text === 'string' && parsed.text.trim()) {
-        callback(parsed.text.trim());
-      } else if (typeof text === 'string' && text.trim()) {
-        callback(text.trim());
+      if (parsed && Array.isArray(parsed.items)) {
+        callback(parsed.items);
       } else {
         callback(null);
       }
