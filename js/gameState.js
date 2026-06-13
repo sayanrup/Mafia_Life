@@ -114,6 +114,17 @@ function saveSettings(settings) {
 
 /* ---------------- Persistence ---------------- */
 
+// Cap on stored event log entries - keeps localStorage saves from growing
+// without bound over a long playthrough. The Events tab only ever shows the
+// most recent 200 anyway.
+const MAX_EVENT_LOG = 400;
+
+function trimEventLog(state) {
+  if (state.eventLog && state.eventLog.length > MAX_EVENT_LOG) {
+    state.eventLog.splice(0, state.eventLog.length - MAX_EVENT_LOG);
+  }
+}
+
 function serializeState(state) {
   return JSON.stringify(state);
 }
@@ -124,6 +135,7 @@ function deserializeState(json) {
 
 function autosave(state) {
   try {
+    trimEventLog(state);
     localStorage.setItem(AUTOSAVE_KEY, serializeState(state));
   } catch (e) {
     console.error('Autosave failed', e);
@@ -196,6 +208,7 @@ function loadAutosave() {
 }
 
 function saveGame(state) {
+  trimEventLog(state);
   const meta = {
     name: state.player.name,
     rank: state.player.rank,

@@ -23,6 +23,7 @@ const TAB_DEFS = [
 function setActiveTab(tab) {
   ACTIVE_TAB = tab;
   renderApp();
+  window.scrollTo(0, 0);
 }
 
 function renderApp() {
@@ -35,7 +36,31 @@ function renderApp() {
     app.innerHTML = renderGameOver();
     return;
   }
+
+  // Routine re-renders (after every action) replace the whole #app innerHTML,
+  // which would otherwise reset scroll position and drop focus out of any
+  // input the player is mid-edit on. Capture and restore both here.
+  const scrollY = window.scrollY;
+  const active = document.activeElement;
+  let focusInfo = null;
+  if (active && active.id && app.contains(active) &&
+      (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA')) {
+    focusInfo = { id: active.id, tag: active.tagName, selectionStart: active.selectionStart, selectionEnd: active.selectionEnd };
+  }
+
   app.innerHTML = renderTopBar() + renderTabBar() + renderActionUpdate() + `<div class="content">${renderTabContent()}</div>`;
+
+  if (focusInfo) {
+    const el = document.getElementById(focusInfo.id);
+    if (el) {
+      el.focus();
+      if (focusInfo.tag !== 'SELECT' && typeof focusInfo.selectionStart === 'number' && el.setSelectionRange) {
+        try { el.setSelectionRange(focusInfo.selectionStart, focusInfo.selectionEnd); } catch (e) { /* ignore */ }
+      }
+    }
+  }
+  window.scrollTo(0, scrollY);
+
   const existingModal = document.getElementById('modal-root');
   if (existingModal) existingModal.remove();
   if (MODAL) {
