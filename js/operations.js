@@ -35,7 +35,7 @@ function upgradeOperation(state, districtId, opType) {
 }
 
 function getStashCapacity(state) {
-  let total = 50; // base personal capacity
+  let total = 200; // base personal capacity
   for (const d of state.districts) {
     const tier = d.operations.stash.tier;
     total += OPERATION_DEFS.stash.tiers[tier].capacity - OPERATION_DEFS.stash.tiers[0].capacity;
@@ -68,10 +68,13 @@ function tickOperations(state) {
       const room = Math.max(0, cap - current);
       const add = Math.min(def.throughput, room);
       if (add > 0) {
-        const armsAdd = Math.floor(add / 2);
-        const contraAdd = add - armsAdd;
-        state.player.inventory.product.arms += armsAdd;
-        state.player.inventory.product.contraband += contraAdd;
+        const each = Math.floor(add / GANG_PRODUCTS.length);
+        let remainder = add - each * GANG_PRODUCTS.length;
+        for (const product of GANG_PRODUCTS) {
+          let amount = each;
+          if (remainder > 0) { amount++; remainder--; }
+          state.player.inventory.product[product] += amount;
+        }
       }
       checkOperationRaid(state, district, 'route', def.bustRisk, mitigation);
     } else if (district.operations.route.raided) {
@@ -86,13 +89,18 @@ function checkOperationRaid(state, district, opType, riskPercent, mitigation) {
   if (Math.random() * 100 < chance) {
     district.operations[opType].raided = true;
     district.operations[opType].raidCooldown = 2;
-    const lostArms = Math.round(state.player.inventory.product.arms * 0.4);
-    const lostContra = Math.round(state.player.inventory.product.contraband * 0.4);
-    state.player.inventory.product.arms -= lostArms;
-    state.player.inventory.product.contraband -= lostContra;
+    const losses = {};
+    let totalLost = 0;
+    for (const product of GANG_PRODUCTS) {
+      const lost = Math.round(state.player.inventory.product[product] * 0.4);
+      losses[product] = lost;
+      totalLost += lost;
+      state.player.inventory.product[product] -= lost;
+    }
     addHeat(state, 'feds', 6);
     addHeat(state, 'pd', 4);
     narrate(state, 'operation_raid', { vars: { district: district.name } });
-    state.eventLog.push(logEntry(state, `BUSTED! A shipment on your ${OPERATION_DEFS.route.label} in ${district.name} was seized. Lost ${lostArms} arms and ${lostContra} contraband. The route is offline for 2 turns.`, 'operation_raid'));
+    const lossSummary = GANG_PRODUCTS.filter(p => losses[p] > 0).map(p => `${losses[p]} ${p}`).join(', ');
+    state.eventLog.push(logEntry(state, `BUSTED! A shipment on your ${OPERATION_DEFS.route.label} in ${district.name} was seized.${totalLost > 0 ? ` Lost ${lossSummary}.` : ''} The route is offline for 2 turns.`, 'operation_raid'));
   }
 }

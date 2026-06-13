@@ -437,12 +437,15 @@ function computeObjectives(state) {
   }
 
   if (playerGangId(state) && !state.criminalWorld.unlocked) {
+    const myGangId = playerGangId(state);
     const influence = computeTerritoryInfluence(state);
+    const bestDistrict = Math.max(0, ...state.districts.map(d => d.control[myGangId] || 0));
+    const progress = Math.max(influence, bestDistrict);
     objectives.push({
       label: 'Criminal World Access',
-      current: Math.round(influence),
+      current: Math.round(progress),
       max: 50,
-      detail: `Your gang controls ${Math.round(influence)}% of the city, on average across all districts. Reach 50% average to earn a seat in the Criminal World.`
+      detail: `City-wide average control: ${Math.round(influence)}% &middot; Best single district: ${Math.round(bestDistrict)}%. Reach 50% on either to earn a seat in the Criminal World.`
     });
   }
 

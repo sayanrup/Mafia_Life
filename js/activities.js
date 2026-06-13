@@ -255,22 +255,18 @@ function doSmugglingRun(state) {
 
   const roll = Math.random() * 100;
   if (roll > bustRisk) {
-    const cap = getStashCapacity(state);
-    const room = Math.max(0, cap - totalProductUnits(state));
-    const gain = Math.min(def.throughput, room);
-    const armsGain = Math.ceil(gain / 2);
-    const contraGain = gain - armsGain;
-    state.player.inventory.product.arms += armsGain;
-    state.player.inventory.product.contraband += contraGain;
+    const gain = Math.round(def.cashMin + Math.random() * (def.cashMax - def.cashMin));
+    addCash(state, gain, 0);
+    district.heat = clamp(district.heat + 2 + routeTier * 2, 0, 100);
     narrate(state, 'post_crime_success');
-    state.eventLog.push(logEntry(state, `Smuggling run through ${district.name} pays off: +${armsGain} arms, +${contraGain} contraband.`, 'activity'));
+    state.eventLog.push(logEntry(state, `Smuggling run through ${district.name} pays off: ${fmtMoney(gain)} moved through your ${def.name}.`, 'activity'));
   } else {
     addHeat(state, 'feds', 8);
     addHeat(state, 'pd', 4);
-    const lossArms = Math.round(state.player.inventory.product.arms * 0.3);
-    state.player.inventory.product.arms -= lossArms;
+    const loss = Math.round(def.cashMin * 0.5);
+    state.player.cash.dirty = Math.max(0, state.player.cash.dirty - loss);
     narrate(state, 'post_crime_fail');
-    state.eventLog.push(logEntry(state, `Smuggling run through ${district.name} got intercepted. Lost ${lossArms} arms, Federal Heat +8.`, 'activity'));
+    state.eventLog.push(logEntry(state, `Smuggling run through ${district.name} got intercepted. Lost ${fmtMoney(loss)}, Federal Heat +8.`, 'activity'));
   }
   return { ok: true };
 }

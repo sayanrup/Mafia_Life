@@ -332,7 +332,7 @@ function renderCrimeModal(category) {
       <div class="crime-list">
         ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), heistLocked ? `<span class="muted small">Unlocks at ${HEIST_UNLOCK_RANK}</span>` : '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
         ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/3).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/3 <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
-        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move contraband through your established route.', routeTier === 0 ? 'Requires a route' : 'Arms &amp; Contraband <span class="muted">| Heat +0-12 on bust</span>', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
+        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move product through your established route for a cash payout.', routeTier === 0 ? 'Requires a route' : cashHeatLabel(OPERATION_DEFS.route.tiers[routeTier].cashMin, OPERATION_DEFS.route.tiers[routeTier].cashMax, 4, 4 + routeTier * 2) + ' on success, cash loss on bust', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
       </div>
       ${closeButtonRow()}
     `;
@@ -456,7 +456,31 @@ function renderLog(entries) {
 
 /* ---------------- Map Tab ---------------- */
 
+let MAP_SUBTAB = 'districts';
+
+const MAP_SUBTABS = [
+  { id: 'districts', label: 'Districts' },
+  { id: 'gangs', label: 'Gangs' }
+];
+
+function setMapSubtab(tab) {
+  MAP_SUBTAB = tab;
+  renderApp();
+}
+
 function renderMap() {
+  const nav = `<div class="tab-bar" style="margin-bottom:10px;">
+    ${MAP_SUBTABS.map(t => `<button class="tab-btn ${MAP_SUBTAB === t.id ? 'active' : ''}" onclick="setMapSubtab('${t.id}')">${t.label}</button>`).join('')}
+  </div>`;
+
+  if (MAP_SUBTAB === 'gangs') {
+    return nav + renderGangsSubtab();
+  }
+
+  return nav + renderDistrictsSubtab();
+}
+
+function renderDistrictsSubtab() {
   const cards = GAME.districts.map(d => {
     const segs = Object.entries(d.control).map(([gid, pct]) => {
       const g = GAME.gangs[gid];
@@ -487,6 +511,59 @@ function renderMap() {
         <div class="muted">${opsLine}</div>
         ${farmLine ? `<div class="muted">${farmLine}</div>` : ''}
         ${d.id !== GAME.player.currentDistrict ? `<div class="row" style="margin-top:6px;"><button onclick="travelTo(${d.id})">Travel here</button></div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="grid">${cards}</div>`;
+}
+
+function renderGangsSubtab() {
+  const gangs = getCouncilGangs(GAME);
+  if (!gangs.length) {
+    return `<div class="card"><p class="muted">No rival gangs are active right now.</p></div>`;
+  }
+
+  const districtName = id => {
+    const d = GAME.districts.find(dd => dd.id === id);
+    return d ? d.name : `District ${id}`;
+  };
+
+  const cards = gangs.map(g => {
+    const status = g.atWarWithPlayer ? '<span class="tag dirty">AT WAR</span>' : (g.alliedWithPlayer ? '<span class="tag clean">ALLIED</span>' : '');
+    const territory = Math.round(gangTerritoryScore(GAME, g.id));
+
+    const businessRows = (g.businesses || []).map(b =>
+      `<div class="muted small">${b.type} - ${districtName(b.districtId)} (Level ${b.level})</div>`
+    ).join('');
+
+    const opsRows = Object.entries(g.operations || {}).flatMap(([districtId, ops]) =>
+      GANG_PRODUCTS.filter(p => ops[p] > 0).map(p =>
+        `<div class="muted small">${FARM_TYPES[p] ? FARM_TYPES[p].label : p} - ${districtName(Number(districtId))} (Level ${ops[p]})</div>`
+      )
+    ).join('');
+
+    const racketRows = (g.rackets || []).map(r =>
+      `<div class="muted small">Extortion Racket - ${districtName(r.districtId)} (Level ${r.level}, ${fmtMoney(extortionRacketIncome(r.level))}/turn)</div>`
+    ).join('');
+
+    return `
+      <div class="card" style="margin-bottom:6px;">
+        <div class="row between"><strong><span class="tag" style="border-color:${g.color}">${g.name}</span> - ${g.boss.name}</strong>${status}</div>
+        <div class="muted small">Personality: ${g.boss.personality} &middot; Territory Index: ${territory}</div>
+        <div class="muted small">Crew Size: ${g.crewSize || 0} &middot; Crew Skill: ${g.crewSkill || 0}/100 &middot; Treasury: ${fmtMoney(g.treasury || 0)}</div>
+        <div style="margin-top:6px;">
+          <div class="muted small"><strong>Businesses</strong></div>
+          ${businessRows || '<div class="muted small">None</div>'}
+        </div>
+        <div style="margin-top:6px;">
+          <div class="muted small"><strong>Drug Operations</strong></div>
+          ${opsRows || '<div class="muted small">None</div>'}
+        </div>
+        <div style="margin-top:6px;">
+          <div class="muted small"><strong>Rackets</strong></div>
+          ${racketRows || '<div class="muted small">None</div>'}
+        </div>
       </div>
     `;
   }).join('');
@@ -544,12 +621,15 @@ function renderFarmSubtab(product) {
   const def = FARM_TYPES[product];
   const limits = getOpsLimits(GAME);
 
-  if (!limits.unlockedProducts.includes(product)) {
+  if (!getUnlockedProducts(GAME).includes(product)) {
     const nextTier = OPS_CASH_LIMITS.find(t => t.unlockedProducts.includes(product));
+    const prereq = PRODUCT_PROGRESSION_CHAIN[product];
+    const prereqDef = prereq ? FARM_TYPES[prereq] : null;
+    const prereqTierName = prereqDef ? prereqDef.facilityTiers[PRODUCT_PROGRESSION_TIER - 1].name : '';
     return `
       <div class="card">
         <h2>${def.icon} ${def.label}</h2>
-        <p class="muted">${def.label} operations unlock once you've earned ${fmtMoney(nextTier ? nextTier.minDirtyCash : 0)} Dirty Cash. Keep running operations and crimes to build up your Dirty Cash.</p>
+        <p class="muted">${def.label} operations unlock once you've earned ${fmtMoney(nextTier ? nextTier.minDirtyCash : 0)} Dirty Cash${prereqDef ? `, or once you've built a ${prereqDef.label} up to a ${prereqTierName} (tier ${PRODUCT_PROGRESSION_TIER}) in any district` : ''}. Keep running operations and crimes to build up your Dirty Cash.</p>
       </div>
     `;
   }
@@ -734,7 +814,7 @@ function renderProtectionSubtab() {
           : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
         }
         <hr class="sep" />
-        <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/3 (${fmtMoney(racket.level * 60)}/turn)` : 'None - start one from Heists & Rackets.'}</div>
+        <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/3 (${fmtMoney(extortionRacketIncome(racket.level))}/turn)` : 'None - start one from Heists & Rackets.'}</div>
         ${canAccessOperations(GAME) ? `
           <hr class="sep" />
           <div class="muted small">Operation Protection (reduces drug-operation raid risk &amp; heat here)</div>
