@@ -107,10 +107,10 @@ const OPERATION_DEFS = {
   stash: {
     label: 'Stash House',
     tiers: [
-      { name: 'None', cost: 0, capacity: 20, heatMitigation: 0 },
-      { name: 'Safehouse', cost: 1200, capacity: 60, heatMitigation: 5 },
-      { name: 'Reinforced Den', cost: 4500, capacity: 150, heatMitigation: 12 },
-      { name: 'Fortified Vault', cost: 12000, capacity: 400, heatMitigation: 22 }
+      { name: 'None', cost: 0, capacity: 20, heatMitigation: 0, goodsCapacity: 0 },
+      { name: 'Safehouse', cost: 1200, capacity: 60, heatMitigation: 5, goodsCapacity: 50000 },
+      { name: 'Reinforced Den', cost: 4500, capacity: 150, heatMitigation: 12, goodsCapacity: 150000 },
+      { name: 'Fortified Vault', cost: 12000, capacity: 400, heatMitigation: 22, goodsCapacity: 400000 }
     ]
   },
   route: {
@@ -152,26 +152,62 @@ const EQUIPMENT_TIERS = [
 
 const DISTRIBUTOR_HIRE_COST = 5000;
 const DISTRIBUTOR_UPKEEP = 400;
-const DISTRIBUTOR_SELL_RATE = 60000; // cash value of product a single distributor can move per turn at neutral price
+const DISTRIBUTOR_BASE_CAPACITY = 2000; // cash value a distributor can move per turn on foot/unaided
 
 const OPS_ECONOMY = {
-  unlockRank: 'Boss',
+  unlockRank: 'Associate',
   protectionPerDollar: 1 / 40,
   protectionDecay: 8,
   raidBaseRisk: 5,
   priceMinMult: 0.5,
-  priceMaxMult: 2.0
+  priceMaxMult: 2.0,
+  stashRentalRate: 0.015 // % of free stash goods-capacity paid to you per turn by other crews renting space
 };
+
+/* ---------------- Operations Progression by Rank ---------------- */
+// Controls how much of the drug-operation system is open at each rank.
+// maxPlotsPerDistrict applies per district per product.
+
+const OPS_RANK_LIMITS = {
+  Associate: { unlockedProducts: ['weed'], maxPlotsPerDistrict: 1, maxEquipmentTier: 0, maxDistributors: 1 },
+  Soldier:   { unlockedProducts: ['weed', 'pills'], maxPlotsPerDistrict: 2, maxEquipmentTier: 1, maxDistributors: 3 },
+  Capo:      { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 4, maxEquipmentTier: 2, maxDistributors: 6 },
+  Underboss: { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 6, maxEquipmentTier: 3, maxDistributors: 10 },
+  Boss:      { unlockedProducts: ['weed', 'pills', 'powder'], maxPlotsPerDistrict: 10, maxEquipmentTier: 3, maxDistributors: 20 }
+};
+
+function getOpsLimits(state) {
+  return OPS_RANK_LIMITS[state.player.rank] || OPS_RANK_LIMITS.Associate;
+}
+
+/* ---------------- Vehicles (Distribution Fleet) ---------------- */
+
+const VEHICLE_TYPES = [
+  { id: 'sedan',  label: 'Beat-up Sedan',  cost: 6000,   cargoCapacity: 6000,   crewCapacity: 2, upkeep: 80,   resaleMult: 0.5 },
+  { id: 'van',    label: 'Cargo Van',      cost: 16000,  cargoCapacity: 25000,  crewCapacity: 3, upkeep: 200,  resaleMult: 0.5 },
+  { id: 'suv',    label: 'Armored SUV',    cost: 32000,  cargoCapacity: 45000,  crewCapacity: 4, upkeep: 350,  resaleMult: 0.5 },
+  { id: 'truck',  label: 'Box Truck',      cost: 55000,  cargoCapacity: 110000, crewCapacity: 2, upkeep: 500,  resaleMult: 0.5 },
+  { id: 'armored',label: 'Armored Truck',  cost: 140000, cargoCapacity: 300000, crewCapacity: 4, upkeep: 1200, resaleMult: 0.5 }
+];
+
+/* ---------------- Money Laundering via Rival Gangs ---------------- */
+
+const GANG_LAUNDER_CUT = 0.30; // cut taken by outside fixers before shell companies are available
+const WEAPON_SELL_MULT = 0.5; // fraction of unit cost recovered when selling armory weapons
 
 /* ---------------- Kidnapping Racket ---------------- */
 
 const KIDNAP_JOBS = [
-  { id: 'dealer',     label: 'Snatch a Rival Dealer',        icon: '🎯', desc: 'Grab a low-level rival dealer and hold them for ransom.', cashMin: 2000,  cashMax: 8000,   heatMin: 5,  heatMax: 12, repGain: 2,  difficulty: 14 },
-  { id: 'bookie',     label: 'Kidnap a Bookie',               icon: '📒', desc: "Lean on a bookie who owes the wrong people.",              cashMin: 4000,  cashMax: 15000,  heatMin: 6,  heatMax: 15, repGain: 3,  difficulty: 18 },
-  { id: 'businessman',label: 'Snatch a Businessman',          icon: '💼', desc: 'Grab a wealthy local businessman for a fat ransom.',       cashMin: 10000, cashMax: 40000,  heatMin: 10, heatMax: 22, repGain: 4,  difficulty: 24 },
-  { id: 'lieutenant', label: "Kidnap a Rival's Lieutenant",   icon: '🥃', desc: "Take one of a rival gang's lieutenants hostage.",          cashMin: 15000, cashMax: 60000,  heatMin: 12, heatMax: 28, repGain: 6,  difficulty: 30 },
-  { id: 'tycoon',     label: 'Kidnap a City Tycoon',          icon: '🏙️', desc: 'The biggest score: grab a city tycoon and demand a fortune.', cashMin: 40000, cashMax: 150000, heatMin: 18, heatMax: 35, repGain: 10, difficulty: 38 }
+  { id: 'dealer',     label: 'Snatch a Rival Dealer',        icon: '🎯', desc: 'Grab a low-level rival dealer and hold them for ransom.', cashMin: 2000,  cashMax: 8000,   heatMin: 5,  heatMax: 12, repGain: 2,  difficulty: 14, unlockRank: 'Soldier' },
+  { id: 'bookie',     label: 'Kidnap a Bookie',               icon: '📒', desc: "Lean on a bookie who owes the wrong people.",              cashMin: 4000,  cashMax: 15000,  heatMin: 6,  heatMax: 15, repGain: 3,  difficulty: 18, unlockRank: 'Capo' },
+  { id: 'businessman',label: 'Snatch a Businessman',          icon: '💼', desc: 'Grab a wealthy local businessman for a fat ransom.',       cashMin: 10000, cashMax: 40000,  heatMin: 10, heatMax: 22, repGain: 4,  difficulty: 24, unlockRank: 'Capo' },
+  { id: 'lieutenant', label: "Kidnap a Rival's Lieutenant",   icon: '🥃', desc: "Take one of a rival gang's lieutenants hostage.",          cashMin: 15000, cashMax: 60000,  heatMin: 12, heatMax: 28, repGain: 6,  difficulty: 30, unlockRank: 'Underboss' },
+  { id: 'tycoon',     label: 'Kidnap a City Tycoon',          icon: '🏙️', desc: 'The biggest score: grab a city tycoon and demand a fortune.', cashMin: 40000, cashMax: 150000, heatMin: 18, heatMax: 35, repGain: 10, difficulty: 38, unlockRank: 'Boss' }
 ];
+
+function isUnlockedForRank(state, unlockRank) {
+  return rankIndex(state.player.rank) >= rankIndex(unlockRank);
+}
 
 /* ---------------- Action Economy ---------------- */
 
@@ -180,27 +216,29 @@ const MAX_ACTION_REPEATS = 3; // each distinct action type can be repeated at mo
 /* ---------------- Street Crimes (beyond the basic Mug a Mark) ---------------- */
 
 const STREET_CRIMES = [
-  { id: 'pickpocket',  label: 'Pickpocket',          icon: '🧤', desc: 'Lift a wallet in a crowded market.',          cashMin: 15,  cashMax: 90,   heatMin: 0, heatMax: 2, repGain: 1, difficulty: 5 },
-  { id: 'shoplift',    label: 'Shoplifting',         icon: '🛍️', desc: 'Walk out of a store with merchandise to fence.', cashMin: 30,  cashMax: 150,  heatMin: 1, heatMax: 3, repGain: 1, difficulty: 6 },
-  { id: 'cartheft',    label: 'Car Theft',           icon: '🚗', desc: 'Boost a parked car and sell it to a chop shop.', cashMin: 200, cashMax: 900,  heatMin: 3, heatMax: 8, repGain: 2, difficulty: 14 },
-  { id: 'vandalism',   label: 'Vandalism for Hire',  icon: '🔨', desc: "Trash a rival's storefront for a quick payday.", cashMin: 50,  cashMax: 250,  heatMin: 2, heatMax: 6, repGain: 1, difficulty: 8 },
-  { id: 'fence',       label: 'Fence Stolen Goods',  icon: '💎', desc: 'Move hot merchandise through a fence.',        cashMin: 100, cashMax: 500,  heatMin: 1, heatMax: 4, repGain: 1, difficulty: 7 },
-  { id: 'dicehustle',  label: 'Street Dice Hustle',  icon: '🎲', desc: 'Run a rigged dice game on the corner.',        cashMin: 30,  cashMax: 180,  heatMin: 0, heatMax: 3, repGain: 1, difficulty: 6 },
-  { id: 'skimming',    label: 'ATM Skimming',        icon: '💳', desc: 'Rig a card skimmer on a local ATM.',           cashMin: 150, cashMax: 700,  heatMin: 2, heatMax: 7, repGain: 1, difficulty: 12 },
-  { id: 'pilferage',   label: 'Cargo Pilferage',     icon: '📦', desc: 'Snatch goods off a delivery truck.',           cashMin: 100, cashMax: 600,  heatMin: 2, heatMax: 6, repGain: 2, difficulty: 11 },
-  { id: 'shakedown',   label: 'Corner Store Shakedown', icon: '✊', desc: 'Strong-arm a small business for quick cash.', cashMin: 80,  cashMax: 400,  heatMin: 2, heatMax: 5, repGain: 2, difficulty: 9 }
+  { id: 'pickpocket',  label: 'Pickpocket',          icon: '🧤', desc: 'Lift a wallet in a crowded market.',          cashMin: 15,  cashMax: 90,   heatMin: 0, heatMax: 2, repGain: 1, difficulty: 5, unlockRank: 'Associate' },
+  { id: 'shoplift',    label: 'Shoplifting',         icon: '🛍️', desc: 'Walk out of a store with merchandise to fence.', cashMin: 30,  cashMax: 150,  heatMin: 1, heatMax: 3, repGain: 1, difficulty: 6, unlockRank: 'Associate' },
+  { id: 'cartheft',    label: 'Car Theft',           icon: '🚗', desc: 'Boost a parked car and sell it to a chop shop.', cashMin: 200, cashMax: 900,  heatMin: 3, heatMax: 8, repGain: 2, difficulty: 14, unlockRank: 'Capo' },
+  { id: 'vandalism',   label: 'Vandalism for Hire',  icon: '🔨', desc: "Trash a rival's storefront for a quick payday.", cashMin: 50,  cashMax: 250,  heatMin: 2, heatMax: 6, repGain: 1, difficulty: 8, unlockRank: 'Associate' },
+  { id: 'fence',       label: 'Fence Stolen Goods',  icon: '💎', desc: 'Move hot merchandise through a fence.',        cashMin: 100, cashMax: 500,  heatMin: 1, heatMax: 4, repGain: 1, difficulty: 7, unlockRank: 'Associate' },
+  { id: 'dicehustle',  label: 'Street Dice Hustle',  icon: '🎲', desc: 'Run a rigged dice game on the corner.',        cashMin: 30,  cashMax: 180,  heatMin: 0, heatMax: 3, repGain: 1, difficulty: 6, unlockRank: 'Associate' },
+  { id: 'skimming',    label: 'ATM Skimming',        icon: '💳', desc: 'Rig a card skimmer on a local ATM.',           cashMin: 150, cashMax: 700,  heatMin: 2, heatMax: 7, repGain: 1, difficulty: 12, unlockRank: 'Soldier' },
+  { id: 'pilferage',   label: 'Cargo Pilferage',     icon: '📦', desc: 'Snatch goods off a delivery truck.',           cashMin: 100, cashMax: 600,  heatMin: 2, heatMax: 6, repGain: 2, difficulty: 11, unlockRank: 'Soldier' },
+  { id: 'shakedown',   label: 'Corner Store Shakedown', icon: '✊', desc: 'Strong-arm a small business for quick cash.', cashMin: 80,  cashMax: 400,  heatMin: 2, heatMax: 5, repGain: 2, difficulty: 9, unlockRank: 'Soldier' }
 ];
 
 /* ---------------- Help a Gang (gig work, no membership required) ---------------- */
 
 const GANG_GIGS = [
-  { id: 'message',  label: 'Pass a Message',  icon: '✉️', desc: 'Deliver a coded message between crews.',          cashMin: 50,  cashMax: 200, heatMin: 0, heatMax: 2, relationGain: 3, gangRepGain: 1, difficulty: 4 },
-  { id: 'package',  label: 'Deliver a Package', icon: '📦', desc: "Move a sealed package without asking questions.", cashMin: 100, cashMax: 400, heatMin: 1, heatMax: 4, relationGain: 4, gangRepGain: 2, difficulty: 8 },
-  { id: 'lookout',  label: 'Stand Lookout',   icon: '👀', desc: 'Watch the street while the crew works.',          cashMin: 60,  cashMax: 250, heatMin: 0, heatMax: 3, relationGain: 2, gangRepGain: 1, difficulty: 5 },
-  { id: 'collect',  label: 'Collect a Debt',  icon: '💵', desc: 'Lean on someone who owes the gang money.',        cashMin: 120, cashMax: 500, heatMin: 2, heatMax: 6, relationGain: 5, gangRepGain: 2, difficulty: 10 },
-  { id: 'wheelman', label: 'Be the Wheelman', icon: '🚙', desc: "Drive the getaway car for a job that isn't yours.", cashMin: 150, cashMax: 600, heatMin: 2, heatMax: 7, relationGain: 5, gangRepGain: 3, difficulty: 11 },
-  { id: 'recon',    label: 'Scout a Location', icon: '🔭', desc: 'Case a building the gang is planning to hit.',    cashMin: 80,  cashMax: 300, heatMin: 0, heatMax: 2, relationGain: 3, gangRepGain: 1, difficulty: 6 }
+  { id: 'message',  label: 'Pass a Message',  icon: '✉️', desc: 'Deliver a coded message between crews.',          cashMin: 50,  cashMax: 200, heatMin: 0, heatMax: 2, relationGain: 3, gangRepGain: 1, difficulty: 4, unlockRank: 'Associate' },
+  { id: 'package',  label: 'Deliver a Package', icon: '📦', desc: "Move a sealed package without asking questions.", cashMin: 100, cashMax: 400, heatMin: 1, heatMax: 4, relationGain: 4, gangRepGain: 2, difficulty: 8, unlockRank: 'Soldier' },
+  { id: 'lookout',  label: 'Stand Lookout',   icon: '👀', desc: 'Watch the street while the crew works.',          cashMin: 60,  cashMax: 250, heatMin: 0, heatMax: 3, relationGain: 2, gangRepGain: 1, difficulty: 5, unlockRank: 'Associate' },
+  { id: 'collect',  label: 'Collect a Debt',  icon: '💵', desc: 'Lean on someone who owes the gang money.',        cashMin: 120, cashMax: 500, heatMin: 2, heatMax: 6, relationGain: 5, gangRepGain: 2, difficulty: 10, unlockRank: 'Soldier' },
+  { id: 'wheelman', label: 'Be the Wheelman', icon: '🚙', desc: "Drive the getaway car for a job that isn't yours.", cashMin: 150, cashMax: 600, heatMin: 2, heatMax: 7, relationGain: 5, gangRepGain: 3, difficulty: 11, unlockRank: 'Capo' },
+  { id: 'recon',    label: 'Scout a Location', icon: '🔭', desc: 'Case a building the gang is planning to hit.',    cashMin: 80,  cashMax: 300, heatMin: 0, heatMax: 2, relationGain: 3, gangRepGain: 1, difficulty: 6, unlockRank: 'Associate' }
 ];
+
+const HEIST_UNLOCK_RANK = 'Soldier';
 
 const SHELL_TIERS = [
   { tier: 1, cost: 3000,  launderPerTurn: 600,  fee: 0.15, auditRisk: 6 },

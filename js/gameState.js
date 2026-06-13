@@ -56,6 +56,7 @@ function createNewGame(charData) {
       affiliation: { type: 'solo', gangId: null }, // 'solo' | 'member' | 'founder'
       currentDistrict: 0,
       actionCounts: {}, // actionKey -> uses this turn (reset on endTurn)
+      vehicles: [], // {id, typeId} - distribution fleet
       operations: null // set by initPlayerOperations below
     },
     districts: [],
@@ -125,9 +126,34 @@ function autosave(state) {
   }
 }
 
+/* ---------------- Save Migration ---------------- */
+// Brings older saves up to date with newer game data (new fields, rebalanced
+// business income/laundering values, etc.) so existing saves keep working.
+
+function migrateState(state) {
+  if (!state || !state.player) return state;
+
+  if (!Array.isArray(state.player.vehicles)) {
+    state.player.vehicles = [];
+  }
+
+  if (Array.isArray(state.ownedBusinesses)) {
+    for (const b of state.ownedBusinesses) {
+      const def = BUSINESS_TYPES.find(t => t.type === b.type);
+      if (def) {
+        b.baseIncome = def.baseIncome;
+        b.launderBonus = def.launderBonus;
+        b.heatReduction = def.heatReduction;
+      }
+    }
+  }
+
+  return state;
+}
+
 function loadAutosave() {
   const raw = localStorage.getItem(AUTOSAVE_KEY);
-  return raw ? deserializeState(raw) : null;
+  return raw ? migrateState(deserializeState(raw)) : null;
 }
 
 function saveGame(state) {
@@ -145,7 +171,7 @@ function saveGame(state) {
 
 function loadGame() {
   const raw = localStorage.getItem(SAVE_KEY);
-  return raw ? deserializeState(raw) : null;
+  return raw ? migrateState(deserializeState(raw)) : null;
 }
 
 function getSaveMeta() {

@@ -57,6 +57,15 @@ function renderFinance() {
     </div>
 
     <div class="card">
+      <h2>Launder via Street Contacts</h2>
+      <p class="muted small">No shell company? Outside fixers will launder Dirty Cash for you on the spot, taking a steep ${Math.round(GANG_LAUNDER_CUT * 100)}% cut. Always available, but raises Gang Heat slightly. Shell companies and business fronts offer much better rates.</p>
+      <div class="row">
+        <input type="number" id="launder-gang-amount" placeholder="Amount ($)" min="0" style="width:140px;" />
+        <button onclick="actionLaunderViaGangs()" ${p.cash.dirty > 0 ? '' : 'disabled'}>Launder</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Shell Companies</h2>
       ${shellRows || '<p class="muted">None established.</p>'}
       <div class="row">

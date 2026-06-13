@@ -123,7 +123,7 @@ function joinGang(state, gangId) {
 }
 
 function canFoundGang(state) {
-  return state.player.reputation.gang >= 50 && state.player.affiliation.type === 'solo';
+  return state.player.reputation.gang >= 30 && state.player.affiliation.type === 'solo';
 }
 
 function foundGang(state, gangName) {
