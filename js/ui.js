@@ -939,20 +939,26 @@ function renderGameOver() {
   const myGangId = playerGangId(GAME);
   const territories = myGangId ? GAME.gangs[myGangId].territory.length : 0;
   const aliveFamily = familyMembersAlive(GAME);
+  const isVictory = GAME.meta.gameOverReason === 'victory';
 
   const continueOptions = aliveFamily.map(m => `
     <button onclick="continueAsFamilyMember('${m.id}')">Continue as ${m.name} (${m.relation})</button>
   `).join(' ');
 
+  const title = isVictory ? 'You Run This City' : (GAME.meta.gameOverReason === 'arrest' ? 'Busted' : 'Game Over');
+  const subtitle = isVictory
+    ? `${myGangId ? GAME.gangs[myGangId].name : p.name} now leads every zone in ${GAME.meta.cityName}. The streets, the politics, the money - all of it answers to ${p.name}.`
+    : (GAME.meta.gameOverReason === 'arrest' ? `The walls finally closed in on ${p.name}.` : `${p.name}'s story ends here.`);
+
   return `
     <div class="content">
       <div class="gameover-screen">
-        <h1>${GAME.meta.gameOverReason === 'arrest' ? 'Busted' : 'Game Over'}</h1>
-        <p class="muted">${GAME.meta.gameOverReason === 'arrest' ? `The walls finally closed in on ${p.name}.` : `${p.name}'s story ends here.`}</p>
+        <h1>${title}</h1>
+        <p class="muted">${subtitle}</p>
         <div class="gameover-stats">
           <div class="row"><span>Days Survived</span><span>${GAME.meta.day}</span></div>
           <div class="row"><span>Peak Cash</span><span>${fmtMoney(GAME.meta.peakCash || (p.cash.dirty + p.cash.clean))}</span></div>
-          <div class="row"><span>Territories Controlled</span><span>${territories}</span></div>
+          <div class="row"><span>Territories Controlled</span><span>${territories} / ${GAME.districts.length}</span></div>
           <div class="row"><span>Final Rank</span><span>${p.rank}</span></div>
           <div class="row"><span>Street Reputation</span><span>${Math.round(p.reputation.street)}</span></div>
           <div class="row"><span>Gang Reputation</span><span>${Math.round(p.reputation.gang)}</span></div>
@@ -960,7 +966,8 @@ function renderGameOver() {
           <div class="row"><span>Family Status</span><span>${aliveFamily.length} of ${GAME.family.length} alive</span></div>
         </div>
         <div class="row" style="justify-content:center; flex-wrap:wrap;">
-          <button class="btn-primary" onclick="startOver()">New Game</button>
+          ${isVictory ? `<button class="btn-primary" onclick="continueAfterVictory()">Keep Playing</button>` : ''}
+          <button ${isVictory ? '' : 'class="btn-primary"'} onclick="startOver()">New Game</button>
           ${continueOptions}
         </div>
       </div>

@@ -26,6 +26,7 @@ function createNewGame(charData) {
       cityName: cityName,
       gameOver: false,
       gameOverReason: null,
+      victoryAchieved: false,
       pendingArrest: false,
       familyRevealed: false,
       peakCash: start.cashDirty + start.cashClean,

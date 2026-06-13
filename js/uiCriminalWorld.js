@@ -48,6 +48,21 @@ function renderCriminalWorld() {
 
   const historyRows = cw.decisionHistory.map(h => `<div class="muted small">Day ${h.turn}: <strong>${h.title}</strong> - ${h.choice}</div>`).join('');
 
+  const myGangId = playerGangId(GAME);
+  const zoneLeaderRows = GAME.districts.map(d => {
+    const domId = dominantGang(d);
+    const dom = GAME.gangs[domId];
+    const pct = Math.round(d.control[domId] || 0);
+    const isPlayer = domId === myGangId;
+    return `
+      <div class="row between">
+        <span>${d.name}</span>
+        <span><span class="tag" style="border-color:${dom.color}">${dom.name}</span>${isPlayer ? ' <span class="tag clean">YOU</span>' : ''} - ${dom.boss.name} (${pct}%)</span>
+      </div>
+    `;
+  }).join('');
+  const zonesLed = myGangId ? GAME.districts.filter(d => dominantGang(d) === myGangId).length : 0;
+
   return `
     <div class="card">
       <h2>Criminal World</h2>
@@ -57,6 +72,11 @@ function renderCriminalWorld() {
     ${decisionCard}
     <div class="card">
       <h2>Zone Leaders</h2>
+      <p class="muted small">Whichever family holds the most control in a district leads that zone. Lead every zone in ${GAME.meta.cityName} to take the city.${myGangId ? ` You currently lead ${zonesLed} of ${GAME.districts.length}.` : ''}</p>
+      ${zoneLeaderRows}
+    </div>
+    <div class="card">
+      <h2>Families</h2>
       ${gangCards || '<p class="muted">No other families remain.</p>'}
       ${eliminatedRows}
     </div>
