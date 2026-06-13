@@ -18,8 +18,9 @@ function getInjuryPenalty(state) {
 }
 
 function tickInjuries(state) {
+  const recoveryStep = 1 + (getFamilyMemberWithRole(state, 'medic') ? 1 : 0);
   for (const inj of state.player.injuries) {
-    if (inj.turnsRemaining > 0) inj.turnsRemaining--;
+    if (inj.turnsRemaining > 0) inj.turnsRemaining -= recoveryStep;
   }
   state.player.injuries = state.player.injuries.filter(inj => inj.type !== 'recovery' || inj.turnsRemaining > 0);
 
@@ -69,7 +70,7 @@ function applyInjury(state, severity) {
 function hospitalCost(state) {
   const missing = state.player.maxHealth - state.player.health;
   const recoveryInjuries = state.player.injuries.filter(i => i.type === 'recovery').length;
-  return Math.round(missing * 40 + recoveryInjuries * 300);
+  return Math.round((missing * 40 + recoveryInjuries * 300) * familyMedicDiscount(state));
 }
 
 function visitHospital(state) {

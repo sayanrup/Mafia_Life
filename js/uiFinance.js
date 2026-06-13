@@ -178,7 +178,12 @@ function renderFamily() {
     `;
   }).join('');
 
-  return `<div class="card"><h2>Family Council</h2><p class="muted">Assign roles to active family members. Captured family members must be ransomed or rescued.</p>${rows}</div>`;
+  const roleList = Object.values(FAMILY_ROLES).map(r => `<li><strong>${r.label}</strong>: ${r.desc}</li>`).join('');
+
+  return `
+    <div class="card"><h2>Family Council</h2><p class="muted">Assign roles to active family members. Captured family members must be ransomed or rescued.</p>${rows}</div>
+    <div class="card"><h3>Family Roles</h3><p class="muted small">Each role can only be held by one family member at a time.</p><ul class="small muted">${roleList}</ul></div>
+  `;
 }
 
 function actionAssignFamilyRole(memberId) {

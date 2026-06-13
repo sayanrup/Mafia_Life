@@ -7,7 +7,12 @@ const FAMILY_TRAITS = ['Ambitious', 'Loyal', 'Reckless', 'Devout', 'Greedy', 'Ca
 const FAMILY_ROLES = {
   advisor: { id: 'advisor', label: 'Advisor', desc: 'Better deal prices on product sales and purchases (+10%).' },
   enforcer: { id: 'enforcer', label: 'Enforcer', desc: 'Combat bonus in scuffles and gang wars (+5 to rolls).' },
-  businessface: { id: 'businessface', label: 'Business Face', desc: 'Shell companies launder faster and fronts earn more (+15%).' }
+  businessface: { id: 'businessface', label: 'Business Face', desc: 'Shell companies launder faster and fronts earn more (+15%).' },
+  medic: { id: 'medic', label: 'Medic', desc: 'Hospital visits cost 30% less and injuries heal 1 turn faster.' },
+  fixer: { id: 'fixer', label: 'Fixer', desc: 'Greases the right palms downtown - PD Heat drops by 2 every turn.' },
+  wheelman: { id: 'wheelman', label: 'Wheelman', desc: 'Keeps the fleet running lean - vehicle upkeep reduced by 20%.' },
+  lookout: { id: 'lookout', label: 'Lookout', desc: 'Watches the family\'s back - halves the risk of kidnapping and betrayal events.' },
+  quartermaster: { id: 'quartermaster', label: 'Quartermaster', desc: 'Sources discounted gear - crew recruitment and weapon purchases cost 10% less.' }
 };
 
 const FEMALE_RELATIONS = new Set(['Spouse', 'Sister', 'Daughter', 'Mother', 'Aunt']);
@@ -81,6 +86,26 @@ function familyBusinessMultiplier(state) {
   return getFamilyMemberWithRole(state, 'businessface') ? 1.15 : 1.0;
 }
 
+function familyMedicDiscount(state) {
+  return getFamilyMemberWithRole(state, 'medic') ? 0.70 : 1.0;
+}
+
+function familyHeatReduction(state) {
+  return getFamilyMemberWithRole(state, 'fixer') ? 2 : 0;
+}
+
+function familyVehicleUpkeepMultiplier(state) {
+  return getFamilyMemberWithRole(state, 'wheelman') ? 0.80 : 1.0;
+}
+
+function familyRiskReductionMultiplier(state) {
+  return getFamilyMemberWithRole(state, 'lookout') ? 0.5 : 1.0;
+}
+
+function familyQuartermasterDiscount(state) {
+  return getFamilyMemberWithRole(state, 'quartermaster') ? 0.90 : 1.0;
+}
+
 /* ---------------- Turn Tick & Random Events ---------------- */
 
 function familyTurnTick(state) {
@@ -105,10 +130,14 @@ function familyTurnTick(state) {
     if (evt) applyEventOutcome(state, evt, { familyMember: member });
   }
 
+  // A fixer in the family keeps the heat down, turn after turn
+  const fixerReduction = familyHeatReduction(state);
+  if (fixerReduction > 0) addHeat(state, 'pd', -fixerReduction);
+
   // Vulnerability events scale with reputation/heat
   const dangerScore = (state.player.heat.pd + state.player.heat.feds + state.player.heat.gangs) / 3
     + (state.player.reputation.street + state.player.reputation.gang) / 4;
-  const riskChance = clamp(dangerScore / 400, 0, 0.12);
+  const riskChance = clamp(dangerScore / 400, 0, 0.12) * familyRiskReductionMultiplier(state);
 
   if (Math.random() < riskChance) {
     const candidates = alive.filter(m => !m.captured);
