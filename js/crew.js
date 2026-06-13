@@ -11,11 +11,18 @@ function maxLieutenants(state) {
   return 1 + idx; // Associate:1, Soldier:2, Capo:3, Underboss:4, Boss:5
 }
 
+function freshArmory() {
+  const armory = {};
+  for (const t of WEAPON_TIERS) armory[t.id] = 0;
+  return armory;
+}
+
 /* ---------------- Armory ---------------- */
 
 function buyWeapons(state, tier, quantity) {
   const t = WEAPON_TIERS[tier];
   if (!t || quantity <= 0) return { ok: false, reason: 'Invalid request.' };
+  if (!isUnlockedForRank(state, t.unlockRank)) return { ok: false, reason: `${t.label} unlocks at rank ${t.unlockRank}.` };
   const cost = t.unitCost * quantity;
   if (state.player.cash.dirty < cost) return { ok: false, reason: `Requires ${fmtMoney(cost)} Dirty Cash.` };
   state.player.cash.dirty -= cost;
@@ -128,6 +135,22 @@ function recruitCrew(state, count) {
 
 function totalUpkeepCost(state) {
   return state.player.crew.size * UPKEEP_PER_MEMBER + totalVehicleUpkeep(state);
+}
+
+/* ---------------- Crew Training ---------------- */
+
+function trainCrew(state, programId) {
+  const program = TRAINING_PROGRAMS.find(p => p.id === programId);
+  if (!program) return { ok: false, reason: 'Unknown training program.' };
+  if (!isUnlockedForRank(state, program.unlockRank)) return { ok: false, reason: `${program.label} unlocks at rank ${program.unlockRank}.` };
+  const completed = state.player.crew.trainingCompleted || (state.player.crew.trainingCompleted = []);
+  if (completed.includes(program.id)) return { ok: false, reason: `${program.label} has already been completed.` };
+  if (state.player.cash.dirty < program.cost) return { ok: false, reason: `Requires ${fmtMoney(program.cost)} Dirty Cash.` };
+  state.player.cash.dirty -= program.cost;
+  state.player.crew.quality = Math.round((state.player.crew.quality + program.qualityGain) * 100) / 100;
+  completed.push(program.id);
+  state.eventLog.push(logEntry(state, `Your crew completed "${program.label}" (Quality +${program.qualityGain.toFixed(1)}).`, 'crew'));
+  return { ok: true };
 }
 
 function payUpkeep(state, pay) {
@@ -260,6 +283,32 @@ function applyLieutenantBonuses(state) {
       const add = Math.min(Math.round(15 * effectiveness), room);
       if (add > 0) {
         state.player.inventory.product.contraband += add;
+      }
+    } else if (lt.assignment.type === 'security') {
+      const d = state.districts[lt.assignment.districtId];
+      if (d) {
+        d.opProtection = clamp((d.opProtection || 0) + 1 + Math.round(2 * effectiveness), 0, 100);
+      }
+    } else if (lt.assignment.type === 'recruit') {
+      const cap = getCrewCap(state);
+      if (state.player.crew.size < cap && Math.random() < 0.3 * effectiveness) {
+        state.player.crew.size += 1;
+        recalcEquippedWeaponTier(state);
+        state.eventLog.push(logEntry(state, `${lt.name}'s recruitment drive brought in a new crew member.`, 'crew'));
+      }
+    } else if (lt.assignment.type === 'enforcer') {
+      state.player.crew.loyalty = clamp(state.player.crew.loyalty + Math.round(2 * effectiveness), 0, 100);
+    } else if (lt.assignment.type === 'diplomat') {
+      const d = state.districts[lt.assignment.districtId];
+      if (d) {
+        let bestGangId = null, bestControl = -1;
+        for (const [gid, val] of Object.entries(d.control)) {
+          if (val > bestControl) { bestControl = val; bestGangId = gid; }
+        }
+        const gang = bestGangId && state.gangs[bestGangId];
+        if (gang && !gang.isPlayerGang) {
+          gang.relationToPlayer = clamp(gang.relationToPlayer + Math.round(1 * effectiveness), -100, 100);
+        }
       }
     }
   }
