@@ -259,24 +259,56 @@ const GANG_SCENARIO_CATEGORIES = [
   }
 ];
 
-const GANG_SCENARIOS = [];
-for (const cat of GANG_SCENARIO_CATEGORIES) {
-  for (const label of cat.labels) {
-    GANG_SCENARIOS.push({ category: cat.category, label, run: cat.run });
+// Personality flavors which categories a gang leans toward. A weight of 1 is
+// neutral; higher values make that category more likely to be picked, lower
+// values less likely. Categories not listed default to 1.
+const PERSONALITY_CATEGORY_WEIGHTS = {
+  Aggressive: {
+    'Heists & Big Scores': 3, 'Territory Moves': 3, 'Protection & Extortion Rackets': 2, 'Crew & Manpower': 2,
+    'Business Fronts': 0.4, 'Business Upgrades': 0.4, 'Finance & Laundering': 0.4
+  },
+  Diplomatic: {
+    'Business Fronts': 2.5, 'Business Upgrades': 2.5, 'Finance & Laundering': 2, 'Crew & Manpower': 1.5,
+    'Drug Operation Expansion': 1.5, 'Heists & Big Scores': 0.4, 'Territory Moves': 0.3, 'Protection & Extortion Rackets': 0.5
+  },
+  Opportunistic: {
+    'Drug Operation Expansion': 2.5, 'Smuggling & Trafficking': 2.5, 'Protection & Extortion Rackets': 2, 'Street Hustles': 1.5,
+    'Territory Moves': 0.6, 'Finance & Laundering': 0.7
   }
+};
+
+function pickScenarioCategory(personality) {
+  const weights = PERSONALITY_CATEGORY_WEIGHTS[personality] || {};
+  let total = 0;
+  for (const cat of GANG_SCENARIO_CATEGORIES) total += weights[cat.category] != null ? weights[cat.category] : 1;
+  let roll = Math.random() * total;
+  for (const cat of GANG_SCENARIO_CATEGORIES) {
+    const w = weights[cat.category] != null ? weights[cat.category] : 1;
+    if (roll < w) return cat;
+    roll -= w;
+  }
+  return GANG_SCENARIO_CATEGORIES[GANG_SCENARIO_CATEGORIES.length - 1];
 }
 
 /* ---------------- Turn hook ---------------- */
+
+function runGangScenario(state, gang) {
+  if (!gang.territory || !gang.territory.length) return;
+  const cat = pickScenarioCategory(gang.boss.personality);
+  const label = cat.labels[Math.floor(Math.random() * cat.labels.length)];
+  const districtId = gang.territory[Math.floor(Math.random() * gang.territory.length)];
+  const district = state.districts[districtId];
+  if (!district) return;
+  cat.run(state, gang, district, label);
+}
 
 function gangActivityTick(state) {
   for (const gangId of Object.keys(state.gangs)) {
     const gang = state.gangs[gangId];
     if (!gang || gang.isPlayerGang || gang.eliminated) continue;
     if (!gang.territory || !gang.territory.length) continue;
-    const scenario = GANG_SCENARIOS[Math.floor(Math.random() * GANG_SCENARIOS.length)];
-    const districtId = gang.territory[Math.floor(Math.random() * gang.territory.length)];
-    const district = state.districts[districtId];
-    if (!district) continue;
-    scenario.run(state, gang, district, scenario.label);
+    runGangScenario(state, gang);
+    // Bigger crews get a shot at a second move the same turn.
+    if ((gang.crewSize || 0) >= 15 && Math.random() < 0.35) runGangScenario(state, gang);
   }
 }

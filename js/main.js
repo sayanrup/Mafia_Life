@@ -165,6 +165,15 @@ function actionHireDistributors(product, typeId) {
   renderApp();
 }
 
+function actionFireDistributors(product, typeId) {
+  const input = document.getElementById(`ops-distributors-${product}-${typeId}`);
+  const count = Math.max(1, parseInt(input.value, 10) || 1);
+  const res = fireDistributors(GAME, product, typeId, count);
+  if (!res.ok) { showMsg('Operations', res.reason); return; }
+  autosave(GAME);
+  renderApp();
+}
+
 function actionSetOperationPrice(product) {
   const input = document.getElementById(`ops-price-${product}`);
   const price = parseFloat(input.value);
