@@ -148,21 +148,26 @@ const OPERATION_DEFS = {
 };
 
 const BUSINESS_TYPES = [
-  { type: 'Vending Route', basePrice: 4000, baseIncome: 500, launderBonus: 300, heatReduction: 0, unlockRank: 'Associate' },
-  { type: 'Diner', basePrice: 8000, baseIncome: 1000, launderBonus: 400, heatReduction: 0, unlockRank: 'Associate' },
-  { type: 'Laundromat', basePrice: 6000, baseIncome: 750, launderBonus: 800, heatReduction: 0, unlockRank: 'Associate' },
-  { type: 'Pawn Shop', basePrice: 10000, baseIncome: 1300, launderBonus: 900, heatReduction: 0, unlockRank: 'Associate' },
-  { type: 'Tattoo Parlor', basePrice: 7000, baseIncome: 900, launderBonus: 500, heatReduction: 0, unlockRank: 'Associate' },
-  { type: 'Bar', basePrice: 12000, baseIncome: 1500, launderBonus: 600, heatReduction: 1, unlockRank: 'Soldier' },
-  { type: 'Auto Repair Shop', basePrice: 15000, baseIncome: 1900, launderBonus: 700, heatReduction: 1, unlockRank: 'Soldier' },
-  { type: 'Check Cashing Store', basePrice: 18000, baseIncome: 2300, launderBonus: 1700, heatReduction: 1, unlockRank: 'Soldier' },
-  { type: 'Tow Yard', basePrice: 14000, baseIncome: 1700, launderBonus: 650, heatReduction: 1, unlockRank: 'Soldier' },
-  { type: 'Real Estate Office', basePrice: 25000, baseIncome: 3200, launderBonus: 1500, heatReduction: 2, unlockRank: 'Capo' },
-  { type: 'Construction Firm', basePrice: 35000, baseIncome: 4200, launderBonus: 2200, heatReduction: 2, unlockRank: 'Capo' },
-  { type: 'Storage Facility', basePrice: 22000, baseIncome: 2600, launderBonus: 1300, heatReduction: 1, unlockRank: 'Capo' },
-  { type: 'Nightclub', basePrice: 30000, baseIncome: 4000, launderBonus: 1800, heatReduction: 2, unlockRank: 'Underboss' },
-  { type: 'Import/Export Co', basePrice: 50000, baseIncome: 6000, launderBonus: 3200, heatReduction: 2, unlockRank: 'Underboss' },
-  { type: 'Casino', basePrice: 120000, baseIncome: 15000, launderBonus: 8000, heatReduction: 3, unlockRank: 'Boss' }
+  { type: 'Street Side Lemonade Stall', basePrice: 100,    baseIncome: 20,    launderBonus: 10,    heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Newspaper Stand',            basePrice: 300,    baseIncome: 50,    launderBonus: 30,    heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Food Cart',                  basePrice: 800,    baseIncome: 120,   launderBonus: 80,    heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Vending Route',              basePrice: 2000,   baseIncome: 280,   launderBonus: 180,   heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Tattoo Parlor',              basePrice: 4000,   baseIncome: 520,   launderBonus: 300,   heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Laundromat',                 basePrice: 6000,   baseIncome: 750,   launderBonus: 900,   heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Diner',                      basePrice: 9000,   baseIncome: 1150,  launderBonus: 500,   heatReduction: 0, unlockRank: 'Associate' },
+  { type: 'Pawn Shop',                  basePrice: 13000,  baseIncome: 1650,  launderBonus: 1200,  heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Bar',                        basePrice: 18000,  baseIncome: 2250,  launderBonus: 900,   heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Auto Repair Shop',           basePrice: 24000,  baseIncome: 3000,  launderBonus: 1100,  heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Check Cashing Store',        basePrice: 30000,  baseIncome: 3750,  launderBonus: 2800,  heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Tow Yard',                   basePrice: 38000,  baseIncome: 4700,  launderBonus: 1700,  heatReduction: 1, unlockRank: 'Soldier' },
+  { type: 'Storage Facility',           basePrice: 48000,  baseIncome: 6000,  launderBonus: 3000,  heatReduction: 2, unlockRank: 'Capo' },
+  { type: 'Real Estate Office',         basePrice: 60000,  baseIncome: 7500,  launderBonus: 3600,  heatReduction: 2, unlockRank: 'Capo' },
+  { type: 'Construction Firm',          basePrice: 75000,  baseIncome: 9300,  launderBonus: 5000,  heatReduction: 2, unlockRank: 'Capo' },
+  { type: 'Nightclub',                  basePrice: 95000,  baseIncome: 11800, launderBonus: 4500,  heatReduction: 2, unlockRank: 'Underboss' },
+  { type: 'Import/Export Co',           basePrice: 120000, baseIncome: 15000, launderBonus: 8000,  heatReduction: 2, unlockRank: 'Underboss' },
+  { type: 'Casino',                     basePrice: 160000, baseIncome: 20000, launderBonus: 10500, heatReduction: 3, unlockRank: 'Underboss' },
+  { type: 'Luxury Car Dealership',      basePrice: 210000, baseIncome: 26000, launderBonus: 14000, heatReduction: 3, unlockRank: 'Boss' },
+  { type: 'Hotel Chain',                basePrice: 280000, baseIncome: 35000, launderBonus: 19000, heatReduction: 3, unlockRank: 'Boss' }
 ];
 
 /* ---------------- Drug Operations (Boss-tier farms/labs) ---------------- */
