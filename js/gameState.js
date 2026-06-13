@@ -51,7 +51,8 @@ function createNewGame(charData) {
       armory: freshArmory(),
       lieutenants: [], // {id, name, loyalty, assignment: null|{type: one of LIEUTENANT_ASSIGNMENTS ids, districtId}}
       inventory: {
-        product: { weed: 0, pills: 0, powder: 0, arms: 0, contraband: 0 }
+        product: { weed: 0, pills: 0, powder: 0, arms: 0, contraband: 0 },
+        consumables: {}
       },
       extortionRackets: [], // {districtId, level}
       affiliation: { type: 'solo', gangId: null }, // 'solo' | 'member' | 'founder'
@@ -151,6 +152,10 @@ function migrateState(state) {
 
   if (!Array.isArray(state.player.crew.trainingCompleted)) {
     state.player.crew.trainingCompleted = [];
+  }
+
+  if (state.player.inventory && !state.player.inventory.consumables) {
+    state.player.inventory.consumables = {};
   }
 
   if (state.player.operations) {

@@ -719,6 +719,22 @@ function renderInventory() {
     ? GAME.player.injuries.map(i => `<div class="row between"><span>${i.label}</span><span>${i.type === 'permanent' ? 'Permanent' : `${i.turnsRemaining} turn(s) left`}</span></div>`).join('')
     : '<p class="muted">No active injuries.</p>';
 
+  const blackMarketRows = BLACK_MARKET_ITEMS.map(item => {
+    const owned = GAME.player.inventory.consumables[item.id] || 0;
+    const locked = !isUnlockedForRank(GAME, item.unlockRank);
+    return `
+      <div class="row between" style="margin-bottom:4px;">
+        <span>${item.label} <span class="muted small">(owned ${owned})</span><div class="muted small">${item.desc}</div></span>
+        <span class="row">
+          ${locked
+            ? `<span class="muted small">Unlocks at ${item.unlockRank}</span>`
+            : `<button onclick="actionBuyBlackMarketItem('${item.id}')">Buy (${fmtMoney(item.cost)})</button>`}
+          <button ${owned > 0 ? '' : 'disabled'} onclick="actionUseBlackMarketItem('${item.id}')">Use</button>
+        </span>
+      </div>
+    `;
+  }).join('');
+
   return `
     <div class="card">
       <h2>Armory</h2>
@@ -738,7 +754,24 @@ function renderInventory() {
         <button onclick="actionHospital()">Visit Hospital (${fmtMoney(hospitalCost(GAME))})</button>
       </div>
     </div>
+    <div class="card">
+      <h2>Black Market Gear</h2>
+      <p class="muted small">One-use items bought with Dirty Cash. Buy now, use whenever you need them.</p>
+      ${blackMarketRows}
+    </div>
   `;
+}
+
+function actionBuyBlackMarketItem(itemId) {
+  const res = buyBlackMarketItem(GAME, itemId);
+  if (!res.ok) showMsg('Black Market', res.reason);
+  else { autosave(GAME); renderApp(); }
+}
+
+function actionUseBlackMarketItem(itemId) {
+  const res = useBlackMarketItem(GAME, itemId);
+  if (!res.ok) showMsg('Black Market', res.reason);
+  else { autosave(GAME); renderApp(); }
 }
 
 /* ---------------- Events Tab ---------------- */

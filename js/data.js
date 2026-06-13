@@ -359,6 +359,19 @@ const LAUNDERING_METHODS = [
   { id: 'cartelfinance',  label: 'Cartel Finance Network', desc: 'The cartel\'s own books absorb the cash for a fee.', fee: 0.05, heatTrack: 'gangs', heatAmount: 4, unlockRank: 'Boss' }
 ];
 
+/* ---------------- Black Market Gear (consumable items) ---------------- */
+
+const BLACK_MARKET_ITEMS = [
+  { id: 'firstaid',     label: 'First Aid Kit',        desc: 'Patch yourself up on the spot. Restores 25 Health.',                cost: 600,   effect: 'heal',           amount: 25,                 unlockRank: 'Associate' },
+  { id: 'streetfavor',  label: 'Called-In Favor',      desc: 'Word travels fast when you do someone a solid. Street Rep +5.',     cost: 1800,  effect: 'rep',  track: 'street', amount: 5,        unlockRank: 'Associate' },
+  { id: 'forgedpapers', label: 'Forged Papers',        desc: 'Clean paperwork makes local cops lose interest. PD Heat -10.',      cost: 2500,  effect: 'heat', track: 'pd',     amount: 10,        unlockRank: 'Associate' },
+  { id: 'burnerphone',  label: 'Burner Phone',         desc: 'Cut ties before a rat can finish the call. Clears any active informant.', cost: 1000, effect: 'clear_informant',                        unlockRank: 'Associate' },
+  { id: 'peaceoffering', label: 'Peace Offering',      desc: 'A token gift smooths things over with rival outfits. Gang Heat -10.', cost: 3000,  effect: 'heat', track: 'gangs',  amount: 10,        unlockRank: 'Soldier' },
+  { id: 'adrenaline',    label: 'Adrenaline Shot',     desc: 'A risky stimulant - fight harder for a few turns. +10 combat for 3 turns.', cost: 2000, effect: 'combat_temp', amount: 10, turns: 3,  unlockRank: 'Soldier' },
+  { id: 'shellcleanup', label: 'Shell Account Cleanup', desc: 'A quiet wire transfer throws federal auditors off your trail. Fed Heat -10.', cost: 6000, effect: 'heat', track: 'feds',  amount: 10,       unlockRank: 'Soldier' },
+  { id: 'cartelpackage', label: 'Cartel Care Package', desc: 'A goodwill shipment buys you trust with the cartel. Cartel Rep +5.', cost: 8000,  effect: 'rep',  track: 'cartel', amount: 5,        unlockRank: 'Capo' }
+];
+
 /* ---------------- AI Narrative Model Options (via OpenRouter) ---------------- */
 // Costs are USD per 1M tokens. null cost = unknown / depends on the model the
 // player types in for the 'custom' option.
