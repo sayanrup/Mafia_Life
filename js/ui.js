@@ -8,17 +8,17 @@ let MODAL = null; // {type:'dilemma'} - the only remaining popup, for the per-tu
 let STATUS_BANNER = null; // {title, body} - inline notification that replaces one-off result/error popups
 
 const TAB_DEFS = [
-  { id: 'home', label: 'Home' },
-  { id: 'map', label: 'Map' },
-  { id: 'operations', label: 'Operations' },
-  { id: 'crew', label: 'Crew' },
-  { id: 'finance', label: 'Finance' },
-  { id: 'family', label: 'Family' },
-  { id: 'commission', label: 'Commission', requires: 'commission' },
-  { id: 'criminalworld', label: 'Criminal World', requires: 'criminalworld' },
-  { id: 'inventory', label: 'Inventory' },
-  { id: 'events', label: 'Events' },
-  { id: 'settings', label: 'Settings' }
+  { id: 'home', label: 'Home', icon: '🏠' },
+  { id: 'map', label: 'Map', icon: '🗺️' },
+  { id: 'operations', label: 'Ops', icon: '🏭' },
+  { id: 'crew', label: 'Crew', icon: '👥' },
+  { id: 'finance', label: 'Finance', icon: '💰' },
+  { id: 'family', label: 'Family', icon: '👪' },
+  { id: 'commission', label: 'Cartel', icon: '🏛️', requires: 'commission' },
+  { id: 'criminalworld', label: 'Underworld', icon: '🌐', requires: 'criminalworld' },
+  { id: 'inventory', label: 'Bag', icon: '🎒' },
+  { id: 'events', label: 'Events', icon: '📰' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' }
 ];
 
 function setActiveTab(tab) {
@@ -56,7 +56,7 @@ function renderApp() {
     focusInfo = { id: active.id, tag: active.tagName, selectionStart: active.selectionStart, selectionEnd: active.selectionEnd };
   }
 
-  app.innerHTML = `<div class="sticky-header">${renderTopBar()}${renderTabBar()}</div>` + renderActionUpdate() + `<div class="content">${renderStatusBanner()}${renderTabContent()}</div>`;
+  app.innerHTML = `<div class="sticky-header">${renderTopBar()}</div>` + renderActionUpdate() + `<div class="content">${renderStatusBanner()}${renderTabContent()}</div>` + renderTabBar();
 
   if (focusInfo) {
     const el = document.getElementById(focusInfo.id);
@@ -121,10 +121,11 @@ function collapsibleCard(id, summaryHtml, bodyHtml, style, defaultOpen) {
 function renderTopBar() {
   const p = GAME.player;
   const era = GAME.meta.era === 'custom' ? GAME.meta.customEraText : ERAS[GAME.meta.era].label;
+  const rankBadges = `<span class="rank-badge rank-level">LV${rankIndex(p.rank) + 1}</span><span class="rank-badge rank-name">${p.rank.toUpperCase()}</span>`;
   return `
     <div class="topbar">
       <h1>Underworld</h1>
-      <div class="topbar-sub">${p.name} - ${p.rank} of ${GAME.meta.cityName} &middot; ${era} &middot; Day ${GAME.meta.day}</div>
+      <div class="topbar-sub">${p.name} ${rankBadges} of ${GAME.meta.cityName} &middot; ${era} &middot; Day ${GAME.meta.day}</div>
       <div class="stat-row">
         <div class="stat-chip cash-dirty"><span class="label">Dirty Cash</span><span class="value">${fmtMoney(p.cash.dirty)}</span></div>
         <div class="stat-chip cash-clean"><span class="label">Clean Cash</span><span class="value">${fmtMoney(p.cash.clean)}</span></div>
@@ -142,13 +143,15 @@ function renderTopBar() {
 }
 
 function renderTabBar() {
-  return `<div class="tab-bar">
+  return `<nav class="bottom-nav">
     ${TAB_DEFS.filter(t => !t.requires
         || (t.requires === 'commission' && GAME.commission.unlocked)
         || (t.requires === 'criminalworld' && GAME.criminalWorld.unlocked))
-      .map(t => `<button class="tab-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">${t.label}</button>`)
+      .map(t => `<button class="nav-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">
+        <span class="nav-icon">${t.icon}</span><span class="nav-label">${t.label}</span>
+      </button>`)
       .join('')}
-  </div>`;
+  </nav>`;
 }
 
 function renderTabContent() {
@@ -459,11 +462,49 @@ function renderBribeWidget(district) {
   `;
 }
 
+/* ---------------- Event Category Tags ---------------- */
+
+const EVENT_CATEGORY_TAGS = {
+  system:         { label: 'STORY',     color: 'var(--accent)' },
+  rank:           { label: 'RANK',      color: 'var(--gold)' },
+  family:         { label: 'FAMILY',    color: 'var(--accent)' },
+  family_death:   { label: 'FAMILY',    color: 'var(--accent)' },
+  betrayal:       { label: 'BETRAYAL',  color: 'var(--red-bright)' },
+  combat:         { label: 'WAR',       color: 'var(--red-bright)' },
+  operation_raid: { label: 'RAID',      color: 'var(--red-bright)' },
+  finance_raid:   { label: 'RAID',      color: 'var(--red-bright)' },
+  injury:         { label: 'HEALTH',    color: 'var(--red-bright)' },
+  bribe:          { label: 'BRIBE',     color: '#6fa8d1' },
+  lawenforcement: { label: 'HEAT',      color: '#6fa8d1' },
+  feds:           { label: 'HEAT',      color: '#6fa8d1' },
+  dilemma:        { label: 'STREET',    color: '#d99a3c' },
+  gang:           { label: 'GANG',      color: '#d99a3c' },
+  criminalworld:  { label: 'UNDERWORLD', color: '#b388eb' },
+  crew:           { label: 'CREW',      color: '#b388eb' },
+  commission:     { label: 'CARTEL',    color: '#b388eb' },
+  finance:        { label: 'MONEY',     color: 'var(--green)' },
+  marketing:      { label: 'MONEY',     color: 'var(--green)' },
+  health:         { label: 'HEALTH',    color: 'var(--green)' },
+  operations:     { label: 'OPS',       color: 'var(--accent)' },
+  activity:       { label: 'HUSTLE',    color: 'var(--gold)' },
+  armory:         { label: 'ARMORY',    color: '#5bb0c9' },
+  inventory:      { label: 'GEAR',      color: '#5bb0c9' }
+};
+const DEFAULT_EVENT_TAG = { label: 'STREET', color: 'var(--text-dim)' };
+
+function eventCategoryTag(category) {
+  const base = (category || '').replace(/_ai$/, '');
+  return EVENT_CATEGORY_TAGS[base] || DEFAULT_EVENT_TAG;
+}
+
 function renderLog(entries) {
   if (!entries.length) return '<p class="muted">Nothing yet.</p>';
-  return `<div class="log">${entries.map(e => `
-    <div class="log-entry cat-${e.category}"><span class="turn-tag">D${e.day}</span>${e.text}</div>
-  `).reverse().join('')}</div>`;
+  return `<div class="log">${entries.map(e => {
+    const tag = eventCategoryTag(e.category);
+    return `
+    <div class="log-entry cat-${e.category}"><span class="event-tag" style="border-color:${tag.color}; color:${tag.color}">#${tag.label}</span><span class="turn-tag">D${e.day}</span>${e.text}</div>
+  `;
+  }).reverse().join('')}</div>`;
 }
 
 /* ---------------- Map Tab ---------------- */
@@ -498,6 +539,10 @@ function renderDistrictsSubtab() {
       const g = GAME.gangs[gid];
       return `<div class="control-seg" style="width:${pct}%; background:${g.color};" title="${g.name}">${Math.round(pct)}%</div>`;
     }).join('');
+    const tags = Object.entries(d.control).filter(([, pct]) => pct > 0).map(([gid, pct]) => {
+      const g = GAME.gangs[gid];
+      return `<span class="tag district-tag" style="border-color:${g.color}; color:${g.color}">${g.name} ${Math.round(pct)}%</span>`;
+    }).join('');
     const bosses = Object.entries(d.control).map(([gid, pct]) => {
       const g = GAME.gangs[gid];
       return `<div class="boss-line">
@@ -516,8 +561,9 @@ function renderDistrictsSubtab() {
     const activityRows = (d.lastEvents || []).map(e => `<div class="muted small">${e}</div>`).join('');
 
     const summary = `
-      <h2>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h2>
+      <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
       <div class="control-bar">${segs}</div>
+      <div class="district-tags">${tags}</div>
     `;
     const body = `
       ${bosses}
@@ -530,7 +576,7 @@ function renderDistrictsSubtab() {
     return collapsibleCard(`district-${d.id}`, summary, body);
   }).join('');
 
-  return `<div class="grid">${cards}</div>`;
+  return `<div class="district-grid">${cards}</div>`;
 }
 
 function renderGangsSubtab() {
@@ -870,9 +916,18 @@ function renderKidnappingSubtab() {
 /* ---------------- Inventory Tab ---------------- */
 
 function renderInventory() {
-  const armoryRows = WEAPON_TIERS.map(t => `
-    <div class="row between"><span>${t.label}${GAME.player.crew.weaponTier === t.id ? ' <span class="tag clean">Equipped</span>' : ''}</span><span>${GAME.player.armory[t.id]} units</span></div>
-  `).join('');
+  const armoryCards = WEAPON_TIERS.map(t => {
+    const equipped = GAME.player.crew.weaponTier === t.id;
+    return `
+      <div class="item-card ${equipped ? 'equipped' : ''}">
+        <div class="item-icon-ring" style="border-color:${t.ring}"><span class="item-icon">${t.icon}</span></div>
+        <div class="item-name">${t.label}</div>
+        <div class="item-meta">${GAME.player.armory[t.id]} units</div>
+        <div class="item-meta muted small">+${t.combatBonus} combat</div>
+        ${equipped ? '<span class="tag clean">Equipped</span>' : ''}
+      </div>
+    `;
+  }).join('');
 
   const cap = getStashCapacity(GAME);
   const used = totalProductUnits(GAME);
@@ -884,18 +939,21 @@ function renderInventory() {
     ? GAME.player.injuries.map(i => `<div class="row between"><span>${i.label}</span><span>${i.type === 'permanent' ? 'Permanent' : `${i.turnsRemaining} turn(s) left`}</span></div>`).join('')
     : '<p class="muted">No active injuries.</p>';
 
-  const blackMarketRows = BLACK_MARKET_ITEMS.map(item => {
+  const blackMarketCards = BLACK_MARKET_ITEMS.map(item => {
     const owned = GAME.player.inventory.consumables[item.id] || 0;
     const locked = !isUnlockedForRank(GAME, item.unlockRank);
     return `
-      <div class="row between" style="margin-bottom:4px;">
-        <span>${item.label} <span class="muted small">(owned ${owned})</span><div class="muted small">${item.desc}</div></span>
-        <span class="row">
-          ${locked
-            ? `<span class="muted small">Unlocks at ${item.unlockRank}</span>`
-            : `<button onclick="actionBuyBlackMarketItem('${item.id}')">Buy (${fmtMoney(item.cost)})</button>`}
-          <button ${owned > 0 ? '' : 'disabled'} onclick="actionUseBlackMarketItem('${item.id}')">Use</button>
-        </span>
+      <div class="item-card ${locked ? 'locked' : ''}">
+        <div class="item-icon-ring" style="border-color:${item.ring}"><span class="item-icon">${item.icon}</span></div>
+        <div class="item-name">${item.label}</div>
+        <div class="item-meta muted small">${item.desc}</div>
+        <div class="item-meta">Owned: ${owned}</div>
+        ${locked
+          ? `<span class="muted small">Unlocks at ${item.unlockRank}</span>`
+          : `<div class="row" style="justify-content:center;">
+              <button class="btn-small" onclick="actionBuyBlackMarketItem('${item.id}')">Buy (${fmtMoney(item.cost)})</button>
+              <button class="btn-small" ${owned > 0 ? '' : 'disabled'} onclick="actionUseBlackMarketItem('${item.id}')">Use</button>
+            </div>`}
       </div>
     `;
   }).join('');
@@ -903,7 +961,7 @@ function renderInventory() {
   return `
     <div class="card">
       <h2>Armory</h2>
-      ${armoryRows}
+      <div class="item-grid">${armoryCards}</div>
       <div class="muted small" style="margin-top:6px;">Crew combat bonus from weapons: +${weaponCombatBonus(GAME)}</div>
     </div>
     <div class="card">
@@ -922,7 +980,7 @@ function renderInventory() {
     <div class="card">
       <h2>Black Market Gear</h2>
       <p class="muted small">One-use items bought with Dirty Cash. Buy now, use whenever you need them.</p>
-      ${blackMarketRows}
+      <div class="item-grid">${blackMarketCards}</div>
     </div>
   `;
 }
@@ -942,7 +1000,24 @@ function actionUseBlackMarketItem(itemId) {
 /* ---------------- Events Tab ---------------- */
 
 function renderEvents() {
-  return `<div class="card"><h2>Event History</h2>${renderLog(GAME.eventLog.slice(-200))}</div>`;
+  const entries = GAME.eventLog.slice(-200);
+  if (!entries.length) return `<div class="card"><h2>Event History</h2><p class="muted">Nothing yet.</p></div>`;
+
+  const featured = entries[entries.length - 1];
+  const rest = entries.slice(0, -1);
+  const featuredTag = eventCategoryTag(featured.category);
+
+  return `
+    <div class="card event-featured">
+      <span class="event-tag" style="border-color:${featuredTag.color}; color:${featuredTag.color}">#${featuredTag.label}</span>
+      <h2>Day ${featured.day} - Latest</h2>
+      <p>${featured.text}</p>
+    </div>
+    <div class="card">
+      <h2>Event History</h2>
+      ${renderLog(rest)}
+    </div>
+  `;
 }
 
 /* ---------------- Game Over ---------------- */
