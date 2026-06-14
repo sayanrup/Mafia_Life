@@ -105,9 +105,11 @@ function launderingTick(state) {
     const outsideRevenue = Math.round(tierDef.launderPerTurn * businessMult);
     state.player.cash.clean += outsideRevenue;
     c.lastRevenue = outsideRevenue;
-    // Audit risk
+    // Audit risk - loss is scaled to this shell's own throughput (1-3 turns of
+    // its launder volume), not the player's total clean cash, so a small shell
+    // can't wipe out an unrelated fortune.
     if (Math.random() * 100 < tierDef.auditRisk) {
-      const loss = Math.round(state.player.cash.clean * (0.1 + Math.random() * 0.2));
+      const loss = Math.min(state.player.cash.clean, Math.round(tierDef.launderPerTurn * (1 + Math.random() * 2)));
       state.player.cash.clean -= loss;
       addHeat(state, 'feds', 6 + Math.floor(Math.random() * 6));
       c.auditCooldown = 2;
@@ -237,17 +239,31 @@ function repairBusiness(state, businessId) {
   return { ok: true };
 }
 
+// Revenue as a fraction of a business's net worth: ranges 50%-100%, biased
+// downward as Gang Heat rises (rival gangs skim/disrupt takings), with
+// random turn-to-turn variance within that band.
+function businessRevenuePct(state) {
+  const gangHeat = clamp(state.player.heat.gangs || 0, 0, 100);
+  const midpoint = 0.9 - (gangHeat / 100) * 0.3; // 90% at 0 heat -> 60% at 100 heat
+  const pct = midpoint + (Math.random() * 2 - 1) * 0.15; // +/-15% swing
+  return clamp(pct, 0.5, 1.0);
+}
+
 function businessIncomeTick(state) {
   const mult = familyBusinessMultiplier(state);
   let total = 0;
   const districtCounts = {};
   for (const b of state.ownedBusinesses) {
     if (!b.damaged) {
-      const income = Math.round(b.baseIncome * mult * businessLevelMult(b));
+      const netWorth = getBusinessNetWorth(state, b.id);
+      const pct = businessRevenuePct(state);
+      const income = Math.round(netWorth * pct * mult);
       total += income;
       b.lastRevenue = income;
+      b.lastRevenuePct = pct;
     } else {
       b.lastRevenue = 0;
+      b.lastRevenuePct = 0;
     }
     b.lastExpense = 0;
     districtCounts[b.districtId] = (districtCounts[b.districtId] || 0) + 1;
