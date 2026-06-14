@@ -49,12 +49,13 @@ function renderFinance() {
       const upgradeCost = businessUpgradeCost(b.purchasePrice, b.level);
       const netWorth = getBusinessNetWorth(GAME, b.id);
       const lastProfit = (b.lastRevenue || 0) - (b.lastExpense || 0);
+      const revenuePct = Math.round((b.lastRevenuePct || 0) * 100);
       const summary = `
         <div class="row between"><strong>${b.type}</strong><span class="muted small">Level ${b.level}${b.damaged ? ' - <span class="tag dirty">Damaged</span>' : ''}</span></div>
-        <div class="muted small">Income: ${fmtMoney(b.damaged ? 0 : Math.round(b.baseIncome * businessLevelMult(b)))}/turn &middot; Protection: ${Math.round(b.protection || 0)}% &middot; Sell: ${fmtMoney(resaleValue(GAME, b.id))}</div>
+        <div class="muted small">Last Turn Revenue: ${fmtMoney(b.lastRevenue || 0)}${revenuePct ? ` (${revenuePct}% of Net Worth)` : ''} &middot; Protection: ${Math.round(b.protection || 0)}% &middot; Sell: ${fmtMoney(resaleValue(GAME, b.id))}</div>
       `;
       const body = `
-        <div class="muted small">Net Worth: ${fmtMoney(netWorth)} &middot; Last Turn Revenue: ${fmtMoney(b.lastRevenue || 0)} &middot; Expense: ${fmtMoney(b.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
+        <div class="muted small">Net Worth: ${fmtMoney(netWorth)} &middot; Revenue range: ${fmtMoney(Math.round(netWorth * 0.5))}-${fmtMoney(netWorth)}/turn (50-100% of Net Worth, lower with higher Gang Heat) &middot; Expense: ${fmtMoney(b.lastExpense || 0)} &middot; Profit: ${fmtMoney(lastProfit)}</div>
         <div class="row" style="margin-top:4px; flex-wrap:wrap; gap:4px;">
           ${b.damaged ? `<button onclick="actionRepairBusiness('${b.id}')">Repair (${fmtMoney(Math.round(b.purchasePrice * 0.25))})</button>` : ''}
           ${upgradeCost != null ? `<button class="btn-small" onclick="actionUpgradeBusiness('${b.id}')">Upgrade to Lvl ${b.level + 1} (${fmtMoney(upgradeCost)})</button>` : '<span class="muted small">Max Level</span>'}

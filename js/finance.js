@@ -237,17 +237,31 @@ function repairBusiness(state, businessId) {
   return { ok: true };
 }
 
+// Revenue as a fraction of a business's net worth: ranges 50%-100%, biased
+// downward as Gang Heat rises (rival gangs skim/disrupt takings), with
+// random turn-to-turn variance within that band.
+function businessRevenuePct(state) {
+  const gangHeat = clamp(state.player.heat.gangs || 0, 0, 100);
+  const midpoint = 0.9 - (gangHeat / 100) * 0.3; // 90% at 0 heat -> 60% at 100 heat
+  const pct = midpoint + (Math.random() * 2 - 1) * 0.15; // +/-15% swing
+  return clamp(pct, 0.5, 1.0);
+}
+
 function businessIncomeTick(state) {
   const mult = familyBusinessMultiplier(state);
   let total = 0;
   const districtCounts = {};
   for (const b of state.ownedBusinesses) {
     if (!b.damaged) {
-      const income = Math.round(b.baseIncome * mult * businessLevelMult(b));
+      const netWorth = getBusinessNetWorth(state, b.id);
+      const pct = businessRevenuePct(state);
+      const income = Math.round(netWorth * pct * mult);
       total += income;
       b.lastRevenue = income;
+      b.lastRevenuePct = pct;
     } else {
       b.lastRevenue = 0;
+      b.lastRevenuePct = 0;
     }
     b.lastExpense = 0;
     districtCounts[b.districtId] = (districtCounts[b.districtId] || 0) + 1;
