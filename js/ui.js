@@ -6,6 +6,7 @@
 let ACTIVE_TAB = 'home';
 let MODAL = null; // {type:'dilemma'} - the only remaining popup, for the per-turn AI street dilemma
 let STATUS_BANNER = null; // {title, body} - inline notification that replaces one-off result/error popups
+let MORE_MENU_OPEN = false; // whether the "More" tab overflow sheet is expanded
 
 const TAB_DEFS = [
   { id: 'home', label: 'Home', icon: '🏠' },
@@ -21,16 +22,28 @@ const TAB_DEFS = [
   { id: 'settings', label: 'Settings', icon: '⚙️' }
 ];
 
+// Tabs that collapse into the "More" overflow sheet on narrow screens, keeping
+// the primary bottom nav at a fixed, always-readable (icon + label) size.
+const MORE_TAB_IDS = ['commission', 'criminalworld', 'inventory', 'events', 'settings'];
+
 function setActiveTab(tab) {
   ACTIVE_TAB = tab;
+  MORE_MENU_OPEN = false;
   renderApp();
   window.scrollTo(0, 0);
+}
+
+function toggleMoreMenu() {
+  MORE_MENU_OPEN = !MORE_MENU_OPEN;
+  renderApp();
 }
 
 function renderApp() {
   const app = document.getElementById('app');
   const existingModal = document.getElementById('modal-root');
   if (existingModal) existingModal.remove();
+  const existingGangWar = document.getElementById('gangwar-root');
+  if (existingGangWar) existingGangWar.remove();
 
   if (!GAME) {
     app.innerHTML = renderCharacterCreation();
@@ -75,6 +88,12 @@ function renderApp() {
 
   if (MODAL) {
     document.body.insertAdjacentHTML('beforeend', renderModal());
+  }
+
+  // Gang War is a blocking interruption rendered as a full overlay so it's
+  // always visible regardless of the player's scroll position when it starts.
+  if (GANG_WAR) {
+    document.body.insertAdjacentHTML('beforeend', renderGangWarPanel());
   }
 }
 
@@ -143,15 +162,35 @@ function renderTopBar() {
 }
 
 function renderTabBar() {
-  return `<nav class="bottom-nav">
-    ${TAB_DEFS.filter(t => !t.requires
-        || (t.requires === 'commission' && GAME.commission.unlocked)
-        || (t.requires === 'criminalworld' && GAME.criminalWorld.unlocked))
-      .map(t => `<button class="nav-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">
+  const available = TAB_DEFS.filter(t => !t.requires
+    || (t.requires === 'commission' && GAME.commission.unlocked)
+    || (t.requires === 'criminalworld' && GAME.criminalWorld.unlocked));
+
+  const primaryTabs = available.filter(t => !MORE_TAB_IDS.includes(t.id));
+  const moreTabs = available.filter(t => MORE_TAB_IDS.includes(t.id));
+  const moreActive = moreTabs.some(t => t.id === ACTIVE_TAB);
+
+  const navButton = t => `<button class="nav-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">
         <span class="nav-icon">${t.icon}</span><span class="nav-label">${t.label}</span>
-      </button>`)
-      .join('')}
-  </nav>`;
+      </button>`;
+
+  const moreSheet = MORE_MENU_OPEN ? `
+    <div class="more-menu">
+      ${moreTabs.map(t => `<button class="nav-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">
+        <span class="nav-icon">${t.icon}</span><span class="nav-label">${t.label}</span>
+      </button>`).join('')}
+    </div>
+  ` : '';
+
+  return `
+    ${moreSheet}
+    <nav class="bottom-nav">
+      ${primaryTabs.map(navButton).join('')}
+      <button class="nav-btn ${moreActive || MORE_MENU_OPEN ? 'active' : ''}" onclick="toggleMoreMenu()">
+        <span class="nav-icon">${MORE_MENU_OPEN ? '✕' : '⋯'}</span><span class="nav-label">More</span>
+      </button>
+    </nav>
+  `;
 }
 
 function renderTabContent() {
@@ -240,8 +279,6 @@ function renderHome() {
   ).join(' ');
 
   return `
-    ${GANG_WAR ? renderGangWarPanel() : ''}
-
     <div class="card">
       <h2>Objectives</h2>
       ${renderObjectives()}
@@ -371,7 +408,7 @@ function renderCrimeSubtabContent(category, hasHitTargets) {
 
   if (category === 'gang') {
     if (!hasHitTargets) return '<p class="muted">No rival gang presence to target here.</p>';
-    if (GANG_WAR) return '<p class="muted">Resolve the active gang war above before taking further gang actions.</p>';
+    if (GANG_WAR) return '<p class="muted">Resolve the active gang war before taking further gang actions.</p>';
     const gangsHere = Object.entries(district.control).map(([gid, pct]) => ({ gang: GAME.gangs[gid], pct }));
     const hitTargets = gangsHere.filter(g => !g.gang.isPlayerGang).map(g => `<option value="${g.gang.id}">${g.gang.name}</option>`).join('');
     return `

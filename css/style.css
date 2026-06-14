@@ -280,6 +280,34 @@ html, body {
   text-shadow: 0 0 8px rgba(79,141,245,0.35);
 }
 
+/* "More" overflow sheet: secondary tabs (Cartel, Underworld, Bag, Events,
+   Settings) collapse here so the primary nav stays a fixed, readable size. */
+.more-menu {
+  position: fixed;
+  bottom: 52px;
+  left: 0;
+  right: 0;
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 6px;
+  background: linear-gradient(0deg, #1a1c22 0%, #121419 100%);
+  border-top: 2px solid var(--accent-dim);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 -4px 12px var(--shadow);
+  padding: 8px;
+  z-index: 49;
+}
+
+.more-menu .nav-btn {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 4px;
+}
+
+.more-menu .nav-btn .nav-label { display: inline; }
+
 /* ---------------- Content ---------------- */
 
 .content {
@@ -604,12 +632,12 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 
 /* ---------------- Gang War Panel ---------------- */
 
-.gangwar-panel {
+.modal.gangwar-panel {
   border-color: var(--red-bright);
   box-shadow: 0 0 12px rgba(255, 80, 80, 0.2);
 }
 
-.gangwar-panel h2 {
+.modal.gangwar-panel h2 {
   color: var(--red-bright);
   border-bottom-color: var(--red-bright);
 }
@@ -881,13 +909,13 @@ a, .link {
   /* Larger touch targets and 16px inputs (prevents iOS auto-zoom on focus) */
   .tab-btn { padding: 12px 14px; }
 
-  /* Icons-only bottom nav on mobile so all tabs fit without scrolling;
-     active tab gets extra width to show its label. */
-  .nav-btn { padding: 6px 2px; font-size: 0.6em; }
+  /* Bottom nav: primary tabs keep icon + label at a smaller size; secondary
+     tabs collapse into the "More" sheet (see .more-menu) so 6 primary tabs
+     always fit with readable labels on a 390px viewport. */
+  .nav-btn { padding: 6px 2px; font-size: 0.58em; }
   .nav-icon { font-size: 1.15em; }
-  .nav-btn .nav-label { display: none; }
-  .nav-btn.active { flex-grow: 2.5; }
-  .nav-btn.active .nav-label { display: inline; }
+  .more-menu { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); }
+  .more-menu .nav-btn { font-size: 0.65em; }
   button, .btn { padding: 10px 14px; }
   .btn-small { padding: 8px 10px; }
   input, select, textarea { font-size: 16px; padding: 8px; }

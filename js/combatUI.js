@@ -12,20 +12,22 @@ function renderGangWarPanel() {
   const logLines = war.log.slice(-6).map(l => `<div class="log-entry">${l}</div>`).join('');
 
   return `
-    <div class="card gangwar-panel">
-      <h2>Gang War: ${district.name}</h2>
-      <p class="muted">${GAME.player.name}'s crew vs. the ${enemy.name} (led by ${enemy.boss.name}, ${enemy.boss.personality})</p>
-      <div class="grid">
-        ${statBar('Your Crew', war.playerHP, 100, 'health')}
-        ${statBar(`${enemy.name}`, war.enemyHP, 100, 'heat-gangs')}
-      </div>
-      <div class="log" style="margin-top:10px; max-height:160px;">${logLines}</div>
-      <div class="row" style="margin-top:10px; justify-content:center;">
-        <button class="btn-primary" onclick="actionGangWarRound('attack')">Attack</button>
-        <button onclick="actionGangWarRound('defend')">Defend</button>
-        <button onclick="actionGangWarRound('item')">Use Item (5 Arms)</button>
-        <button onclick="actionGangWarRound('special')" ${war.specialUsed ? 'disabled' : ''}>Special</button>
-        <button class="btn-danger" onclick="actionGangWarRound('flee')">Flee</button>
+    <div class="modal-overlay" id="gangwar-root">
+      <div class="modal gangwar-panel">
+        <h2>Gang War: ${district.name}</h2>
+        <p class="muted">${GAME.player.name}'s crew vs. the ${enemy.name} (led by ${enemy.boss.name}, ${enemy.boss.personality})</p>
+        <div class="grid">
+          ${statBar('Your Crew', war.playerHP, 100, 'health')}
+          ${statBar(`${enemy.name}`, war.enemyHP, 100, 'heat-gangs')}
+        </div>
+        <div class="log" style="margin-top:10px; max-height:160px;">${logLines}</div>
+        <div class="row" style="margin-top:10px; justify-content:center;">
+          <button class="btn-primary" onclick="actionGangWarRound('attack')">Attack</button>
+          <button onclick="actionGangWarRound('defend')">Defend</button>
+          <button onclick="actionGangWarRound('item')">Use Item (5 Arms)</button>
+          <button onclick="actionGangWarRound('special')" ${war.specialUsed ? 'disabled' : ''}>Special</button>
+          <button class="btn-danger" onclick="actionGangWarRound('flee')">Flee</button>
+        </div>
       </div>
     </div>
   `;
