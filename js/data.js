@@ -140,34 +140,35 @@ const OPERATION_DEFS = {
     label: 'Smuggling Route',
     tiers: [
       { name: 'None', cost: 0, throughput: 0, bustRisk: 0, cashMin: 0, cashMax: 0 },
-      { name: 'Local Courier', cost: 1000, throughput: 30, bustRisk: 12, cashMin: 1200, cashMax: 2400 },
-      { name: 'Cross-Border Line', cost: 5000, throughput: 90, bustRisk: 18, cashMin: 4000, cashMax: 8000 },
-      { name: 'Cartel Pipeline', cost: 15000, throughput: 250, bustRisk: 25, cashMin: 9000, cashMax: 16000 }
+      { name: 'Local Courier', cost: 1000, throughput: 30, bustRisk: 12, cashMin: 700, cashMax: 1300 },
+      { name: 'Cross-Border Line', cost: 5000, throughput: 60, bustRisk: 18, cashMin: 1300, cashMax: 2700 },
+      { name: 'Cartel Pipeline', cost: 15000, throughput: 120, bustRisk: 25, cashMin: 2900, cashMax: 5100 },
+      { name: 'Syndicate Pipeline', cost: 40000, throughput: 600, bustRisk: 30, cashMin: 15000, cashMax: 25000 }
     ]
   }
 };
 
 const BUSINESS_TYPES = [
-  { type: 'Street Side Lemonade Stall', basePrice: 100,    baseIncome: 30,    launderBonus: 10,    heatReduction: 0 },
-  { type: 'Newspaper Stand',            basePrice: 300,    baseIncome: 75,    launderBonus: 30,    heatReduction: 0 },
-  { type: 'Food Cart',                  basePrice: 800,    baseIncome: 180,   launderBonus: 80,    heatReduction: 0 },
-  { type: 'Vending Route',              basePrice: 2000,   baseIncome: 420,   launderBonus: 180,   heatReduction: 0 },
-  { type: 'Tattoo Parlor',              basePrice: 4000,   baseIncome: 780,   launderBonus: 300,   heatReduction: 0 },
-  { type: 'Laundromat',                 basePrice: 6000,   baseIncome: 1125,  launderBonus: 900,   heatReduction: 0 },
-  { type: 'Diner',                      basePrice: 9000,   baseIncome: 1725,  launderBonus: 500,   heatReduction: 0 },
-  { type: 'Pawn Shop',                  basePrice: 13000,  baseIncome: 2475,  launderBonus: 1200,  heatReduction: 1 },
-  { type: 'Bar',                        basePrice: 18000,  baseIncome: 3375,  launderBonus: 900,   heatReduction: 1 },
-  { type: 'Auto Repair Shop',           basePrice: 24000,  baseIncome: 4500,  launderBonus: 1100,  heatReduction: 1 },
-  { type: 'Check Cashing Store',        basePrice: 30000,  baseIncome: 5625,  launderBonus: 2800,  heatReduction: 1 },
-  { type: 'Tow Yard',                   basePrice: 38000,  baseIncome: 7050,  launderBonus: 1700,  heatReduction: 1 },
-  { type: 'Storage Facility',           basePrice: 48000,  baseIncome: 9000,  launderBonus: 3000,  heatReduction: 2 },
-  { type: 'Real Estate Office',         basePrice: 60000,  baseIncome: 11250, launderBonus: 3600,  heatReduction: 2 },
-  { type: 'Construction Firm',          basePrice: 75000,  baseIncome: 13950, launderBonus: 5000,  heatReduction: 2 },
-  { type: 'Nightclub',                  basePrice: 95000,  baseIncome: 17700, launderBonus: 4500,  heatReduction: 2 },
-  { type: 'Import/Export Co',           basePrice: 120000, baseIncome: 22500, launderBonus: 8000,  heatReduction: 2 },
-  { type: 'Casino',                     basePrice: 160000, baseIncome: 30000, launderBonus: 10500, heatReduction: 3 },
-  { type: 'Luxury Car Dealership',      basePrice: 210000, baseIncome: 39000, launderBonus: 14000, heatReduction: 3 },
-  { type: 'Hotel Chain',                basePrice: 280000, baseIncome: 52500, launderBonus: 19000, heatReduction: 3 }
+  { type: 'Street Side Lemonade Stall', basePrice: 100,    baseIncome: 1000,    launderBonus: 10,    heatReduction: 0 },
+  { type: 'Newspaper Stand',            basePrice: 300,    baseIncome: 2500,    launderBonus: 30,    heatReduction: 0 },
+  { type: 'Food Cart',                  basePrice: 800,    baseIncome: 6000,    launderBonus: 80,    heatReduction: 0 },
+  { type: 'Vending Route',              basePrice: 2000,   baseIncome: 14000,   launderBonus: 180,   heatReduction: 0 },
+  { type: 'Tattoo Parlor',              basePrice: 4000,   baseIncome: 26000,   launderBonus: 300,   heatReduction: 0 },
+  { type: 'Laundromat',                 basePrice: 6000,   baseIncome: 37500,   launderBonus: 900,   heatReduction: 0 },
+  { type: 'Diner',                      basePrice: 9000,   baseIncome: 57500,   launderBonus: 500,   heatReduction: 0 },
+  { type: 'Pawn Shop',                  basePrice: 13000,  baseIncome: 82500,   launderBonus: 1200,  heatReduction: 1 },
+  { type: 'Bar',                        basePrice: 18000,  baseIncome: 112500,  launderBonus: 900,   heatReduction: 1 },
+  { type: 'Auto Repair Shop',           basePrice: 24000,  baseIncome: 150000,  launderBonus: 1100,  heatReduction: 1 },
+  { type: 'Check Cashing Store',        basePrice: 30000,  baseIncome: 187500,  launderBonus: 2800,  heatReduction: 1 },
+  { type: 'Tow Yard',                   basePrice: 38000,  baseIncome: 235000,  launderBonus: 1700,  heatReduction: 1 },
+  { type: 'Storage Facility',           basePrice: 48000,  baseIncome: 300000,  launderBonus: 3000,  heatReduction: 2 },
+  { type: 'Real Estate Office',         basePrice: 60000,  baseIncome: 375000,  launderBonus: 3600,  heatReduction: 2 },
+  { type: 'Construction Firm',          basePrice: 75000,  baseIncome: 465000,  launderBonus: 5000,  heatReduction: 2 },
+  { type: 'Nightclub',                  basePrice: 95000,  baseIncome: 590000,  launderBonus: 4500,  heatReduction: 2 },
+  { type: 'Import/Export Co',           basePrice: 120000, baseIncome: 750000,  launderBonus: 8000,  heatReduction: 2 },
+  { type: 'Casino',                     basePrice: 160000, baseIncome: 1000000, launderBonus: 10500, heatReduction: 3 },
+  { type: 'Luxury Car Dealership',      basePrice: 210000, baseIncome: 1300000, launderBonus: 14000, heatReduction: 3 },
+  { type: 'Hotel Chain',                basePrice: 280000, baseIncome: 1750000, launderBonus: 19000, heatReduction: 3 }
 ];
 
 /* ---------------- Drug Operations (Boss-tier farms/labs) ---------------- */
@@ -177,11 +178,11 @@ const BUSINESS_TYPES = [
 // facility have been bought (1 = Terrace only, 5 = fully built out).
 function buildFarmTiers(mult) {
   return [
-    { name: 'Terrace Grow',      cost: Math.round(100 * mult),   batchValue: Math.round(2000 * mult),   growTurns: 1 },
-    { name: 'Rented Grow House', cost: Math.round(6000 * mult),  batchValue: Math.round(16000 * mult),  growTurns: 2 },
-    { name: 'Garage Setup',      cost: Math.round(20000 * mult), batchValue: Math.round(60000 * mult),  growTurns: 2 },
-    { name: 'Small Field',       cost: Math.round(35000 * mult), batchValue: Math.round(120000 * mult), growTurns: 3 },
-    { name: 'Mega Field',        cost: Math.round(60000 * mult), batchValue: Math.round(300000 * mult), growTurns: 3 }
+    { name: 'Terrace Grow',      cost: Math.round(100 * mult),   batchValue: Math.round(1000 * mult),  growTurns: 1 },
+    { name: 'Rented Grow House', cost: Math.round(6000 * mult),  batchValue: Math.round(2000 * mult),  growTurns: 2 },
+    { name: 'Garage Setup',      cost: Math.round(20000 * mult), batchValue: Math.round(4000 * mult),  growTurns: 2 },
+    { name: 'Small Field',       cost: Math.round(35000 * mult), batchValue: Math.round(20000 * mult), growTurns: 3 },
+    { name: 'Mega Field',        cost: Math.round(60000 * mult), batchValue: Math.round(50000 * mult), growTurns: 3 }
   ];
 }
 
@@ -409,17 +410,17 @@ const GANG_GIGS = [
 const HEIST_UNLOCK_RANK = 'Soldier';
 
 const SHELL_TIERS = [
-  { tier: 1, cost: 3000,   launderPerTurn: 2000,  fee: 0.15,  auditRisk: 6,  unlockRank: 'Associate' },
-  { tier: 2, cost: 9000,   launderPerTurn: 6000,  fee: 0.12,  auditRisk: 9,  unlockRank: 'Associate' },
-  { tier: 3, cost: 25000,  launderPerTurn: 17000, fee: 0.08,  auditRisk: 13, unlockRank: 'Soldier' },
-  { tier: 4, cost: 60000,  launderPerTurn: 40000, fee: 0.06,  auditRisk: 16, unlockRank: 'Capo' },
-  { tier: 5, cost: 140000, launderPerTurn: 93000, fee: 0.045, auditRisk: 19, unlockRank: 'Underboss' },
-  { tier: 6, cost: 300000, launderPerTurn: 200000, fee: 0.03, auditRisk: 22, unlockRank: 'Boss' }
+  { tier: 1, cost: 3000,   launderPerTurn: 1000,  fee: 0.15,  auditRisk: 6,  unlockRank: 'Associate' },
+  { tier: 2, cost: 9000,   launderPerTurn: 3000,  fee: 0.12,  auditRisk: 9,  unlockRank: 'Associate' },
+  { tier: 3, cost: 25000,  launderPerTurn: 8500,  fee: 0.08,  auditRisk: 13, unlockRank: 'Soldier' },
+  { tier: 4, cost: 60000,  launderPerTurn: 20000, fee: 0.06,  auditRisk: 16, unlockRank: 'Capo' },
+  { tier: 5, cost: 140000, launderPerTurn: 46500, fee: 0.045, auditRisk: 19, unlockRank: 'Underboss' },
+  { tier: 6, cost: 300000, launderPerTurn: 100000, fee: 0.03, auditRisk: 22, unlockRank: 'Boss' }
 ];
 
-// Recurring per-turn payout from an extortion racket, by level (1-3). Each
-// level roughly doubles to triples the payout of the one before it.
-const EXTORTION_RACKET_INCOME = [1000, 2500, 6000];
+// Recurring per-turn payout from an extortion racket, by level (1-4). Each
+// upgrade roughly doubles the payout, with the final upgrade being a 5x jump.
+const EXTORTION_RACKET_INCOME = [1000, 2000, 4000, 20000];
 
 function extortionRacketIncome(level) {
   return EXTORTION_RACKET_INCOME[level - 1] || EXTORTION_RACKET_INCOME[EXTORTION_RACKET_INCOME.length - 1];

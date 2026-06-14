@@ -655,7 +655,7 @@ function applyDilemmaOption(state, dilemma, optionId) {
       if (optionId === 'take_over') {
         const existing = p.extortionRackets.find(r => r.districtId === district.id);
         if (existing) {
-          existing.level = Math.min(3, existing.level + 1);
+          existing.level = Math.min(EXTORTION_RACKET_INCOME.length, existing.level + 1);
           text = `You tell the rival crew the shop is under new management. Your racket in ${district.name} grows to level ${existing.level}.`;
         } else {
           p.extortionRackets.push({ districtId: district.id, level: 1 });

@@ -355,7 +355,7 @@ function renderCrimeModal(category) {
       <p class="muted small">Each action can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
       <div class="crime-list">
         ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), heistLocked ? `<span class="muted small">Unlocks at ${HEIST_UNLOCK_RANK}</span>` : '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
-        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/3).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/3 <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
+        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/${EXTORTION_RACKET_INCOME.length}).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
         ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move product through your established route for a cash payout.', routeTier === 0 ? 'Requires a route' : cashHeatLabel(OPERATION_DEFS.route.tiers[routeTier].cashMin, OPERATION_DEFS.route.tiers[routeTier].cashMax, 4, 4 + routeTier * 2) + ' on success, cash loss on bust', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
       </div>
       ${closeButtonRow()}
@@ -844,7 +844,7 @@ function renderProtectionSubtab() {
         : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
       }
       <hr class="sep" />
-      <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/3 (${fmtMoney(extortionRacketIncome(racket.level))}/turn)` : 'None - start one from Heists & Rackets.'}</div>
+      <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} (${fmtMoney(extortionRacketIncome(racket.level))}/turn)` : 'None - start one from Heists & Rackets.'}</div>
       ${canAccessOperations(GAME) ? `
         <hr class="sep" />
         <div class="muted small">Operation Protection (reduces drug-operation raid risk &amp; heat here)</div>
