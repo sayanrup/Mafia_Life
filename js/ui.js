@@ -4,7 +4,8 @@
    ============================================================ */
 
 let ACTIVE_TAB = 'home';
-let MODAL = null; // {type:'gangwar', war} | {type:'gameover'} | {type:'msg', title, body}
+let MODAL = null; // {type:'dilemma'} - the only remaining popup, for the per-turn AI street dilemma
+let STATUS_BANNER = null; // {title, body} - inline notification that replaces one-off result/error popups
 
 const TAB_DEFS = [
   { id: 'home', label: 'Home' },
@@ -28,12 +29,19 @@ function setActiveTab(tab) {
 
 function renderApp() {
   const app = document.getElementById('app');
+  const existingModal = document.getElementById('modal-root');
+  if (existingModal) existingModal.remove();
+
   if (!GAME) {
     app.innerHTML = renderCharacterCreation();
     return;
   }
   if (GAME.meta.gameOver) {
     app.innerHTML = renderGameOver();
+    return;
+  }
+  if (GAME.meta.pendingArrest) {
+    app.innerHTML = renderArrestScreen();
     return;
   }
 
@@ -48,7 +56,7 @@ function renderApp() {
     focusInfo = { id: active.id, tag: active.tagName, selectionStart: active.selectionStart, selectionEnd: active.selectionEnd };
   }
 
-  app.innerHTML = `<div class="sticky-header">${renderTopBar()}${renderTabBar()}</div>` + renderActionUpdate() + `<div class="content">${renderTabContent()}</div>`;
+  app.innerHTML = `<div class="sticky-header">${renderTopBar()}${renderTabBar()}</div>` + renderActionUpdate() + `<div class="content">${renderStatusBanner()}${renderTabContent()}</div>`;
 
   if (focusInfo) {
     const el = document.getElementById(focusInfo.id);
@@ -61,11 +69,10 @@ function renderApp() {
   }
   window.scrollTo(0, scrollY);
 
-  if (GAME.meta.pendingArrest && !MODAL) MODAL = { type: 'arrest' };
-  else if (GAME.player.pendingDilemma && !MODAL) MODAL = { type: 'dilemma' };
+  // The AI-driven street dilemma is the one interruption that still uses an
+  // overlay: it's a forced one-time choice that arrives between turns.
+  if (GAME.player.pendingDilemma && !MODAL) MODAL = { type: 'dilemma' };
 
-  const existingModal = document.getElementById('modal-root');
-  if (existingModal) existingModal.remove();
   if (MODAL) {
     document.body.insertAdjacentHTML('beforeend', renderModal());
   }
@@ -230,6 +237,8 @@ function renderHome() {
   ).join(' ');
 
   return `
+    ${GANG_WAR ? renderGangWarPanel() : ''}
+
     <div class="card">
       <h2>Objectives</h2>
       ${renderObjectives()}
@@ -245,14 +254,8 @@ function renderHome() {
 
     <div class="card">
       <h2>Criminal Activities</h2>
-      <div class="crime-menu">
-        ${crimeMenuItem('🔪', 'Street Crime', 'Muggings and small-time hustles for fast, low-risk cash.', "openCrimeModal('street')")}
-        ${crimeMenuItem('💰', 'Heists & Rackets', 'Bigger scores: heists, extortion, smuggling runs.', "openCrimeModal('heists')")}
-        ${hasHitTargets ? crimeMenuItem('⚔️', 'Gang Operations', 'Send a message or start a gang war.', "openCrimeModal('gang')") : ''}
-        ${hasHitTargets ? crimeMenuItem('🤲', 'Help a Gang', 'Small jobs for local crews - paid in cash, no membership.', "openCrimeModal('help')") : ''}
-        ${crimeMenuItem('💵', 'Deals', 'Sell product from your inventory.', 'openDealsModal()')}
-        ${crimeMenuItem('🤝', 'Bribes & Corruption', 'Buy off cops, feds, or rival crews.', 'openBribesModal()')}
-      </div>
+      ${renderCrimeSubtabBar(hasHitTargets)}
+      ${renderCrimeSubtabContent(CRIME_SUBTAB, hasHitTargets)}
     </div>
 
     <div class="card">
@@ -275,19 +278,39 @@ function renderHome() {
   `;
 }
 
-/* ---------------- Criminal Activities Menu / Modals ---------------- */
+/* ---------------- Criminal Activities Sub-tabs ---------------- */
 
-function crimeMenuItem(icon, title, desc, onclick) {
-  return `
-    <button class="crime-menu-item" onclick="${onclick}">
-      <span class="crime-item-icon">${icon}</span>
-      <span class="crime-item-info">
-        <span class="crime-item-title">${title}</span>
-        <span class="crime-item-desc muted small">${desc}</span>
-      </span>
-      <span class="crime-chevron">&rsaquo;</span>
-    </button>
-  `;
+let CRIME_SUBTAB = 'street';
+
+const CRIME_SUBTAB_DEFS = [
+  { id: 'street', icon: '🔪', label: 'Street Crime' },
+  { id: 'heists', icon: '💰', label: 'Heists & Rackets' },
+  { id: 'gang', icon: '⚔️', label: 'Gang Operations', requiresHitTargets: true },
+  { id: 'help', icon: '🤲', label: 'Help a Gang', requiresHitTargets: true },
+  { id: 'deals', icon: '💵', label: 'Deals' },
+  { id: 'bribes', icon: '🤝', label: 'Bribes & Corruption' }
+];
+
+function setCrimeSubtab(id) {
+  CRIME_SUBTAB = id;
+  renderApp();
+}
+
+function renderCrimeSubtabBar(hasHitTargets) {
+  return `<div class="tab-bar subtab-bar">
+    ${CRIME_SUBTAB_DEFS.filter(t => !t.requiresHitTargets || hasHitTargets)
+      .map(t => `<button class="tab-btn ${CRIME_SUBTAB === t.id ? 'active' : ''}" onclick="setCrimeSubtab('${t.id}')">${t.icon} ${t.label}</button>`)
+      .join('')}
+  </div>`;
+}
+
+// CTA used by per-turn-limited actions: once an action has been done
+// MAX_ACTION_REPEATS times this turn, its button is replaced with this
+// static label instead of showing an error popup when clicked.
+function actionCta(actionKey, onclick, label, cls) {
+  const used = (GAME.player.actionCounts && GAME.player.actionCounts[actionKey]) || 0;
+  if (used >= MAX_ACTION_REPEATS) return '<span class="muted small already-done">Already Done</span>';
+  return `<button class="${cls || 'btn-primary'}" onclick="${onclick}">${label || 'Do It'}</button>`;
 }
 
 function crimeListItem(icon, title, desc, payout, actionHtml) {
@@ -312,37 +335,20 @@ function closeButtonRow() {
   return `<div class="row" style="justify-content:flex-end; margin-top:10px;"><button class="btn-primary" onclick="closeModal()">Close</button></div>`;
 }
 
-function openCrimeModal(category) {
-  MODAL = { type: 'crime', category };
-  renderApp();
-}
-
-function openDealsModal() {
-  MODAL = { type: 'deals' };
-  renderApp();
-}
-
-function openBribesModal() {
-  MODAL = { type: 'bribes' };
-  renderApp();
-}
-
-function renderCrimeModal(category) {
+function renderCrimeSubtabContent(category, hasHitTargets) {
   const district = GAME.districts[GAME.player.currentDistrict];
 
   if (category === 'street') {
     const items = [
-      crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', cashHeatLabel(60, 160, 0, 6), '<button class="btn-primary" onclick="actionMug()">Do It</button>'),
+      crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', cashHeatLabel(60, 160, 0, 6), actionCta('mug', 'actionMug()')),
       ...STREET_CRIMES.map(c => {
         const locked = !isUnlockedForProgress(GAME, c.unlockProgress);
-        return crimeListItem(c.icon, c.label, c.desc, cashHeatLabel(c.cashMin, c.cashMax, c.heatMin, c.heatMax), locked ? `<span class="muted small">Unlocks at Street Rep/PD Heat ${c.unlockProgress}</span>` : `<button class="btn-primary" onclick="actionStreetCrime('${c.id}')">Do It</button>`);
+        return crimeListItem(c.icon, c.label, c.desc, cashHeatLabel(c.cashMin, c.cashMax, c.heatMin, c.heatMax), locked ? `<span class="muted small">Unlocks at Street Rep/PD Heat ${c.unlockProgress}</span>` : actionCta('street_' + c.id, `actionStreetCrime('${c.id}')`));
       })
     ].join('');
     return `
-      <h2>Street Crime</h2>
-      <p class="muted small">Each crime can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <p class="muted small">Each action can be done once per turn.</p>
       <div class="crime-list">${items}</div>
-      ${closeButtonRow()}
     `;
   }
 
@@ -351,77 +357,68 @@ function renderCrimeModal(category) {
     const racket = GAME.player.extortionRackets.find(r => r.districtId === district.id);
     const heistLocked = !isUnlockedForRank(GAME, HEIST_UNLOCK_RANK);
     return `
-      <h2>Heists &amp; Rackets</h2>
-      <p class="muted small">Each action can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <p class="muted small">Each action can be done once per turn.</p>
       <div class="crime-list">
-        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), heistLocked ? `<span class="muted small">Unlocks at ${HEIST_UNLOCK_RANK}</span>` : '<button class="btn-primary" onclick="actionHeist()">Do It</button>')}
-        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/${EXTORTION_RACKET_INCOME.length}).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, '<button class="btn-primary" onclick="actionExtortion()">Do It</button>')}
-        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move product through your established route for a cash payout.', routeTier === 0 ? 'Requires a route' : cashHeatLabel(OPERATION_DEFS.route.tiers[routeTier].cashMin, OPERATION_DEFS.route.tiers[routeTier].cashMax, 4, 4 + routeTier * 2) + ' on success, cash loss on bust', `<button class="btn-primary" onclick="actionSmuggling()" ${routeTier === 0 ? 'disabled' : ''}>Do It</button>`)}
+        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), heistLocked ? `<span class="muted small">Unlocks at ${HEIST_UNLOCK_RANK}</span>` : actionCta('heist', 'actionHeist()'))}
+        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/${EXTORTION_RACKET_INCOME.length}).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, actionCta('extortion', 'actionExtortion()'))}
+        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move product through your established route for a cash payout.', routeTier === 0 ? 'Requires a route' : cashHeatLabel(OPERATION_DEFS.route.tiers[routeTier].cashMin, OPERATION_DEFS.route.tiers[routeTier].cashMax, 4, 4 + routeTier * 2) + ' on success, cash loss on bust', routeTier === 0 ? '<span class="muted small">Requires a route</span>' : actionCta('smuggling', 'actionSmuggling()'))}
       </div>
-      ${closeButtonRow()}
     `;
   }
 
   if (category === 'gang') {
+    if (!hasHitTargets) return '<p class="muted">No rival gang presence to target here.</p>';
+    if (GANG_WAR) return '<p class="muted">Resolve the active gang war above before taking further gang actions.</p>';
     const gangsHere = Object.entries(district.control).map(([gid, pct]) => ({ gang: GAME.gangs[gid], pct }));
     const hitTargets = gangsHere.filter(g => !g.gang.isPlayerGang).map(g => `<option value="${g.gang.id}">${g.gang.name}</option>`).join('');
     return `
-      <h2>Gang Operations</h2>
-      ${hitTargets ? `
-        <div class="field">
-          <label>Target Gang</label>
-          <select id="hit-target">${hitTargets}</select>
-        </div>
-        <div class="crime-list">
-          ${crimeListItem('🔫', 'Send a Message', 'Intimidate a rival gang and shift territory control.', 'Territory shift <span class="muted">| Gang Heat +4-10</span>', '<button class="btn-primary" onclick="actionHit()">Do It</button>')}
-          ${crimeListItem('💣', 'Start Gang War', 'Open conflict for control of this district.', 'High risk <span class="muted">| Heat &amp; injury vary</span>', '<button class="btn-danger" onclick="actionStartGangWar()">Do It</button>')}
-        </div>
-      ` : '<p class="muted">No rival gang presence to target here.</p>'}
-      ${closeButtonRow()}
+      <div class="field">
+        <label>Target Gang</label>
+        <select id="hit-target">${hitTargets}</select>
+      </div>
+      <div class="crime-list">
+        ${crimeListItem('🔫', 'Send a Message', 'Intimidate a rival gang and shift territory control.', 'Territory shift <span class="muted">| Gang Heat +4-10</span>', actionCta('hit', 'actionHit()'))}
+        ${crimeListItem('💣', 'Start Gang War', 'Open conflict for control of this district.', 'High risk <span class="muted">| Heat &amp; injury vary</span>', '<button class="btn-danger" onclick="actionStartGangWar()">Do It</button>')}
+      </div>
     `;
   }
 
   if (category === 'help') {
-    const gangsHere = Object.entries(district.control).map(([gid]) => GAME.gangs[gid]).filter(g => !g.isPlayerGang);
-    if (!gangsHere.length) {
-      return `<h2>Help a Gang</h2><p class="muted">No rival crews around here to work for.</p>${closeButtonRow()}`;
-    }
+    if (!hasHitTargets) return '<p class="muted">No rival crews around here to work for.</p>';
     const items = GANG_GIGS.map(g => {
       const locked = !isUnlockedForGangRep(GAME, g.unlockGangRep);
-      return crimeListItem(g.icon, g.label, g.desc, cashHeatLabel(g.cashMin, g.cashMax, g.heatMin, g.heatMax), locked ? `<span class="muted small">Unlocks at Gang Rep ${g.unlockGangRep}</span>` : `<button class="btn-primary" onclick="actionGangGig('${g.id}')">Do It</button>`);
+      return crimeListItem(g.icon, g.label, g.desc, cashHeatLabel(g.cashMin, g.cashMax, g.heatMin, g.heatMax), locked ? `<span class="muted small">Unlocks at Gang Rep ${g.unlockGangRep}</span>` : actionCta('gig_' + g.id, `actionGangGig('${g.id}')`));
     }).join('');
     return `
-      <h2>Help a Gang</h2>
-      <p class="muted small">Small jobs for a local crew without joining them. Builds relations and gang reputation. Each job can be run up to ${MAX_ACTION_REPEATS}x per turn.</p>
+      <p class="muted small">Small jobs for a local crew without joining them. Builds relations and gang reputation. Each job can be done once per turn.</p>
       <div class="crime-list">${items}</div>
-      ${closeButtonRow()}
     `;
   }
 
+  if (category === 'deals') {
+    const p = GAME.player;
+    const productTypes = Object.keys(PRODUCT_TYPES);
+    const productOptions = productTypes.map(pt => {
+      const owned = p.inventory.product[pt];
+      const price = getDealPrice(GAME, district.id, pt);
+      return `<option value="${pt}">${PRODUCT_TYPES[pt].label} (have ${owned}, ${fmtMoney(price)}/u)</option>`;
+    }).join('');
+    const defaultMax = Math.max(1, p.inventory.product[productTypes[0]] || 0);
+    return `
+      <p class="muted small">Sell product from your inventory at the going rate in ${district.name}.</p>
+      <div class="row">
+        <select id="deal-product" onchange="updateDealMaxQty()">${productOptions}</select>
+        <input type="number" id="deal-qty" value="${defaultMax}" min="1" style="width:80px;" />
+        <button class="btn-primary" onclick="actionSell()">Sell</button>
+      </div>
+    `;
+  }
+
+  if (category === 'bribes') {
+    return renderBribeWidget(district);
+  }
+
   return '';
-}
-
-function renderDealsModal() {
-  const district = GAME.districts[GAME.player.currentDistrict];
-  const p = GAME.player;
-  const productTypes = Object.keys(PRODUCT_TYPES);
-  const productOptions = productTypes.map(pt => {
-    const owned = p.inventory.product[pt];
-    const price = getDealPrice(GAME, district.id, pt);
-    return `<option value="${pt}">${PRODUCT_TYPES[pt].label} (have ${owned}, ${fmtMoney(price)}/u)</option>`;
-  }).join('');
-  const defaultMax = Math.max(1, p.inventory.product[productTypes[0]] || 0);
-
-  return `
-    <h2>Deals</h2>
-    <p class="muted small">Sell product from your inventory at the going rate in ${district.name}.</p>
-    <div class="row">
-      <select id="deal-product" onchange="updateDealMaxQty()">${productOptions}</select>
-      <input type="number" id="deal-qty" value="${defaultMax}" min="1" style="width:80px;" />
-      <button class="btn-primary" onclick="actionSell()">Sell</button>
-    </div>
-    ${closeButtonRow()}
-  `;
 }
 
 function updateDealMaxQty() {
@@ -430,15 +427,6 @@ function updateDealMaxQty() {
   if (!productSelect || !qtyInput) return;
   const owned = GAME.player.inventory.product[productSelect.value] || 0;
   qtyInput.value = Math.max(1, owned);
-}
-
-function renderBribesModal() {
-  const district = GAME.districts[GAME.player.currentDistrict];
-  return `
-    <h2>Bribes &amp; Corruption</h2>
-    ${renderBribeWidget(district)}
-    ${closeButtonRow()}
-  `;
 }
 
 function renderBribeWidget(district) {
@@ -868,12 +856,12 @@ function renderProtectionSubtab() {
 function renderKidnappingSubtab() {
   const items = KIDNAP_JOBS.map(j => {
     const locked = !isUnlockedForRank(GAME, j.unlockRank);
-    return crimeListItem(j.icon, j.label, j.desc, cashHeatLabel(j.cashMin, j.cashMax, j.heatMin, j.heatMax), locked ? `<span class="muted small">Unlocks at ${j.unlockRank}</span>` : `<button class="btn-primary" onclick="actionKidnap('${j.id}')">Do It</button>`);
+    return crimeListItem(j.icon, j.label, j.desc, cashHeatLabel(j.cashMin, j.cashMax, j.heatMin, j.heatMax), locked ? `<span class="muted small">Unlocks at ${j.unlockRank}</span>` : actionCta('kidnap_' + j.id, `actionKidnap('${j.id}')`));
   }).join('');
   return collapsibleCard(
     'kidnapping-racket',
     '<h2>Kidnapping Racket</h2>',
-    `<p class="muted small">High-risk, high-reward ransom jobs. Each job can be run up to ${MAX_ACTION_REPEATS}x per turn.</p><div class="crime-list">${items}</div>`,
+    `<p class="muted small">High-risk, high-reward ransom jobs. Each job can be done once per turn.</p><div class="crime-list">${items}</div>`,
     '',
     true
   );
@@ -1014,7 +1002,7 @@ function renderDilemmaModal() {
   `;
 }
 
-/* ---------------- Busted / Hire a Lawyer Modal ---------------- */
+/* ---------------- Busted / Hire a Lawyer Screen ---------------- */
 
 function renderArrestModal() {
   const p = GAME.player;
@@ -1034,19 +1022,23 @@ function renderArrestModal() {
   `;
 }
 
+// "Busted!" is a forced, blocking interruption, so it replaces the whole
+// screen (like Character Creation / Game Over) rather than appearing as a
+// popup over normal play.
+function renderArrestScreen() {
+  return `<div class="content"><div class="gameover-screen arrest-screen">${renderArrestModal()}</div></div>`;
+}
+
 /* ---------------- Modal Dispatch ---------------- */
 
+// The only remaining overlay popup is the per-turn AI street dilemma - a
+// forced one-time choice between turns.
 function renderModal() {
   if (!MODAL) return '';
   let body = '';
-  if (MODAL.type === 'gangwar') body = renderGangWarModal();
-  else if (MODAL.type === 'msg') body = `<h2>${MODAL.title}</h2><div>${MODAL.body}</div><div class="row" style="justify-content:flex-end; margin-top:10px;"><button class="btn-primary" onclick="closeModal()">Close</button></div>`;
-  else if (MODAL.type === 'crime') body = renderCrimeModal(MODAL.category);
-  else if (MODAL.type === 'deals') body = renderDealsModal();
-  else if (MODAL.type === 'bribes') body = renderBribesModal();
-  else if (MODAL.type === 'dilemma') body = renderDilemmaModal();
-  else if (MODAL.type === 'arrest') body = renderArrestModal();
-  const closeX = MODAL.type === 'gangwar' ? '' : `<button class="modal-close-x" onclick="closeModal()" aria-label="Close">&times;</button>`;
+  if (MODAL.type === 'dilemma') body = renderDilemmaModal();
+  else return '';
+  const closeX = `<button class="modal-close-x" onclick="closeModal()" aria-label="Close">&times;</button>`;
   return `<div class="modal-overlay" id="modal-root"><div class="modal">${closeX}${body}</div></div>`;
 }
 
@@ -1055,7 +1047,28 @@ function closeModal() {
   renderApp();
 }
 
+/* ---------------- Inline Status Banner ---------------- */
+// Replaces the old one-off "msg" popup: result/error messages from actions
+// now show as a dismissible banner at the top of the current tab instead of
+// an overlay.
+
 function showMsg(title, body) {
-  MODAL = { type: 'msg', title, body };
+  STATUS_BANNER = { title, body };
   renderApp();
+}
+
+function dismissStatusBanner() {
+  STATUS_BANNER = null;
+  renderApp();
+}
+
+function renderStatusBanner() {
+  if (!STATUS_BANNER) return '';
+  return `
+    <div class="card status-banner">
+      <button class="modal-close-x" onclick="dismissStatusBanner()" aria-label="Close">&times;</button>
+      <h3>${STATUS_BANNER.title}</h3>
+      <div>${STATUS_BANNER.body}</div>
+    </div>
+  `;
 }

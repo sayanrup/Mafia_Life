@@ -363,7 +363,7 @@ function isUnlockedForGangRep(state, unlockGangRep) {
 
 /* ---------------- Action Economy ---------------- */
 
-const MAX_ACTION_REPEATS = 3; // each distinct action type can be repeated at most this many times per turn
+const MAX_ACTION_REPEATS = 1; // each distinct action type can be done at most this many times per turn
 
 /* ---------------- Street Crimes (beyond the basic Mug a Mark) ---------------- */
 
