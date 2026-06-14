@@ -86,6 +86,8 @@ function totalBusinessLaunderCapacity(state) {
 
 function launderingTick(state) {
   const businessMult = familyBusinessMultiplier(state);
+  let launderedDirty = 0;
+  let launderedClean = 0;
   for (const c of state.shellCompanies) {
     c.lastRevenue = 0;
     c.lastExpense = 0;
@@ -100,6 +102,8 @@ function launderingTick(state) {
       const cleaned = (amount - fee) * businessMult;
       state.player.cash.dirty -= amount;
       state.player.cash.clean += cleaned;
+      launderedDirty += amount;
+      launderedClean += cleaned;
     }
     // Outside clients also pay the shell company to launder their money - the cover takes its cut as clean income.
     const outsideRevenue = Math.round(tierDef.launderPerTurn * businessMult);
@@ -126,7 +130,12 @@ function launderingTick(state) {
     const cleaned = (amount - fee) * businessMult;
     state.player.cash.dirty -= amount;
     state.player.cash.clean += cleaned;
+    launderedDirty += amount;
+    launderedClean += cleaned;
   }
+
+  state.player.lastLaunderedDirty = Math.round(launderedDirty);
+  state.player.lastLaunderedClean = Math.round(launderedClean);
 
   // Excess dirty cash raises Fed Heat
   const capacity = totalLaunderCapacity(state);

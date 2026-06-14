@@ -138,6 +138,10 @@ function renderFinancePL() {
     rows.push({ name: `${b.type} - ${GAME.districts[b.districtId].name}`, revenue: b.lastRevenue || 0, expense: b.lastExpense || 0 });
   }
 
+  if ((GAME.player.lastLaunderedDirty || 0) > 0) {
+    rows.push({ name: 'Shell/Business Laundering (Dirty &rarr; Clean)', revenue: GAME.player.lastLaunderedClean || 0, expense: GAME.player.lastLaunderedDirty || 0 });
+  }
+
   const totalRevenue = rows.reduce((a, r) => a + r.revenue, 0);
   const totalExpense = rows.reduce((a, r) => a + r.expense, 0);
   const totalProfit = totalRevenue - totalExpense;
