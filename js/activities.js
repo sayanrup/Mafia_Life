@@ -206,7 +206,7 @@ function startExtortion(state) {
   const districtId = state.player.currentDistrict;
   const existing = state.player.extortionRackets.find(r => r.districtId === districtId);
   if (existing) {
-    if (existing.level >= 3) return { ok: false, reason: 'Racket already at maximum here.' };
+    if (existing.level >= EXTORTION_RACKET_INCOME.length) return { ok: false, reason: 'Racket already at maximum here.' };
     const result = resolveScuffle(state, 10 + existing.level * 10);
     if (result.result === 'fail') {
       addHeat(state, 'gangs', 5);
