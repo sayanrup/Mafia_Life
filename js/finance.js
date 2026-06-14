@@ -105,9 +105,11 @@ function launderingTick(state) {
     const outsideRevenue = Math.round(tierDef.launderPerTurn * businessMult);
     state.player.cash.clean += outsideRevenue;
     c.lastRevenue = outsideRevenue;
-    // Audit risk
+    // Audit risk - loss is scaled to this shell's own throughput (1-3 turns of
+    // its launder volume), not the player's total clean cash, so a small shell
+    // can't wipe out an unrelated fortune.
     if (Math.random() * 100 < tierDef.auditRisk) {
-      const loss = Math.round(state.player.cash.clean * (0.1 + Math.random() * 0.2));
+      const loss = Math.min(state.player.cash.clean, Math.round(tierDef.launderPerTurn * (1 + Math.random() * 2)));
       state.player.cash.clean -= loss;
       addHeat(state, 'feds', 6 + Math.floor(Math.random() * 6));
       c.auditCooldown = 2;

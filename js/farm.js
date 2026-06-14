@@ -267,12 +267,16 @@ function farmTick(state) {
       district.heat = clamp(district.heat + Math.ceil(farm.plots / 2), 0, 100);
       addHeat(state, 'pd', Math.max(0, Math.round(farm.plots / 2) - Math.floor((district.opProtection || 0) / 20)));
 
-      if (farm.growTurn >= getFarmGrowTurns(state, district.id, product)) {
-        const batchValue = Math.round(getFarmBatchValue(state, district.id, product) * equipMult);
-        farm.pendingValue += batchValue;
+      // Production accrues every turn (proportional to facility investment & equipment)
+      // instead of in one lump sum at the end of the cycle, so revenue isn't $0 most turns.
+      const growTurns = getFarmGrowTurns(state, district.id, product);
+      const perTurnValue = Math.round(getFarmBatchValue(state, district.id, product) * equipMult / growTurns);
+      farm.pendingValue += perTurnValue;
+
+      if (farm.growTurn >= growTurns) {
         farm.growTurn = 0;
-        narrate(state, 'farm_maturity', { vars: { district: district.name, product: def.label, amount: fmtMoney(batchValue) } });
-        state.eventLog.push(logEntry(state, `Your ${def.label.toLowerCase()} operation in ${district.name} matured: a batch worth ${fmtMoney(batchValue)} is ready to move.`, 'operations'));
+        narrate(state, 'farm_maturity', { vars: { district: district.name, product: def.label, amount: fmtMoney(Math.round(getFarmBatchValue(state, district.id, product) * equipMult)) } });
+        state.eventLog.push(logEntry(state, `Your ${def.label.toLowerCase()} operation in ${district.name} completes another production cycle.`, 'operations'));
       }
 
       checkFarmRaid(state, district, product, farm);
