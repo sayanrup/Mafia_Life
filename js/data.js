@@ -81,14 +81,14 @@ function rankIndex(rankId) {
 }
 
 const WEAPON_TIERS = [
-  { id: 0, label: 'Improvised',           unitCost: 50,    combatBonus: 0,  qualityFloor: 1, unlockRank: 'Associate' },
-  { id: 1, label: 'Pistols',              unitCost: 250,   combatBonus: 3,  qualityFloor: 2, unlockRank: 'Associate' },
-  { id: 2, label: 'Shotguns',             unitCost: 600,   combatBonus: 5,  qualityFloor: 2, unlockRank: 'Associate' },
-  { id: 3, label: 'SMGs',                 unitCost: 1200,  combatBonus: 8,  qualityFloor: 3, unlockRank: 'Soldier' },
-  { id: 4, label: 'Assault Rifles',       unitCost: 2200,  combatBonus: 11, qualityFloor: 3, unlockRank: 'Soldier' },
-  { id: 5, label: 'Heavy / Military Grade', unitCost: 3500, combatBonus: 14, qualityFloor: 4, unlockRank: 'Capo' },
-  { id: 6, label: 'Explosives & Demolition', unitCost: 6000, combatBonus: 18, qualityFloor: 4, unlockRank: 'Underboss' },
-  { id: 7, label: 'Tactical / SF Grade',  unitCost: 10000, combatBonus: 24, qualityFloor: 5, unlockRank: 'Boss' }
+  { id: 0, label: 'Improvised',           unitCost: 50,    combatBonus: 0,  qualityFloor: 1, unlockRank: 'Associate', icon: '🔨', ring: '#6b7280' },
+  { id: 1, label: 'Pistols',              unitCost: 250,   combatBonus: 3,  qualityFloor: 2, unlockRank: 'Associate', icon: '🔫', ring: '#9ca3af' },
+  { id: 2, label: 'Shotguns',             unitCost: 600,   combatBonus: 5,  qualityFloor: 2, unlockRank: 'Associate', icon: '💥', ring: '#5b9bd9' },
+  { id: 3, label: 'SMGs',                 unitCost: 1200,  combatBonus: 8,  qualityFloor: 3, unlockRank: 'Soldier', icon: '🔪', ring: '#5bb0c9' },
+  { id: 4, label: 'Assault Rifles',       unitCost: 2200,  combatBonus: 11, qualityFloor: 3, unlockRank: 'Soldier', icon: '🎯', ring: '#34d399' },
+  { id: 5, label: 'Heavy / Military Grade', unitCost: 3500, combatBonus: 14, qualityFloor: 4, unlockRank: 'Capo', icon: '🛡️', ring: '#b388eb' },
+  { id: 6, label: 'Explosives & Demolition', unitCost: 6000, combatBonus: 18, qualityFloor: 4, unlockRank: 'Underboss', icon: '💣', ring: '#ff6b6f' },
+  { id: 7, label: 'Tactical / SF Grade',  unitCost: 10000, combatBonus: 24, qualityFloor: 5, unlockRank: 'Boss', icon: '⭐', ring: '#f0a830' }
 ];
 
 const LIEUTENANT_ASSIGNMENTS = [
@@ -439,14 +439,14 @@ const LAUNDERING_METHODS = [
 /* ---------------- Black Market Gear (consumable items) ---------------- */
 
 const BLACK_MARKET_ITEMS = [
-  { id: 'firstaid',     label: 'First Aid Kit',        desc: 'Patch yourself up on the spot. Restores 25 Health.',                cost: 600,   effect: 'heal',           amount: 25,                 unlockRank: 'Associate' },
-  { id: 'streetfavor',  label: 'Called-In Favor',      desc: 'Word travels fast when you do someone a solid. Street Rep +5.',     cost: 1800,  effect: 'rep',  track: 'street', amount: 5,        unlockRank: 'Associate' },
-  { id: 'forgedpapers', label: 'Forged Papers',        desc: 'Clean paperwork makes local cops lose interest. PD Heat -10.',      cost: 2500,  effect: 'heat', track: 'pd',     amount: 10,        unlockRank: 'Associate' },
-  { id: 'burnerphone',  label: 'Burner Phone',         desc: 'Cut ties before a rat can finish the call. Clears any active informant.', cost: 1000, effect: 'clear_informant',                        unlockRank: 'Associate' },
-  { id: 'peaceoffering', label: 'Peace Offering',      desc: 'A token gift smooths things over with rival outfits. Gang Heat -10.', cost: 3000,  effect: 'heat', track: 'gangs',  amount: 10,        unlockRank: 'Soldier' },
-  { id: 'adrenaline',    label: 'Adrenaline Shot',     desc: 'A risky stimulant - fight harder for a few turns. +10 combat for 3 turns.', cost: 2000, effect: 'combat_temp', amount: 10, turns: 3,  unlockRank: 'Soldier' },
-  { id: 'shellcleanup', label: 'Shell Account Cleanup', desc: 'A quiet wire transfer throws federal auditors off your trail. Fed Heat -10.', cost: 6000, effect: 'heat', track: 'feds',  amount: 10,       unlockRank: 'Soldier' },
-  { id: 'cartelpackage', label: 'Cartel Care Package', desc: 'A goodwill shipment buys you trust with the cartel. Cartel Rep +5.', cost: 8000,  effect: 'rep',  track: 'cartel', amount: 5,        unlockRank: 'Capo' }
+  { id: 'firstaid',     label: 'First Aid Kit',        desc: 'Patch yourself up on the spot. Restores 25 Health.',                cost: 600,   effect: 'heal',           amount: 25,                 unlockRank: 'Associate', icon: '🩹', ring: '#34d399' },
+  { id: 'streetfavor',  label: 'Called-In Favor',      desc: 'Word travels fast when you do someone a solid. Street Rep +5.',     cost: 1800,  effect: 'rep',  track: 'street', amount: 5,        unlockRank: 'Associate', icon: '⭐', ring: '#f0a830' },
+  { id: 'forgedpapers', label: 'Forged Papers',        desc: 'Clean paperwork makes local cops lose interest. PD Heat -10.',      cost: 2500,  effect: 'heat', track: 'pd',     amount: 10,        unlockRank: 'Associate', icon: '📄', ring: '#5b9bd9' },
+  { id: 'burnerphone',  label: 'Burner Phone',         desc: 'Cut ties before a rat can finish the call. Clears any active informant.', cost: 1000, effect: 'clear_informant',                        unlockRank: 'Associate', icon: '📵', ring: '#9ca3af' },
+  { id: 'peaceoffering', label: 'Peace Offering',      desc: 'A token gift smooths things over with rival outfits. Gang Heat -10.', cost: 3000,  effect: 'heat', track: 'gangs',  amount: 10,        unlockRank: 'Soldier', icon: '🕊️', ring: '#5bb0c9' },
+  { id: 'adrenaline',    label: 'Adrenaline Shot',     desc: 'A risky stimulant - fight harder for a few turns. +10 combat for 3 turns.', cost: 2000, effect: 'combat_temp', amount: 10, turns: 3,  unlockRank: 'Soldier', icon: '💉', ring: '#ff6b6f' },
+  { id: 'shellcleanup', label: 'Shell Account Cleanup', desc: 'A quiet wire transfer throws federal auditors off your trail. Fed Heat -10.', cost: 6000, effect: 'heat', track: 'feds',  amount: 10,       unlockRank: 'Soldier', icon: '🧾', ring: '#5b9bd9' },
+  { id: 'cartelpackage', label: 'Cartel Care Package', desc: 'A goodwill shipment buys you trust with the cartel. Cartel Rep +5.', cost: 8000,  effect: 'rep',  track: 'cartel', amount: 5,        unlockRank: 'Capo', icon: '📦', ring: '#b388eb' }
 ];
 
 /* ---------------- AI Narrative Model Options (via OpenRouter) ---------------- */

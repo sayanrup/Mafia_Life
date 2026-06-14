@@ -80,6 +80,27 @@ html, body {
   font-style: italic;
 }
 
+.rank-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-weight: bold;
+  font-style: normal;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  background: rgba(79, 141, 245, 0.08);
+  margin: 0 2px;
+  vertical-align: middle;
+}
+
+.rank-badge.rank-level {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(240, 168, 48, 0.08);
+}
+
 .stat-row {
   display: flex;
   flex-wrap: wrap;
@@ -199,12 +220,65 @@ html, body {
   margin-bottom: 10px;
 }
 
+/* ---------------- Bottom Navigation ---------------- */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  overflow-x: auto;
+  background: linear-gradient(0deg, #1a1c22 0%, #121419 100%);
+  border-top: 2px solid var(--accent-dim);
+  box-shadow: 0 -4px 12px var(--shadow);
+  z-index: 50;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-btn {
+  flex: 1 0 auto;
+  min-width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  border-top: 3px solid transparent;
+  color: var(--text-dim);
+  padding: 6px 8px;
+  font-size: 0.65em;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.nav-icon {
+  font-size: 1.3em;
+  line-height: 1;
+}
+
+.nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+
+.nav-btn.active {
+  color: var(--accent);
+  border-top-color: var(--accent);
+  text-shadow: 0 0 8px rgba(79,141,245,0.35);
+}
+
 /* ---------------- Content ---------------- */
 
 .content {
   flex: 1;
   padding: 14px;
-  padding-bottom: 32px;
+  padding-bottom: 76px;
 }
 
 .card {
@@ -397,6 +471,34 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
   overflow: hidden;
 }
 
+/* ---------------- Map: District Nodes ---------------- */
+
+.district-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.district-grid > details.card {
+  margin-bottom: 0;
+}
+
+.district-grid > details.card[open] {
+  grid-column: 1 / -1;
+}
+
+.district-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.district-tags .tag {
+  margin-left: 0;
+  font-size: 0.7em;
+}
+
 .boss-line {
   font-size: 0.8em;
   margin: 2px 0;
@@ -443,6 +545,26 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .log-entry.cat-gang { color: #d99a3c; }
 .log-entry.cat-criminalworld { color: #b388eb; }
 
+.event-tag {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 0.7em;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  margin-right: 6px;
+}
+
+.event-featured {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 12px rgba(79, 141, 245, 0.15);
+}
+
+.event-featured h2 {
+  margin-top: 6px;
+}
+
 .council-decision { border-color: #b388eb; box-shadow: 0 0 12px rgba(179, 136, 235, 0.25); }
 .council-decision h2 { color: #b388eb; border-bottom-color: #b388eb; }
 
@@ -483,6 +605,57 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 .gangwar-panel h2 {
   color: var(--red-bright);
   border-bottom-color: var(--red-bright);
+}
+
+/* ---------------- Item Cards (Inventory) ---------------- */
+
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 10px;
+}
+
+.item-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--panel);
+}
+
+.item-card.equipped {
+  border-color: var(--gold);
+  box-shadow: 0 0 8px rgba(240, 168, 48, 0.25);
+}
+
+.item-card.locked {
+  opacity: 0.55;
+}
+
+.item-icon-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+  background: var(--bg);
+}
+
+.item-name {
+  font-weight: bold;
+  font-size: 0.85em;
+}
+
+.item-meta {
+  font-size: 0.75em;
+  color: var(--text-dim);
 }
 
 /* ---------------- Criminal Activities Menu ---------------- */
@@ -696,10 +869,11 @@ a, .link {
 
 @media (max-width: 600px) {
   .topbar h1 { font-size: 1.1em; letter-spacing: 2px; }
-  .content { padding: 10px; }
+  .content { padding: 10px; padding-bottom: 72px; }
 
   /* Larger touch targets and 16px inputs (prevents iOS auto-zoom on focus) */
   .tab-btn { padding: 12px 14px; }
+  .nav-btn { padding: 8px 10px; font-size: 0.7em; }
   button, .btn { padding: 10px 14px; }
   .btn-small { padding: 8px 10px; }
   input, select, textarea { font-size: 16px; padding: 8px; }
