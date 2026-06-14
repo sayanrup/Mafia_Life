@@ -18,10 +18,9 @@ function tryAction(actionKey, fn) {
   if (actionKey) {
     const counts = GAME.player.actionCounts || (GAME.player.actionCounts = {});
     const used = counts[actionKey] || 0;
-    if (used >= MAX_ACTION_REPEATS) {
-      showMsg('Action Limit Reached', `You've already done this ${MAX_ACTION_REPEATS} times this turn. End the turn to do it again.`);
-      return;
-    }
+    // CTA is replaced with "Already Done" once the limit is hit, so this is
+    // just a safety net against stale/duplicate clicks.
+    if (used >= MAX_ACTION_REPEATS) return;
   }
   const res = fn();
   if (res && res.ok === false) {
@@ -77,7 +76,7 @@ function actionKidnap(jobId) {
 function actionStartGangWar() {
   const select = document.getElementById('hit-target');
   if (!select || !select.value) { showMsg('Gang War', 'No target selected.'); return; }
-  MODAL = { type: 'gangwar', war: startGangWar(GAME, GAME.player.currentDistrict, select.value) };
+  GANG_WAR = startGangWar(GAME, GAME.player.currentDistrict, select.value);
   renderApp();
 }
 
