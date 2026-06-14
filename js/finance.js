@@ -239,7 +239,7 @@ function repairBusiness(state, businessId) {
   return { ok: true };
 }
 
-// Revenue as a fraction of a business's net worth: ranges 50%-100%, biased
+// Revenue as a fraction of a business's baseIncome: ranges 50%-100%, biased
 // downward as Gang Heat rises (rival gangs skim/disrupt takings), with
 // random turn-to-turn variance within that band.
 function businessRevenuePct(state) {
@@ -255,9 +255,8 @@ function businessIncomeTick(state) {
   const districtCounts = {};
   for (const b of state.ownedBusinesses) {
     if (!b.damaged) {
-      const netWorth = getBusinessNetWorth(state, b.id);
       const pct = businessRevenuePct(state);
-      const income = Math.round(netWorth * pct * mult);
+      const income = Math.round((b.baseIncome / OPS_ECONOMY.businessIncomeDivisor) * pct * businessLevelMult(b) * mult);
       total += income;
       b.lastRevenue = income;
       b.lastRevenuePct = pct;

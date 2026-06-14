@@ -243,64 +243,6 @@ function extortionTick(state) {
   }
 }
 
-/* ---------------- Smuggling Runs ---------------- */
-
-function doSmugglingRun(state) {
-  const district = state.districts[state.player.currentDistrict];
-  const routeTier = district.operations.route.tier;
-  if (routeTier === 0) return { ok: false, reason: 'No smuggling route established here.' };
-  const def = OPERATION_DEFS.route.tiers[routeTier];
-  const mitigation = totalHeatMitigation(state);
-  const bustRisk = clamp(def.bustRisk - mitigation - (state.player.originId === 'smuggler' ? 8 : 0), 2, 60);
-
-  const roll = Math.random() * 100;
-  if (roll > bustRisk) {
-    const gain = Math.round(def.cashMin + Math.random() * (def.cashMax - def.cashMin));
-    addCash(state, gain, 0);
-    district.heat = clamp(district.heat + 2 + routeTier * 2, 0, 100);
-    narrate(state, 'post_crime_success');
-    state.eventLog.push(logEntry(state, `Smuggling run through ${district.name} pays off: ${fmtMoney(gain)} moved through your ${def.name}.`, 'activity'));
-  } else {
-    addHeat(state, 'feds', 8);
-    addHeat(state, 'pd', 4);
-    const loss = Math.round(def.cashMin * 0.5);
-    state.player.cash.dirty = Math.max(0, state.player.cash.dirty - loss);
-    narrate(state, 'post_crime_fail');
-    state.eventLog.push(logEntry(state, `Smuggling run through ${district.name} got intercepted. Lost ${fmtMoney(loss)}, Federal Heat +8.`, 'activity'));
-  }
-  return { ok: true };
-}
-
-/* ---------------- Deals (sell product) ---------------- */
-
-function getDealPrice(state, districtId, productType) {
-  const district = state.districts[districtId];
-  const base = PRODUCT_TYPES[productType].baseValue;
-  const heatFactor = 1 - district.heat / 250;
-  const saturationFactor = 1 - (district.saturation[productType] || 0) / 100;
-  const advisorBonus = getFamilyMemberWithRole(state, 'advisor') ? 1.1 : 1.0;
-  return Math.max(2, Math.round(base * heatFactor * saturationFactor * advisorBonus));
-}
-
-function sellProduct(state, productType, quantity) {
-  const districtId = state.player.currentDistrict;
-  const available = state.player.inventory.product[productType] || 0;
-  const qty = Math.min(quantity, available);
-  if (qty <= 0) return { ok: false, reason: 'Nothing to sell.' };
-
-  const price = getDealPrice(state, districtId, productType);
-  const total = price * qty;
-  state.player.inventory.product[productType] -= qty;
-  addCash(state, total, 0);
-
-  const district = state.districts[districtId];
-  district.saturation[productType] = clamp((district.saturation[productType] || 0) + qty * 2, 0, 100);
-  district.heat = clamp(district.heat + Math.ceil(qty / 10), 0, 100);
-
-  state.eventLog.push(logEntry(state, `Sold ${qty}x ${PRODUCT_TYPES[productType].label} in ${district.name} for ${fmtMoney(total)}.`, 'activity'));
-  return { ok: true, total };
-}
-
 function saturationTick(state) {
   for (const d of state.districts) {
     for (const key of Object.keys(d.saturation)) {

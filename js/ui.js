@@ -324,11 +324,9 @@ let CRIME_SUBTAB = 'street';
 
 const CRIME_SUBTAB_DEFS = [
   { id: 'street', icon: '🔪', label: 'Street Crime' },
-  { id: 'heists', icon: '💰', label: 'Heists & Rackets' },
+  { id: 'bribes', icon: '🤝', label: 'Bribes & Rackets' },
   { id: 'gang', icon: '⚔️', label: 'Gang Operations', requiresHitTargets: true },
-  { id: 'help', icon: '🤲', label: 'Help a Gang', requiresHitTargets: true },
-  { id: 'deals', icon: '💵', label: 'Deals' },
-  { id: 'bribes', icon: '🤝', label: 'Bribes & Corruption' }
+  { id: 'help', icon: '🤲', label: 'Help a Gang', requiresHitTargets: true }
 ];
 
 function setCrimeSubtab(id) {
@@ -379,30 +377,18 @@ function renderCrimeSubtabContent(category, hasHitTargets) {
   const district = GAME.districts[GAME.player.currentDistrict];
 
   if (category === 'street') {
+    const heistLocked = !isUnlockedForRank(GAME, HEIST_UNLOCK_RANK);
     const items = [
       crimeListItem('🔪', 'Mug a Mark', 'Quick, low-risk cash grab on the street.', cashHeatLabel(60, 160, 0, 6), actionCta('mug', 'actionMug()')),
       ...STREET_CRIMES.map(c => {
         const locked = !isUnlockedForProgress(GAME, c.unlockProgress);
         return crimeListItem(c.icon, c.label, c.desc, cashHeatLabel(c.cashMin, c.cashMax, c.heatMin, c.heatMax), locked ? `<span class="muted small">Unlocks at Street Rep/PD Heat ${c.unlockProgress}</span>` : actionCta('street_' + c.id, `actionStreetCrime('${c.id}')`));
-      })
+      }),
+      crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), heistLocked ? `<span class="muted small">Unlocks at ${HEIST_UNLOCK_RANK}</span>` : actionCta('heist', 'actionHeist()'))
     ].join('');
     return `
       <p class="muted small">Each action can be done once per turn.</p>
       <div class="crime-list">${items}</div>
-    `;
-  }
-
-  if (category === 'heists') {
-    const routeTier = district.operations.route.tier;
-    const racket = GAME.player.extortionRackets.find(r => r.districtId === district.id);
-    const heistLocked = !isUnlockedForRank(GAME, HEIST_UNLOCK_RANK);
-    return `
-      <p class="muted small">Each action can be done once per turn.</p>
-      <div class="crime-list">
-        ${crimeListItem('🏦', 'Heist', 'High risk, high reward score against a local target.', cashHeatLabel(400, 4000, 6, 20), heistLocked ? `<span class="muted small">Unlocks at ${HEIST_UNLOCK_RANK}</span>` : actionCta('heist', 'actionHeist()'))}
-        ${crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/${EXTORTION_RACKET_INCOME.length}).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, actionCta('extortion', 'actionExtortion()'))}
-        ${crimeListItem('🚚', 'Smuggling Run', routeTier === 0 ? 'No smuggling route established here.' : 'Move product through your established route for a cash payout.', routeTier === 0 ? 'Requires a route' : cashHeatLabel(OPERATION_DEFS.route.tiers[routeTier].cashMin, OPERATION_DEFS.route.tiers[routeTier].cashMax, 4, 4 + routeTier * 2) + ' on success, cash loss on bust', routeTier === 0 ? '<span class="muted small">Requires a route</span>' : actionCta('smuggling', 'actionSmuggling()'))}
-      </div>
     `;
   }
 
@@ -435,38 +421,18 @@ function renderCrimeSubtabContent(category, hasHitTargets) {
     `;
   }
 
-  if (category === 'deals') {
-    const p = GAME.player;
-    const productTypes = Object.keys(PRODUCT_TYPES);
-    const productOptions = productTypes.map(pt => {
-      const owned = p.inventory.product[pt];
-      const price = getDealPrice(GAME, district.id, pt);
-      return `<option value="${pt}">${PRODUCT_TYPES[pt].label} (have ${owned}, ${fmtMoney(price)}/u)</option>`;
-    }).join('');
-    const defaultMax = Math.max(1, p.inventory.product[productTypes[0]] || 0);
+  if (category === 'bribes') {
+    const racket = GAME.player.extortionRackets.find(r => r.districtId === district.id);
+    const extortionItem = crimeListItem('🧾', 'Extortion', racket ? `Expand your protection racket here (level ${racket.level}/${EXTORTION_RACKET_INCOME.length}).` : 'Shake down local businesses for recurring income.', racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} <span class="muted">| Heat +0-5/turn</span>` : `Recurring income <span class="muted">| Heat +0-4</span>`, actionCta('extortion', 'actionExtortion()'));
     return `
-      <p class="muted small">Sell product from your inventory at the going rate in ${district.name}.</p>
-      <div class="row">
-        <select id="deal-product" onchange="updateDealMaxQty()">${productOptions}</select>
-        <input type="number" id="deal-qty" value="${defaultMax}" min="1" style="width:80px;" />
-        <button class="btn-primary" onclick="actionSell()">Sell</button>
-      </div>
+      <p class="muted small">Each action can be done once per turn.</p>
+      <div class="crime-list">${extortionItem}</div>
+      <hr class="sep" />
+      ${renderBribeWidget(district)}
     `;
   }
 
-  if (category === 'bribes') {
-    return renderBribeWidget(district);
-  }
-
   return '';
-}
-
-function updateDealMaxQty() {
-  const productSelect = document.getElementById('deal-product');
-  const qtyInput = document.getElementById('deal-qty');
-  if (!productSelect || !qtyInput) return;
-  const owned = GAME.player.inventory.product[productSelect.value] || 0;
-  qtyInput.value = Math.max(1, owned);
 }
 
 function renderBribeWidget(district) {
@@ -872,6 +838,7 @@ function renderSmugglingSubtab() {
       <h3>${d.name} ${d.id === GAME.player.currentDistrict ? '<span class="tag clean">Current</span>' : ''}</h3>
       <h3 style="margin-top:0;">${def.label}: ${current.name} ${d.operations[op].raided ? '<span class="tag dirty">Raided</span>' : ''}</h3>
       <div class="muted small">Throughput: ${current.throughput}/turn, Bust Risk: ${current.bustRisk}%</div>
+      ${tier > 0 ? `<div class="muted small">Cash Payout: ${fmtMoney(current.cashMin)} - ${fmtMoney(current.cashMax)}/turn${(d.operations[op].lastRevenue || 0) > 0 ? ` &middot; Last Turn: ${fmtMoney(d.operations[op].lastRevenue)}` : ''}</div>` : ''}
     `;
     const body = next
       ? `<div class="row between">
@@ -883,7 +850,7 @@ function renderSmugglingSubtab() {
   }).join('');
 
   return `
-    ${collapsibleCard('smuggling-intro', '<h2>Smuggling Routes</h2>', '<p class="muted small">Upgrade routes to increase throughput of arms &amp; contraband produced each turn and to reduce bust risk. Run smuggling jobs from Heists &amp; Rackets on the Home tab.</p>', '', true)}
+    ${collapsibleCard('smuggling-intro', '<h2>Smuggling Routes</h2>', '<p class="muted small">Upgrade routes to move more arms &amp; contraband into your stash and to cash out a bigger payout automatically every turn. Payout scales 50%-100% with your distributor efficiency and falls as Gang Heat rises. Bust risk can cost you a turn&#39;s shipment.</p>', '', true)}
     <div class="grid">${cards}</div>
   `;
 }
@@ -915,7 +882,7 @@ function renderProtectionSubtab() {
         : `<div class="small muted" style="margin-top:6px;">Maximum tier reached.</div>`
       }
       <hr class="sep" />
-      <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} (${fmtMoney(extortionRacketIncome(racket.level))}/turn)` : 'None - start one from Heists & Rackets.'}</div>
+      <div class="muted small">Protection Racket: ${racket ? `Level ${racket.level}/${EXTORTION_RACKET_INCOME.length} (${fmtMoney(extortionRacketIncome(racket.level))}/turn)` : 'None - start one from Bribes & Rackets on the Home tab.'}</div>
       ${canAccessOperations(GAME) ? `
         <hr class="sep" />
         <div class="muted small">Operation Protection (reduces drug-operation raid risk &amp; heat here)</div>

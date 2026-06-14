@@ -254,7 +254,11 @@ const OPS_ECONOMY = {
   raidBaseRisk: 3,
   priceMinMult: 0.5,
   priceMaxMult: 2.0,
-  stashRentalRate: 0.015 // % of free stash goods-capacity paid to you per turn by other crews renting space
+  stashRentalRate: 0.015, // % of free stash goods-capacity paid to you per turn by other crews renting space
+  // Business fronts pay out a slice of their baseIncome each turn rather than a
+  // slice of their net worth, so a front's income stays modest relative to running
+  // drug operations - turning over its full baseIncome roughly every 100 turns at 100% efficiency.
+  businessIncomeDivisor: 100
 };
 
 /* ---------------- Operations Progression by Dirty Cash Earned ---------------- */

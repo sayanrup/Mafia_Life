@@ -121,6 +121,9 @@ function renderFinancePL() {
     if ((d.opProtection || 0) > 0 && (d.protectionIncome || 0) > 0) {
       rows.push({ name: `Operation Protection Kickback - ${d.name}`, revenue: d.protectionIncome, expense: 0 });
     }
+    if (d.operations.route.tier > 0 && (d.operations.route.lastRevenue || 0) > 0) {
+      rows.push({ name: `Smuggling Route - ${d.name}`, revenue: d.operations.route.lastRevenue, expense: 0 });
+    }
   }
 
   for (const racket of GAME.player.extortionRackets) {

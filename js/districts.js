@@ -55,7 +55,7 @@ function initWorld(state) {
       heat: 0,
       operations: {
         stash: { tier: 0, raided: false },
-        route: { tier: 0, raided: false }
+        route: { tier: 0, raided: false, lastRevenue: 0 }
       },
       saturation: { weed: 0, pills: 0, powder: 0, arms: 0, contraband: 0 },
       lastEvents: []
