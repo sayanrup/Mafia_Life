@@ -604,12 +604,12 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
 
 /* ---------------- Gang War Panel ---------------- */
 
-.gangwar-panel {
+.modal.gangwar-panel {
   border-color: var(--red-bright);
   box-shadow: 0 0 12px rgba(255, 80, 80, 0.2);
 }
 
-.gangwar-panel h2 {
+.modal.gangwar-panel h2 {
   color: var(--red-bright);
   border-bottom-color: var(--red-bright);
 }

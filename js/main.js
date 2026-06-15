@@ -57,10 +57,6 @@ function actionExtortion() {
   tryAction('extortion', () => startExtortion(GAME));
 }
 
-function actionSmuggling() {
-  tryAction('smuggling', () => doSmugglingRun(GAME));
-}
-
 function actionHit() {
   tryAction('hit', () => {
     const select = document.getElementById('hit-target');
@@ -80,17 +76,7 @@ function actionStartGangWar() {
   renderApp();
 }
 
-/* ---------------- Deals / Bribes (no action cost) ---------------- */
-
-function actionSell() {
-  const productSelect = document.getElementById('deal-product');
-  const qtyInput = document.getElementById('deal-qty');
-  const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
-  const res = sellProduct(GAME, productSelect.value, qty);
-  if (!res.ok) { showMsg('Deal', res.reason); return; }
-  autosave(GAME);
-  renderApp();
-}
+/* ---------------- Bribes (no action cost) ---------------- */
 
 function actionBribePD() {
   const select = document.getElementById('bribe-pd');

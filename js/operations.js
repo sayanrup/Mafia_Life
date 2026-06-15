@@ -55,31 +55,54 @@ function totalHeatMitigation(state) {
   return total;
 }
 
+// Smuggling routes still ferry arms & contraband into your stash, but the
+// weed/pills/powder portion of every run is fenced on the spot for dirty
+// cash - no more manual "Deals" required.
+const SMUGGLE_GOODS = ['arms', 'contraband'];
+
+function smugglingEfficiency(state) {
+  const equipTiers = Object.values(state.player.operations.equipment);
+  return equipTiers.reduce((a, b) => a + b, 0) / equipTiers.length / (EQUIPMENT_TIERS.length - 1);
+}
+
 function tickOperations(state) {
   const mitigation = totalHeatMitigation(state);
+  const gangHeat = (state.player.heat.gangs || 0) / 100;
+  const efficiency = smugglingEfficiency(state);
 
   for (const district of state.districts) {
-    // Smuggling Route - generates product, risk of bust
-    const routeTier = district.operations.route.tier;
-    if (routeTier > 0 && !district.operations.route.raided) {
+    const route = district.operations.route;
+    route.lastRevenue = 0;
+
+    // Smuggling Route - generates contraband/arms and direct cash, risk of bust
+    const routeTier = route.tier;
+    if (routeTier > 0 && !route.raided) {
       const def = OPERATION_DEFS.route.tiers[routeTier];
       const cap = getStashCapacity(state);
       const current = totalProductUnits(state);
       const room = Math.max(0, cap - current);
       const add = Math.min(def.throughput, room);
       if (add > 0) {
-        const each = Math.floor(add / GANG_PRODUCTS.length);
-        let remainder = add - each * GANG_PRODUCTS.length;
-        for (const product of GANG_PRODUCTS) {
+        const each = Math.floor(add / SMUGGLE_GOODS.length);
+        let remainder = add - each * SMUGGLE_GOODS.length;
+        for (const product of SMUGGLE_GOODS) {
           let amount = each;
           if (remainder > 0) { amount++; remainder--; }
           state.player.inventory.product[product] += amount;
         }
       }
+
+      // Cash payout: 50%-100% of the route's potential, scaling up with
+      // distributor efficiency and down as gang heat disrupts the route.
+      const pct = clamp(0.75 + efficiency * 0.25 - gangHeat * 0.25, 0.5, 1.0);
+      const revenue = Math.round(def.cashMin + (def.cashMax - def.cashMin) * pct);
+      addCash(state, revenue, 0);
+      route.lastRevenue = revenue;
+
       checkOperationRaid(state, district, 'route', def.bustRisk, mitigation);
-    } else if (district.operations.route.raided) {
-      district.operations.route.raidCooldown--;
-      if (district.operations.route.raidCooldown <= 0) district.operations.route.raided = false;
+    } else if (route.raided) {
+      route.raidCooldown--;
+      if (route.raidCooldown <= 0) route.raided = false;
     }
   }
 }

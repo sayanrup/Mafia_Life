@@ -297,11 +297,12 @@ function farmTick(state) {
         sellCapacity *= (1 + state.criminalWorld.smugglingBonusMult);
       }
 
-      // Distributor performance swings +/-50% with equipment efficiency and gang heat.
+      // Distributors realize 50%-100% of pending production each turn, scaling up
+      // with equipment efficiency and down as gang heat disrupts the streets.
       const equipTier = state.player.operations.equipment[product];
       const efficiency = equipTier / (EQUIPMENT_TIERS.length - 1);
       const gangHeat = (state.player.heat.gangs || 0) / 100;
-      const distVariance = clamp(1 + efficiency * 0.5 - gangHeat * 0.5, 0.5, 1.5);
+      const distVariance = clamp(0.5 + efficiency * 0.5 - gangHeat * 0.3, 0.5, 1.0);
       sellCapacity *= distVariance;
 
       const priceMult = state.player.operations.prices[product];

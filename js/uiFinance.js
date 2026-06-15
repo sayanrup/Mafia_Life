@@ -121,6 +121,9 @@ function renderFinancePL() {
     if ((d.opProtection || 0) > 0 && (d.protectionIncome || 0) > 0) {
       rows.push({ name: `Operation Protection Kickback - ${d.name}`, revenue: d.protectionIncome, expense: 0 });
     }
+    if (d.operations.route.tier > 0 && (d.operations.route.lastRevenue || 0) > 0) {
+      rows.push({ name: `Smuggling Route - ${d.name}`, revenue: d.operations.route.lastRevenue, expense: 0 });
+    }
   }
 
   for (const racket of GAME.player.extortionRackets) {
@@ -133,6 +136,10 @@ function renderFinancePL() {
 
   for (const b of GAME.ownedBusinesses) {
     rows.push({ name: `${b.type} - ${GAME.districts[b.districtId].name}`, revenue: b.lastRevenue || 0, expense: b.lastExpense || 0 });
+  }
+
+  if ((GAME.player.lastLaunderedDirty || 0) > 0) {
+    rows.push({ name: 'Shell/Business Laundering (Dirty &rarr; Clean)', revenue: GAME.player.lastLaunderedClean || 0, expense: GAME.player.lastLaunderedDirty || 0 });
   }
 
   const totalRevenue = rows.reduce((a, r) => a + r.revenue, 0);
