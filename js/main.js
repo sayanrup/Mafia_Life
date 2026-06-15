@@ -249,6 +249,14 @@ function actionResolveDilemma(optionId) {
   renderApp();
 }
 
+function actionResolveTerritoryThreat(choice) {
+  const res = resolveTerritoryThreat(GAME, choice);
+  if (!res.ok) { showMsg('Territory', res.reason); return; }
+  MODAL = null;
+  autosave(GAME);
+  renderApp();
+}
+
 function travelTo(districtId) {
   GAME.player.currentDistrict = districtId;
   narrate(GAME, 'district_travel');

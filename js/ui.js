@@ -74,6 +74,7 @@ function renderApp() {
   // The AI-driven street dilemma is the one interruption that still uses an
   // overlay: it's a forced one-time choice that arrives between turns.
   if (GAME.player.pendingDilemma && !MODAL) MODAL = { type: 'dilemma' };
+  else if (GAME.player.pendingTerritoryThreat && !MODAL) MODAL = { type: 'territory_threat' };
 
   if (MODAL) {
     document.body.insertAdjacentHTML('beforeend', renderModal());
@@ -222,6 +223,26 @@ function renderObjectives() {
   `).join('');
 }
 
+function renderOpportunities() {
+  const items = computeOpportunities(GAME);
+  if (!items.length) return '';
+  return `
+    <div class="card opportunity-feed">
+      <h2>What Needs Attention</h2>
+      ${items.map(o => `
+        <div class="opportunity-item">
+          <span class="opportunity-icon">${o.icon}</span>
+          <span class="opportunity-info">
+            <span class="opportunity-title">${o.title}</span>
+            <span class="muted small">${o.detail}</span>
+          </span>
+          ${o.onclick ? `<button onclick="${o.onclick}">${o.actionLabel}</button>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderHome() {
   const p = GAME.player;
   const district = GAME.districts[p.currentDistrict];
@@ -246,6 +267,8 @@ function renderHome() {
   ).join(' ');
 
   return `
+    ${renderOpportunities()}
+
     <div class="card">
       <h2>Objectives</h2>
       ${renderObjectives()}
@@ -1048,6 +1071,22 @@ function renderDilemmaModal() {
   `;
 }
 
+function renderTerritoryThreatModal() {
+  const t = GAME.player.pendingTerritoryThreat;
+  if (!t) return '<h2>Nothing to decide</h2>' + closeButtonRow();
+  const district = GAME.districts[t.districtId];
+  const bribeCost = t.amount * 250;
+  return `
+    <h2>Territory Under Pressure</h2>
+    <p>The ${t.gangName} ${t.label}, eyeing ${t.amount}% of your turf in ${district.name}.</p>
+    <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">
+      <button onclick="actionResolveTerritoryThreat('defend')">Defend your turf - send your crew to hold the line</button>
+      <button onclick="actionResolveTerritoryThreat('bribe')">Pay them off - ${fmtMoney(bribeCost)} dirty cash to back down</button>
+      <button onclick="actionResolveTerritoryThreat('ignore')">Let it go - cede ${t.amount}% control (Gang Heat +2)</button>
+    </div>
+  `;
+}
+
 /* ---------------- Busted / Hire a Lawyer Screen ---------------- */
 
 function renderArrestModal() {
@@ -1083,6 +1122,7 @@ function renderModal() {
   if (!MODAL) return '';
   let body = '';
   if (MODAL.type === 'dilemma') body = renderDilemmaModal();
+  else if (MODAL.type === 'territory_threat') body = renderTerritoryThreatModal();
   else return '';
   const closeX = `<button class="modal-close-x" onclick="closeModal()" aria-label="Close">&times;</button>`;
   return `<div class="modal-overlay" id="modal-root"><div class="modal">${closeX}${body}</div></div>`;
