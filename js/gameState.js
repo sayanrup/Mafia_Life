@@ -67,7 +67,8 @@ function createNewGame(charData) {
       actionCounts: {}, // actionKey -> uses this turn (reset on endTurn)
       vehicles: [], // {id, typeId} - distribution fleet
       operations: null, // set by initPlayerOperations below
-      pendingDilemma: null // {type, title, description, context, options} - set by streetDilemmaTick
+      pendingDilemma: null, // {type, title, description, context, options} - set by streetDilemmaTick
+      pendingTerritoryThreat: null // {gangId, gangName, districtId, amount, label} - set by scenarioTerritoryPush
     },
     districts: [],
     gangs: {},
@@ -163,6 +164,10 @@ function migrateState(state) {
 
   if (!('pendingDilemma' in state.player)) {
     state.player.pendingDilemma = null;
+  }
+
+  if (!('pendingTerritoryThreat' in state.player)) {
+    state.player.pendingTerritoryThreat = null;
   }
 
   // Non-punitive defaults for the new Dirty-Cash/PD-Heat progression tracks:
@@ -469,6 +474,74 @@ function computeObjectives(state) {
   }
 
   return objectives;
+}
+
+// Surfaces actionable items the player might otherwise miss: damaged or
+// under-protected businesses, raided routes, unused distributor capacity,
+// and any pending rival territory threat. Each item links to the tab where
+// it can be addressed.
+function computeOpportunities(state) {
+  const items = [];
+
+  for (const b of state.ownedBusinesses) {
+    const district = state.districts[b.districtId];
+    if (b.damaged) {
+      items.push({
+        icon: '🔧',
+        title: `${b.type} in ${district.name} is damaged`,
+        detail: 'Generating no income until repaired.',
+        actionLabel: 'Repair in Finance',
+        onclick: "setActiveTab('finance')"
+      });
+    } else if ((b.protection || 0) < 25) {
+      items.push({
+        icon: '⚠️',
+        title: `${b.type} in ${district.name} has weak protection (${Math.round(b.protection || 0)}%)`,
+        detail: 'Low protection risks crossfire damage when district heat is high.',
+        actionLabel: 'Manage in Finance',
+        onclick: "setActiveTab('finance')"
+      });
+    }
+  }
+
+  for (const district of state.districts) {
+    const route = district.operations.route;
+    if (route.raided) {
+      items.push({
+        icon: '🚧',
+        title: `Smuggling route offline in ${district.name}`,
+        detail: `Raided - back online in ${route.raidCooldown} turn(s).`,
+        actionLabel: 'Go to Operations',
+        onclick: "setActiveTab('operations')"
+      });
+    }
+  }
+
+  const limits = getOpsLimits(state);
+  const freeDistributors = limits.maxDistributors - totalDistributors(state);
+  if (freeDistributors > 0) {
+    items.push({
+      icon: '📦',
+      title: `${freeDistributors} unused distributor slot(s)`,
+      detail: 'Hire more distributors to move product faster.',
+      actionLabel: 'Go to Operations',
+      onclick: "setActiveTab('operations')"
+    });
+  }
+
+  if (state.player.pendingTerritoryThreat) {
+    const t = state.player.pendingTerritoryThreat;
+    const district = state.districts[t.districtId];
+    items.push({
+      icon: '🔥',
+      title: `${t.gangName} is moving on your turf in ${district.name}`,
+      detail: 'Respond to this threat now.',
+      actionLabel: null,
+      onclick: null
+    });
+  }
+
+  return items;
 }
 
 function clamp(val, min, max) {

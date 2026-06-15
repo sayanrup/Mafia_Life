@@ -691,6 +691,37 @@ label { font-size: 0.85em; color: var(--text-dim); display: block; margin-bottom
   flex: 0 0 auto;
 }
 
+/* ---------------- Opportunity Feed ---------------- */
+
+.opportunity-feed {
+  border-color: var(--gold);
+}
+
+.opportunity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+
+.opportunity-icon {
+  font-size: 1.4em;
+  flex: 0 0 auto;
+}
+
+.opportunity-info {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.opportunity-title {
+  font-weight: bold;
+}
+
 /* ---------------- Modal ---------------- */
 
 .modal-overlay {

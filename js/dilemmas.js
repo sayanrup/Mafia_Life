@@ -319,6 +319,65 @@ function genSmugglerDetourDilemma(state) {
   };
 }
 
+function genFederalTaskForceDilemma(state) {
+  if ((state.player.heat.feds || 0) < 60) return null;
+  const loss = Math.round(state.player.cash.dirty * 0.2);
+  return {
+    type: 'federal_task_force',
+    title: 'A Federal Task Force Forms',
+    description: `Word comes down through a contact at the courthouse: the Feds have stood up a dedicated task force with your name at the top of the file. This isn't a subpoena anymore - it's a campaign, and weathering it is going to cost you.`,
+    context: { loss },
+    options: [
+      { id: 'go_dark', label: `Go dark - shut down the riskiest operations for a while (lose ${fmtMoney(loss)} dirty cash, Fed Heat -25)` },
+      { id: 'lawyer_up', label: `Bring in a full defense team (${fmtMoney(10000)} clean cash, Fed Heat -15)` },
+      { id: 'double_down', label: `Push harder before they're ready - one big score while you still can (Fed Heat +10, Street Rep +6, big payout)` }
+    ]
+  };
+}
+
+function genRivalAllianceDilemma(state) {
+  const myGangId = playerGangId(state);
+  if (!myGangId) return null;
+  const hostiles = Object.values(state.gangs).filter(g => !g.isPlayerGang && !g.eliminated && (g.relationToPlayer || 0) < -10);
+  const influence = computeTerritoryInfluence(state);
+  if (hostiles.length < 2 || influence < 30) return null;
+  const target = hostiles[Math.floor(Math.random() * hostiles.length)];
+  return {
+    type: 'rival_alliance',
+    title: 'A Coalition Forms Against You',
+    description: `Word reaches you that ${hostiles.map(g => g.name).join(', ')} have been talking - more than usual. Your growing footprint in the city has made you the common enemy, and a coalition against you is taking shape.`,
+    context: { gangId: target.id, gangName: target.name },
+    options: [
+      { id: 'strike_first', label: `Hit ${target.name} before the coalition solidifies (combat - breaks the coalition if it works)` },
+      { id: 'buy_off', label: `Quietly buy off ${target.name} to peel them away (${fmtMoney(6000)} dirty cash, ${target.name} relations +20)` },
+      { id: 'fortify', label: `Fortify your territory - pour cash into protection across the board (${fmtMoney(5000)} dirty cash, Gang Heat -5)` }
+    ]
+  };
+}
+
+function genCartelWarDilemma(state) {
+  if (rankIndex(state.player.rank) < 2) return null;
+  let totalPlots = 0;
+  for (const d of state.districts) {
+    for (const product of Object.keys(FARM_TYPES)) {
+      totalPlots += (d.farms[product] && d.farms[product].plots) || 0;
+    }
+  }
+  if (totalPlots < 6) return null;
+  const gain = 6000 + Math.floor(Math.random() * 9000);
+  return {
+    type: 'cartel_war',
+    title: 'A Cartel War Erupts',
+    description: `Your production has gotten big enough to draw outside attention - a cartel war breaks out over supply lines into the city, and everyone wants to know which side you're on.`,
+    context: { gain },
+    options: [
+      { id: 'pick_side', label: `Pick a side and supply them (+${fmtMoney(gain)}, Gang Heat +10, PD Heat +5)` },
+      { id: 'stay_neutral', label: `Stay neutral and ride it out (lose half your current product inventory, Street Rep +3)` },
+      { id: 'exploit', label: `Exploit the chaos - raid a weakened shipment (combat for a big payout)` }
+    ]
+  };
+}
+
 const STREET_DILEMMA_GENERATORS = {
   snitch: genSnitchDilemma,
   old_favor: genOldFavorDilemma,
@@ -339,7 +398,10 @@ const STREET_DILEMMA_GENERATORS = {
   lawyer_retainer: genLawyerRetainerDilemma,
   crew_prove: genCrewProveThemselvesDilemma,
   rival_truce: genRivalTruceOfferDilemma,
-  smuggler_detour: genSmugglerDetourDilemma
+  smuggler_detour: genSmugglerDetourDilemma,
+  federal_task_force: genFederalTaskForceDilemma,
+  rival_alliance: genRivalAllianceDilemma,
+  cartel_war: genCartelWarDilemma
 };
 
 function generateStreetDilemma(state) {
@@ -805,6 +867,93 @@ function applyDilemmaOption(state, dilemma, optionId) {
       } else {
         addRep(state, 'street', 3);
         text = `You wave the truck through without taking a cut. The contact remembers favors like that.`;
+      }
+      break;
+    }
+
+    case 'federal_task_force': {
+      const { loss } = dilemma.context;
+      if (optionId === 'go_dark') {
+        p.cash.dirty = Math.max(0, p.cash.dirty - loss);
+        addHeat(state, 'feds', -25);
+        text = `You shut down every operation that could be traced back to you and wait out the heat. It costs ${fmtMoney(loss)}, but the task force loses the scent.`;
+      } else if (optionId === 'lawyer_up') {
+        if (p.cash.clean >= 10000) {
+          p.cash.clean -= 10000;
+          addHeat(state, 'feds', -15);
+          text = `A full defense team goes to work, burying the task force in motions and delays. ${fmtMoney(10000)} well spent.`;
+        } else {
+          text = `You can't put together ${fmtMoney(10000)} for a defense team on short notice. The task force presses on.`;
+        }
+      } else {
+        const gain = 8000 + Math.floor(Math.random() * 12000);
+        addCash(state, gain, 0);
+        addHeat(state, 'feds', 10);
+        addRep(state, 'street', 6);
+        text = `You move fast and hit hard before the task force is fully stood up, walking away with ${fmtMoney(gain)}. The street takes notice - so do the Feds.`;
+      }
+      break;
+    }
+
+    case 'rival_alliance': {
+      const gang = state.gangs[dilemma.context.gangId];
+      const gangName = dilemma.context.gangName;
+      if (optionId === 'strike_first') {
+        const result = resolveScuffle(state, 30 + (gang ? gang.crewSize || 10 : 10));
+        if (result.result === 'fail') {
+          addHeat(state, 'gangs', 8);
+          p.crew.loyalty = clamp(p.crew.loyalty - 8, 0, 100);
+          text = `You hit ${gangName} first, but it goes badly - your crew limps back, and the coalition against you only grows tighter.`;
+        } else {
+          if (gang) gang.relationToPlayer = clamp((gang.relationToPlayer || 0) - 20, -100, 100);
+          addRep(state, 'gang', 6);
+          text = `You hit ${gangName} hard and fast, scattering their crew. The message lands - the coalition against you quietly falls apart before it forms.`;
+        }
+      } else if (optionId === 'buy_off') {
+        if (p.cash.dirty >= 6000) {
+          p.cash.dirty -= 6000;
+          if (gang) gang.relationToPlayer = clamp((gang.relationToPlayer || 0) + 20, -100, 100);
+          text = `A quiet payoff to ${gangName} peels them out of the coalition. The others are left with one less ally.`;
+        } else {
+          text = `You can't spare ${fmtMoney(6000)} to buy ${gangName} off right now.`;
+        }
+      } else {
+        if (p.cash.dirty >= 5000) {
+          p.cash.dirty -= 5000;
+          for (const b of state.ownedBusinesses) b.protection = clamp((b.protection || 0) + 20, 0, 100);
+          addHeat(state, 'gangs', -5);
+          text = `You pour ${fmtMoney(5000)} into protection across your businesses and territory. Whatever the coalition is planning, you're not an easy target anymore.`;
+        } else {
+          text = `You can't spare ${fmtMoney(5000)} to fortify right now.`;
+        }
+      }
+      break;
+    }
+
+    case 'cartel_war': {
+      const { gain } = dilemma.context;
+      if (optionId === 'pick_side') {
+        addCash(state, gain, 0);
+        addHeat(state, 'gangs', 10);
+        addHeat(state, 'pd', 5);
+        text = `You throw in with one side of the cartel war, supplying their push into the city. It pays ${fmtMoney(gain)} - and paints a target on your back.`;
+      } else if (optionId === 'stay_neutral') {
+        for (const product of Object.keys(p.inventory.product)) {
+          p.inventory.product[product] = Math.floor(p.inventory.product[product] / 2);
+        }
+        addRep(state, 'street', 3);
+        text = `You keep your head down and let the cartels fight it out elsewhere. Half your stash gets "redirected" to keep the peace, but you stay out of the crossfire.`;
+      } else {
+        const result = resolveScuffle(state, 40);
+        if (result.result === 'fail') {
+          addHeat(state, 'gangs', 15);
+          p.crew.loyalty = clamp(p.crew.loyalty - 10, 0, 100);
+          text = `You move on a shipment caught in the crossfire, but it's an ambush. Your crew barely gets out, and now both sides of the cartel war have a reason to come after you.`;
+        } else {
+          const take = gain + 3000;
+          addCash(state, take, 0);
+          text = `You hit a weakened shipment in the middle of the chaos and walk away with ${fmtMoney(take)} before anyone notices you were there.`;
+        }
       }
       break;
     }

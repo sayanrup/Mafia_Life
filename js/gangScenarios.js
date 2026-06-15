@@ -144,14 +144,73 @@ function scenarioTerritoryPush(state, gang, district, label) {
   const target = state.gangs[targetId];
   if (!target) return;
   const amount = 2 + Math.floor(Math.random() * 5);
+
+  // When a rival gang sets its sights on the PLAYER's turf, hold off on
+  // the actual control shift and queue a response window instead - the
+  // player gets to defend, bribe, or let it slide before the move lands.
+  if (targetId === playerGangId(state)) {
+    if (state.player.pendingTerritoryThreat) return;
+    state.player.pendingTerritoryThreat = { gangId: gang.id, gangName: gang.name, districtId: district.id, amount, label };
+    pushDistrictEvent(district, `${gang.name} ${label}, eyeing your turf in ${district.name}.`);
+    return;
+  }
+
   const taken = shiftControl(state, district.id, targetId, gang.id, amount);
   if (taken > 0) {
     pushDistrictEvent(district, `${gang.name} ${label}, taking ${taken}% of ${target.name}'s turf in ${district.name}.`);
-    if (targetId === playerGangId(state)) {
-      state.player.heat.gangs = clamp((state.player.heat.gangs || 0) + 2, 0, 100);
-      state.eventLog.push(logEntry(state, `${gang.name} ${label} and took ${taken}% of your territory in ${district.name}.`, 'gang'));
-    }
   }
+}
+
+/* ---------------- Territory Threat Resolution ---------------- */
+// Resolves the response window queued by scenarioTerritoryPush above when a
+// rival gang's territory move targets the player.
+
+function resolveTerritoryThreat(state, choice) {
+  const t = state.player.pendingTerritoryThreat;
+  if (!t) return { ok: false, reason: 'Nothing requires your attention right now.' };
+  const gang = state.gangs[t.gangId];
+  const district = state.districts[t.districtId];
+  if (!gang || !district) {
+    state.player.pendingTerritoryThreat = null;
+    return { ok: true };
+  }
+
+  let text;
+  if (choice === 'defend') {
+    const result = resolveScuffle(state, 25 + (gang.crewSize || 10));
+    if (result.result === 'fail') {
+      const taken = shiftControl(state, t.districtId, playerGangId(state), t.gangId, t.amount + 3);
+      addHeat(state, 'gangs', 5);
+      text = `Your crew tries to hold the line in ${district.name}, but ${gang.name} pushes through${taken > 0 ? ` and takes ${taken}% of your turf there` : ''}.`;
+    } else {
+      addRep(state, 'gang', 4);
+      gang.relationToPlayer = clamp((gang.relationToPlayer || 0) - 5, -100, 100);
+      text = result.result === 'success'
+        ? `Your crew holds ${district.name} hard, sending ${gang.name}'s crew running. Word of the beatdown spreads fast.`
+        : `It's a close call, but your crew holds the line in ${district.name} - ${gang.name} backs off, for now.`;
+    }
+  } else if (choice === 'bribe') {
+    const cost = t.amount * 250;
+    if (state.player.cash.dirty >= cost) {
+      state.player.cash.dirty -= cost;
+      gang.treasury = (gang.treasury || 0) + cost;
+      gang.relationToPlayer = clamp((gang.relationToPlayer || 0) + 5, -100, 100);
+      text = `You pay ${gang.name} ${fmtMoney(cost)} to back off ${district.name}. Your turf stays yours - for now.`;
+    } else {
+      const taken = shiftControl(state, t.districtId, playerGangId(state), t.gangId, t.amount);
+      addHeat(state, 'gangs', 2);
+      text = `You can't cover the ${fmtMoney(cost)} payoff${gang.name} wants, and they take ${taken}% of ${district.name} anyway.`;
+    }
+  } else {
+    const taken = shiftControl(state, t.districtId, playerGangId(state), t.gangId, t.amount);
+    addHeat(state, 'gangs', 2);
+    text = `You let it slide. ${gang.name} takes ${taken}% of your territory in ${district.name}.`;
+  }
+
+  state.eventLog.push(logEntry(state, text, 'gang'));
+  queueNarration(state, 'gang', text);
+  state.player.pendingTerritoryThreat = null;
+  return { ok: true };
 }
 
 /* ---------------- 100 scenarios: 10 categories x 10 variants ---------------- */
