@@ -239,37 +239,19 @@ html, body {
 }
 
 .nav-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
+  flex: 0 0 auto;
   background: transparent;
   border: none;
   border-top: 3px solid transparent;
   color: var(--text-dim);
-  padding: 6px 8px;
-  font-size: 0.65em;
-  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  font-size: 0.8em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s, background 0.15s, flex-grow 0.15s;
-}
-
-.nav-icon {
-  font-size: 1.3em;
-  line-height: 1;
-}
-
-.nav-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
 .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
@@ -881,13 +863,7 @@ a, .link {
   /* Larger touch targets and 16px inputs (prevents iOS auto-zoom on focus) */
   .tab-btn { padding: 12px 14px; }
 
-  /* Icons-only bottom nav on mobile so all tabs fit without scrolling;
-     active tab gets extra width to show its label. */
-  .nav-btn { padding: 6px 2px; font-size: 0.6em; }
-  .nav-icon { font-size: 1.15em; }
-  .nav-btn .nav-label { display: none; }
-  .nav-btn.active { flex-grow: 2.5; }
-  .nav-btn.active .nav-label { display: inline; }
+  .nav-btn { padding: 10px 12px; }
   button, .btn { padding: 10px 14px; }
   .btn-small { padding: 8px 10px; }
   input, select, textarea { font-size: 16px; padding: 8px; }
