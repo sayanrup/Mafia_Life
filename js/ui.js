@@ -8,17 +8,17 @@ let MODAL = null; // {type:'dilemma'} - the only remaining popup, for the per-tu
 let STATUS_BANNER = null; // {title, body} - inline notification that replaces one-off result/error popups
 
 const TAB_DEFS = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'map', label: 'Map', icon: '🗺️' },
-  { id: 'operations', label: 'Ops', icon: '🏭' },
-  { id: 'crew', label: 'Crew', icon: '👥' },
-  { id: 'finance', label: 'Finance', icon: '💰' },
-  { id: 'family', label: 'Family', icon: '👪' },
-  { id: 'commission', label: 'Cartel', icon: '🏛️', requires: 'commission' },
-  { id: 'criminalworld', label: 'Underworld', icon: '🌐', requires: 'criminalworld' },
-  { id: 'inventory', label: 'Bag', icon: '🎒' },
-  { id: 'events', label: 'Events', icon: '📰' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' }
+  { id: 'home', label: 'Home' },
+  { id: 'map', label: 'Map' },
+  { id: 'operations', label: 'Operations' },
+  { id: 'crew', label: 'Crew' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'family', label: 'Family' },
+  { id: 'commission', label: 'Commission', requires: 'commission' },
+  { id: 'criminalworld', label: 'Criminal World', requires: 'criminalworld' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'events', label: 'Events' },
+  { id: 'settings', label: 'Settings' }
 ];
 
 function setActiveTab(tab) {
@@ -155,9 +155,7 @@ function renderTabBar() {
     ${TAB_DEFS.filter(t => !t.requires
         || (t.requires === 'commission' && GAME.commission.unlocked)
         || (t.requires === 'criminalworld' && GAME.criminalWorld.unlocked))
-      .map(t => `<button class="nav-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">
-        <span class="nav-icon">${t.icon}</span><span class="nav-label">${t.label}</span>
-      </button>`)
+      .map(t => `<button class="nav-btn ${ACTIVE_TAB === t.id ? 'active' : ''}" onclick="setActiveTab('${t.id}')">${t.label}</button>`)
       .join('')}
   </nav>`;
 }
